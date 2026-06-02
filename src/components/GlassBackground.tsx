@@ -7,8 +7,10 @@ const blob = (
   opacity = 0.5
 ): React.CSSProperties => ({
   position: "absolute",
-  width: "48vw",
-  height: "48vw",
+  // nach der groesseren Viewport-Dimension skalieren, damit die Blobs auch auf
+  // schmalen, hohen Handy-Screens den Hintergrund abdecken (statt winzig zu sein)
+  width: "max(48vw, 55vh)",
+  height: "max(48vw, 55vh)",
   borderRadius: "50%",
   filter: "blur(100px)",
   opacity,
