@@ -135,13 +135,16 @@
   -webkit-mask-image: radial-gradient(120% 80% at 50% 30%, #000 30%, transparent 80%);
   mask-image: radial-gradient(120% 80% at 50% 30%, #000 30%, transparent 80%);
 }
+/* Mobile: nahezu identisch zum Desktop. Nur die Basis minimal angehoben, damit
+   OLED-Displays das Fast-Schwarz nicht komplett zu Schwarz verschlucken, plus eine
+   Spur mehr Glow-Deckkraft. Bewusst kleiner Unterschied. */
 @media (max-width: 768px) {
   .glass-bg {
     background:
-      radial-gradient(95vmax 95vmax at 12% -6%, rgba(86,116,255,0.36), transparent 60%),
-      radial-gradient(85vmax 85vmax at 96% 20%, rgba(140,92,235,0.27), transparent 60%),
-      radial-gradient(90vmax 90vmax at 16% 108%, rgba(24,185,158,0.21), transparent 62%),
-      radial-gradient(160% 130% at 50% 0%, #0d1426 0%, #06090f 70%);
+      radial-gradient(70vmax 70vmax at 12% -5%, rgba(58,85,216,0.29), transparent 60%),
+      radial-gradient(60vmax 60vmax at 92% 26%, rgba(109,63,192,0.20), transparent 60%),
+      radial-gradient(65vmax 65vmax at 25% 108%, rgba(10,143,120,0.15), transparent 62%),
+      radial-gradient(140% 120% at 50% 0%, #070a15 0%, #03050b 70%);
   }
 }
 
