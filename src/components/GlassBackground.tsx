@@ -1,24 +1,14 @@
-// Liquid-glass background field: dark base with soft animated colour blobs and a
-// faint grid. Sits fixed behind all content (z -2) so translucent panels refract it.
-const blob = (
-  color: string,
-  pos: React.CSSProperties,
-  anim: string,
-  opacity = 0.5
-): React.CSSProperties => ({
-  position: "absolute",
-  // nach der groesseren Viewport-Dimension skalieren, damit die Blobs auch auf
-  // schmalen, hohen Handy-Screens den Hintergrund abdecken (statt winzig zu sein)
-  width: "max(48vw, 55vh)",
-  height: "max(48vw, 55vh)",
-  borderRadius: "50%",
-  filter: "blur(100px)",
-  opacity,
-  mixBlendMode: "screen",
-  background: color,
-  animation: `${anim} ease-in-out infinite alternate`,
-  ...pos,
-});
+// Liquid-glass background field: a dark base with soft colour glows, realised as
+// CSS radial-gradients (no blur filter, no mix-blend-mode, no separate elements).
+// This renders identically on mobile (iOS Safari) and desktop, where the previous
+// blurred + screen-blended blob elements were unreliable. A faint grid sits on top.
+// Sizes use vmax so the glows scale on tall, narrow phone screens too.
+const GLOWS = [
+  "radial-gradient(70vmax 70vmax at 12% -5%, rgba(58,85,216,0.26), transparent 60%)",
+  "radial-gradient(60vmax 60vmax at 92% 26%, rgba(109,63,192,0.18), transparent 60%)",
+  "radial-gradient(65vmax 65vmax at 25% 108%, rgba(10,143,120,0.14), transparent 62%)",
+  "radial-gradient(140% 120% at 50% 0%, #05070f 0%, #010207 60%)",
+].join(", ");
 
 const GlassBackground = () => (
   <div
@@ -27,15 +17,10 @@ const GlassBackground = () => (
       position: "fixed",
       inset: 0,
       zIndex: -2,
-      overflow: "hidden",
       pointerEvents: "none",
-      background: "radial-gradient(120% 120% at 50% 0%, #010103 0%, #000000 40%)",
+      background: GLOWS,
     }}
   >
-    <span data-glass-blob style={blob("#3a55d8", { top: "-16%", left: "-12%" }, "glass-drift1 24s", 0.13)} />
-    <span data-glass-blob style={blob("#6d3fc0", { top: "30%", right: "-16%" }, "glass-drift2 28s", 0.09)} />
-    <span data-glass-blob style={blob("#0a8f78", { bottom: "-20%", left: "20%" }, "glass-drift3 32s", 0.07)} />
-    <span data-glass-blob style={blob("rgba(255,255,255,0.7)", { top: "58%", left: "-12%" }, "glass-drift1 30s", 0.025)} />
     <div
       style={{
         position: "absolute",
