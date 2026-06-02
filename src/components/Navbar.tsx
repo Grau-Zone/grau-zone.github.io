@@ -31,7 +31,7 @@ const Navbar = () => {
         borderBottom: scrolled ? "1px solid rgba(255,255,255,0.06)" : "1px solid transparent",
       }}
     >
-      <div className="max-w-[1600px] mx-auto flex items-center justify-between h-16 px-6 lg:px-10">
+      <div className="max-w-[1600px] mx-auto flex items-center justify-between h-16 px-4 sm:px-6 lg:px-10">
         {/* Logo */}
         <a href="/" className="flex items-center gap-2.5 group">
           {/* Radar icon mark */}
@@ -94,13 +94,28 @@ const Navbar = () => {
           </a>
         </div>
 
-        {/* Mobile toggle */}
-        <button
-          className="md:hidden text-white/70 hover:text-white"
-          onClick={() => setMobileOpen(!mobileOpen)}
-        >
-          {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-        </button>
+        {/* Mobile: compact CTA + toggle */}
+        <div className="flex md:hidden items-center gap-2">
+          <a
+            href="/assessment"
+            className="text-xs font-semibold px-3 py-1.5 rounded-full whitespace-nowrap"
+            style={{
+              fontFamily: "'Space Grotesk', sans-serif",
+              background: "rgba(75, 110, 255, 0.15)",
+              border: "1px solid rgba(75, 110, 255, 0.4)",
+              color: "#8ba4ff",
+            }}
+          >
+            Self-Assessment
+          </a>
+          <button
+            className="text-white/70 hover:text-white"
+            onClick={() => setMobileOpen(!mobileOpen)}
+            aria-label="Menü"
+          >
+            {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </button>
+        </div>
       </div>
 
       {/* Mobile menu */}
@@ -125,6 +140,19 @@ const Navbar = () => {
                 {item.label}
               </a>
             ))}
+            <a
+              href="/assessment"
+              onClick={() => setMobileOpen(false)}
+              className="block text-center text-sm font-semibold px-5 py-3 rounded-full mt-2"
+              style={{
+                fontFamily: "'Space Grotesk', sans-serif",
+                background: "rgba(75, 110, 255, 0.15)",
+                border: "1px solid rgba(75, 110, 255, 0.4)",
+                color: "#8ba4ff",
+              }}
+            >
+              Organisation Self-Assessment →
+            </a>
           </motion.div>
         )}
       </AnimatePresence>
