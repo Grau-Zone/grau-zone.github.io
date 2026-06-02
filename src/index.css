@@ -1,0 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 228 45% 4%;
+    --foreground: 220 30% 97%;
+
+    --card: 228 40% 7%;
+    --card-foreground: 220 30% 97%;
+
+    --popover: 228 40% 7%;
+    --popover-foreground: 220 30% 97%;
+
+    --primary: 225 95% 62%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 228 35% 10%;
+    --secondary-foreground: 220 30% 97%;
+
+    --muted: 228 30% 12%;
+    --muted-foreground: 220 20% 50%;
+
+    --accent: 225 95% 62%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 350 90% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 228 30% 13%;
+    --input: 228 30% 13%;
+    --ring: 225 95% 62%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 228 40% 6%;
+    --sidebar-foreground: 220 30% 97%;
+    --sidebar-primary: 225 95% 62%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 228 35% 10%;
+    --sidebar-accent-foreground: 220 30% 97%;
+    --sidebar-border: 228 30% 13%;
+    --sidebar-ring: 225 95% 62%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    letter-spacing: -0.025em;
+  }
+}
+
+@keyframes float-up {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: hsl(228 45% 4%); }
+::-webkit-scrollbar-thumb { background: hsl(228 30% 18%); border-radius: 3px; }
