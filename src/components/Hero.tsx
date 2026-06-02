@@ -116,19 +116,10 @@ const Hero = () => {
   return (
     <section
       className="relative min-h-screen flex items-center overflow-hidden"
-      style={{ background: "radial-gradient(ellipse 80% 60% at 60% 50%, rgba(30,45,120,0.4) 0%, hsl(228 45% 4%) 70%)" }}
+      style={{ background: "radial-gradient(ellipse 80% 60% at 60% 50%, rgba(30,45,120,0.35) 0%, transparent 70%)" }}
     >
       {/* Particle canvas */}
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />
-
-      {/* Background grid */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundImage: "linear-gradient(rgba(139,164,255,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(139,164,255,0.04) 1px, transparent 1px)",
-          backgroundSize: "60px 60px",
-        }}
-      />
 
       <div className="relative z-10 max-w-[1600px] mx-auto px-6 lg:px-10 w-full grid grid-cols-1 lg:grid-cols-2 gap-16 items-center py-28 lg:py-0 min-h-screen">
         {/* Left: Text content */}

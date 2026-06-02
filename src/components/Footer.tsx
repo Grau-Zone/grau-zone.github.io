@@ -4,7 +4,7 @@ const Footer = () => {
   return (
     <footer
       id="about"
-      style={{ background: "hsl(228 45% 3%)", borderTop: "1px solid rgba(139,164,255,0.08)" }}
+      style={{ background: "transparent", borderTop: "1px solid rgba(139,164,255,0.08)" }}
     >
       {/* About section */}
       <div className="max-w-[1600px] mx-auto px-6 lg:px-10 py-20 lg:py-24">
@@ -203,6 +203,7 @@ const Footer = () => {
             {[
               { label: "Kontakt", href: "mailto:adrian.bohrer@unisg.ch,andreas.hein@unisg.ch" },
               { label: "IWI-HSG", href: "https://iwi.unisg.ch" },
+              { label: "GenAI Competence Center", href: "https://iwi.unisg.ch/de/competence-center-for-genai/" },
               { label: "STACKIT", href: "https://stackit.de" },
               { label: "Impressum", href: "/impressum" },
             ].map(({ label, href }) => (

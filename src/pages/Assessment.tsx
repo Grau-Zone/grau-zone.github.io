@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { jsPDF } from "jspdf";
 import CapacityRadar, { CAPACITIES, LEVELS } from "../components/CapacityRadar";
+import ConsultingCTA from "../components/ConsultingCTA";
 import {
   surveyBlocks,
   totalQuestionCount,
@@ -664,6 +665,21 @@ function ResultScreen({ answers, onRestart, onDownloadJSON, onDownloadPDF }: { a
   const multiStrongest = strongestCaps.length > 1;
   const strongestCap = strongestCaps[0]; // accent colour for the strongest callout (may be undefined)
 
+  // Schwächste beantwortete Capacity für das personalisierte Consulting-CTA
+  const answeredDims = CAP_DIMS.filter((d) => scores.capacityScores[d] != null);
+  const weakestDim = answeredDims.length
+    ? answeredDims.reduce((a, b) =>
+        (scores.capacityScores[a] as number) <= (scores.capacityScores[b] as number) ? a : b
+      )
+    : null;
+  const weakestLabel = weakestDim ? CAPACITIES[CAP_DIMS.indexOf(weakestDim)].title : null;
+  const capacityPercents = Object.fromEntries(
+    CAP_DIMS.map((d, i) => [
+      CAPACITIES[i].tag,
+      scores.capacityScores[d] == null ? null : Math.round((scores.capacityScores[d] as number) * 100),
+    ])
+  );
+
   // Control variable labels for display
   const controlLabels: Record<string, { label: string; options: Record<string, string> }> = {
     "KV.1": { label: "Mitarbeiterzahl", options: { "<250": "< 250", "250-999": "250–999", "1000-4999": "1.000–4.999", "5000-24999": "5.000–24.999", ">=25000": "≥ 25.000" } },
@@ -757,7 +773,7 @@ function ResultScreen({ answers, onRestart, onDownloadJSON, onDownloadPDF }: { a
 
       {/* ── Section 1: Radar + Level + Capacity Scores ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16" style={{ alignItems: "stretch" }}>
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: "32px", borderRadius: "16px", background: "rgba(10,12,30,0.8)", border: "1px solid rgba(139,164,255,0.1)", boxShadow: `0 0 60px ${accent}15` }}>
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: "32px", borderRadius: "16px", background: "rgba(255,255,255,0.05)", backdropFilter: "blur(22px) saturate(160%)", WebkitBackdropFilter: "blur(22px) saturate(160%)", border: "1px solid rgba(255,255,255,0.14)", boxShadow: `0 0 60px ${accent}15` }}>
           <CapacityRadar values={scores.radarValues} color={accent} size={660} />
         </div>
 
@@ -855,7 +871,7 @@ function ResultScreen({ answers, onRestart, onDownloadJSON, onDownloadPDF }: { a
       <div style={{ marginBottom: "48px" }}>
         {sectionHeader("Kontext & Voraussetzungen", "Externe Kontextfaktoren (Ebene A) und organisationale Enabler (Ebene B), die Ihre Capacities formen")}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div style={{ padding: "20px 24px", borderRadius: "12px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+          <div style={{ padding: "20px 24px", borderRadius: "12px", background: "rgba(255,255,255,0.04)", backdropFilter: "blur(16px) saturate(150%)", WebkitBackdropFilter: "blur(16px) saturate(150%)", border: "1px solid rgba(255,255,255,0.1)" }}>
             <div style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#8ba4ff", marginBottom: "16px" }}>
               Externe Kontextfaktoren
             </div>
@@ -865,7 +881,7 @@ function ResultScreen({ answers, onRestart, onDownloadJSON, onDownloadPDF }: { a
               )}
             </div>
           </div>
-          <div style={{ padding: "20px 24px", borderRadius: "12px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+          <div style={{ padding: "20px 24px", borderRadius: "12px", background: "rgba(255,255,255,0.04)", backdropFilter: "blur(16px) saturate(150%)", WebkitBackdropFilter: "blur(16px) saturate(150%)", border: "1px solid rgba(255,255,255,0.1)" }}>
             <div style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "11px", fontWeight: 600, letterSpacing: "0.12em", textTransform: "uppercase", color: "#A855F7", marginBottom: "16px" }}>
               Organisationale Enabler
             </div>
@@ -881,7 +897,7 @@ function ResultScreen({ answers, onRestart, onDownloadJSON, onDownloadPDF }: { a
       {/* ── Section 3: Dual-Pathway Outcomes ── */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
         {/* Channel 1: Economic */}
-        <div style={{ padding: "24px", borderRadius: "12px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+        <div style={{ padding: "24px", borderRadius: "12px", background: "rgba(255,255,255,0.04)", backdropFilter: "blur(16px) saturate(150%)", WebkitBackdropFilter: "blur(16px) saturate(150%)", border: "1px solid rgba(255,255,255,0.1)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
             <span style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "11px", fontWeight: 600, letterSpacing: "0.15em", color: "#4B6EFF", textTransform: "uppercase" }}>Kanal 1</span>
           </div>
@@ -894,7 +910,7 @@ function ResultScreen({ answers, onRestart, onDownloadJSON, onDownloadPDF }: { a
         </div>
 
         {/* Channel 2: Strategic */}
-        <div style={{ padding: "24px", borderRadius: "12px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+        <div style={{ padding: "24px", borderRadius: "12px", background: "rgba(255,255,255,0.04)", backdropFilter: "blur(16px) saturate(150%)", WebkitBackdropFilter: "blur(16px) saturate(150%)", border: "1px solid rgba(255,255,255,0.1)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
             <span style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "11px", fontWeight: 600, letterSpacing: "0.15em", color: "#00C4A0", textTransform: "uppercase" }}>Kanal 2</span>
           </div>
@@ -926,6 +942,12 @@ function ResultScreen({ answers, onRestart, onDownloadJSON, onDownloadPDF }: { a
           </div>
         </div>
       )}
+
+      {/* ── Consulting-CTA ── */}
+      <ConsultingCTA
+        weakestLabel={weakestLabel}
+        payload={{ capacities: capacityPercents, overall: scores.overall != null ? Math.round(scores.overall * 100) : null }}
+      />
 
       {/* ── Actions ── */}
       <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", justifyContent: "center" }}>
@@ -1120,7 +1142,7 @@ const Assessment = () => {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "hsl(228 45% 4%)", paddingTop: "96px" }}>
+    <div style={{ minHeight: "100vh", background: "transparent", paddingTop: "96px" }}>
       <AnimatePresence mode="wait">
         {phase === "intro" && <IntroScreen key="intro" onStart={() => setPhase("blocks")} />}
         {phase === "blocks" && (

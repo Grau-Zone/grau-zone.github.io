@@ -101,7 +101,7 @@ const SovereigntyLayers = () => {
     <section
       id="layers"
       className="relative py-24 lg:py-32 overflow-hidden"
-      style={{ background: "hsl(228 43% 5%)" }}
+      style={{ background: "transparent" }}
     >
       <div
         className="absolute top-0 left-0 right-0 h-px"

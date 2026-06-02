@@ -60,7 +60,7 @@ const ThreatContext = () => {
       id="scenarios"
       className="relative py-24 lg:py-32 overflow-hidden"
       style={{
-        background: "linear-gradient(180deg, hsl(228 45% 4%) 0%, hsl(228 42% 5.5%) 100%)",
+        background: "transparent",
       }}
     >
       {/* Divider line top */}

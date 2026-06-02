@@ -12,7 +12,7 @@ const OrgSovereignty = () => {
     <section
       id="organisationen"
       className="relative py-24 lg:py-36 overflow-hidden"
-      style={{ background: "hsl(228 45% 4%)" }}
+      style={{ background: "transparent" }}
     >
       {/* Divider top */}
       <div
@@ -79,8 +79,10 @@ const OrgSovereignty = () => {
             <div
               className="relative p-6 lg:p-8 rounded-2xl"
               style={{
-                background: "rgba(10,12,30,0.8)",
-                border: "1px solid rgba(139,164,255,0.1)",
+                background: "rgba(255,255,255,0.05)",
+                backdropFilter: "blur(20px) saturate(160%)",
+                WebkitBackdropFilter: "blur(20px) saturate(160%)",
+                border: "1px solid rgba(255,255,255,0.14)",
                 boxShadow: `0 0 60px ${cap.color}15, 0 0 120px ${cap.color}08`,
                 transition: "box-shadow 0.6s ease",
               }}
