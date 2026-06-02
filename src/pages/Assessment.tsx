@@ -665,17 +665,9 @@ function ResultScreen({ answers, onRestart, onDownloadJSON, onDownloadPDF }: { a
   const multiStrongest = strongestCaps.length > 1;
   const strongestCap = strongestCaps[0]; // accent colour for the strongest callout (may be undefined)
 
-  // Schwächste beantwortete Capacity(en) für das personalisierte Consulting-CTA, inkl. Gleichstände
-  const answeredDims = CAP_DIMS.filter((d) => scores.capacityScores[d] != null);
-  const minCapScore = answeredDims.length
-    ? Math.min(...answeredDims.map((d) => scores.capacityScores[d] as number))
-    : null;
-  const weakestLabels =
-    minCapScore == null
-      ? []
-      : answeredDims
-          .filter((d) => Math.abs((scores.capacityScores[d] as number) - minCapScore) < 1e-9)
-          .map((d) => CAPACITIES[CAP_DIMS.indexOf(d)].title);
+  // Stärkste beantwortete Capacity(en) für das personalisierte Consulting-CTA (Max-Logik, inkl.
+  // Gleichstände) — konsistent mit der Souveränitäts-Stufe, die ebenfalls die stärkste Capacity nimmt.
+  const strongestLabels = strongestCaps.map((c) => c.title);
   const capacityPercents = Object.fromEntries(
     CAP_DIMS.map((d, i) => [
       CAPACITIES[i].tag,
@@ -948,7 +940,7 @@ function ResultScreen({ answers, onRestart, onDownloadJSON, onDownloadPDF }: { a
 
       {/* ── Consulting-CTA ── */}
       <ConsultingCTA
-        weakestLabels={weakestLabels}
+        strongestLabels={strongestLabels}
         payload={{ capacities: capacityPercents, overall: scores.overall != null ? Math.round(scores.overall * 100) : null }}
       />
 

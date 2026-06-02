@@ -25,7 +25,7 @@ const MODULES = [
 type Status = "idle" | "submitting" | "success" | "error" | "noendpoint";
 
 interface ConsultingCTAProps {
-  weakestLabels: string[];
+  strongestLabels: string[];
   payload?: Record<string, unknown>;
 }
 
@@ -50,7 +50,7 @@ const labelStyle: React.CSSProperties = {
   display: "block",
 };
 
-const ConsultingCTA = ({ weakestLabels, payload }: ConsultingCTAProps) => {
+const ConsultingCTA = ({ strongestLabels, payload }: ConsultingCTAProps) => {
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
@@ -66,7 +66,7 @@ const ConsultingCTA = ({ weakestLabels, payload }: ConsultingCTAProps) => {
     const body = {
       email,
       message,
-      weakestCapacities: weakestLabels,
+      strongestCapacities: strongestLabels,
       ...payload,
       timestamp: new Date().toISOString(),
     };
@@ -131,15 +131,15 @@ const ConsultingCTA = ({ weakestLabels, payload }: ConsultingCTAProps) => {
           marginBottom: "10px",
         }}
       >
-        {weakestLabels.length === 0 ? (
+        {strongestLabels.length === 0 ? (
           "Vom Profil zum Stärkungspfad"
-        ) : weakestLabels.length === 1 ? (
+        ) : strongestLabels.length === 1 ? (
           <>
-            Ihr größter Hebel: <span style={{ color: ACCENT }}>{weakestLabels[0]}</span>
+            Ihr größter Hebel: <span style={{ color: ACCENT }}>{strongestLabels[0]}</span>
           </>
         ) : (
           <>
-            Ihre größten Hebel: <span style={{ color: ACCENT }}>{weakestLabels.join(", ")}</span>
+            Ihre größten Hebel: <span style={{ color: ACCENT }}>{strongestLabels.join(", ")}</span>
           </>
         )}
       </h3>
