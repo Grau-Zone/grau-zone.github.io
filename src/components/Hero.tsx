@@ -192,7 +192,7 @@ const Hero = () => {
             className="flex flex-wrap gap-4"
           >
             <a
-              href="#radar"
+              href="/assessment"
               className="inline-flex items-center gap-2 px-7 py-3.5 rounded-full font-semibold text-sm transition-all duration-200"
               style={{
                 background: "#4B6EFF",
@@ -203,7 +203,7 @@ const Hero = () => {
               onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.boxShadow = "0 0 60px rgba(75,110,255,0.55)")}
               onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.boxShadow = "0 0 40px rgba(75,110,255,0.35)")}
             >
-              Radar erkunden →
+              Organisation Self-Assessment →
             </a>
             <a
               href="#scenarios"

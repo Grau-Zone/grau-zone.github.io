@@ -57,34 +57,36 @@ function rawMeanByDimension(answers: Answers, dim: string): number | null {
 }
 
 function calculateScores(answers: Answers) {
-  // Capacity scores (0..1), neutral fallback 0.5 when unanswered
-  const capacityScores: Record<string, number> = {};
+  // Capacity scores (0..1); null when the capacity has no answered items
+  const capacityScores: Record<string, number | null> = {};
   for (const dim of CAP_DIMS) {
     const raw = rawMeanByDimension(answers, dim);
-    capacityScores[dim] = raw == null ? 0.5 : (raw - 1) / 4;
+    capacityScores[dim] = raw == null ? null : (raw - 1) / 4;
   }
 
-  // Radar values in CAPACITIES order
-  const radarValues: number[] = CAP_DIMS.map((d) => capacityScores[d]);
-  const overall = radarValues.reduce((a, b) => a + b, 0) / radarValues.length;
+  // Radar needs a number per axis — unanswered capacities collapse to 0 (centre)
+  const radarValues: number[] = CAP_DIMS.map((d) => capacityScores[d] ?? 0);
+  // indices of capacities that were actually answered
+  const answeredIdxs = CAP_DIMS.map((d, i) => (capacityScores[d] != null ? i : -1)).filter((i) => i >= 0);
+  const anyCapacityAnswered = answeredIdxs.length > 0;
 
-  // Max-logic: the strongest capacity determines sovereignty
-  let strongestIdx = 0;
-  for (let i = 1; i < radarValues.length; i++) {
-    if (radarValues[i] > radarValues[strongestIdx]) strongestIdx = i;
-  }
-  const maxCapacityScore = radarValues[strongestIdx];
-  // all capacities tied for the maximum (epsilon for float safety)
-  const strongestIdxs = radarValues
-    .map((v, i) => ({ v, i }))
-    .filter(({ v }) => Math.abs(v - maxCapacityScore) < 1e-9)
-    .map(({ i }) => i);
+  // Ø and max-logic are computed over answered capacities only (null if none)
+  const answeredVals = answeredIdxs.map((i) => radarValues[i]);
+  const overall: number | null = answeredVals.length
+    ? answeredVals.reduce((a, b) => a + b, 0) / answeredVals.length
+    : null;
+  const maxCapacityScore: number | null = answeredVals.length ? Math.max(...answeredVals) : null;
+  // all answered capacities tied for the maximum (epsilon for float safety)
+  const strongestIdxs = maxCapacityScore == null
+    ? []
+    : answeredIdxs.filter((i) => Math.abs(radarValues[i] - maxCapacityScore) < 1e-9);
+  const strongestIdx = strongestIdxs.length ? strongestIdxs[0] : 0;
 
-  // Outcome scores
-  const outcomeScores: Record<string, number> = {};
+  // Outcome scores — null when unanswered (no fabricated value)
+  const outcomeScores: Record<string, number | null> = {};
   for (const dim of ["TCO", "HU", "FLX", "INN"]) {
     const raw = rawMeanByDimension(answers, dim);
-    outcomeScores[dim] = raw == null ? 0.5 : (raw - 1) / 4;
+    outcomeScores[dim] = raw == null ? null : (raw - 1) / 4;
   }
 
   // Criticality gate (raw 1..5) — item A3 carries dimension "K"
@@ -129,7 +131,7 @@ function calculateScores(answers: Answers) {
 
   return {
     radarValues, overall, capacityScores, outcomeScores,
-    maxCapacityScore, strongestIdx, strongestIdxs, critRaw, lowCriticality,
+    maxCapacityScore, strongestIdx, strongestIdxs, anyCapacityAnswered, critRaw, lowCriticality,
     contextFactors, enablers, controlAnswers,
     capacityMeanRaw, enablerMeanRaw, perceivedVsEnabledGap, overconfident,
   };
@@ -656,10 +658,11 @@ function BlockScreen({
 
 function ResultScreen({ answers, onRestart, onDownloadJSON, onDownloadPDF }: { answers: Answers; onRestart: () => void; onDownloadJSON: () => void; onDownloadPDF: () => void }) {
   const scores = calculateScores(answers);
-  const { level } = getSovereigntyLevel(scores.maxCapacityScore);
+  const level = scores.maxCapacityScore != null ? getSovereigntyLevel(scores.maxCapacityScore).level : null;
+  const accent = level ? level.color : "#8ba4ff";
   const strongestCaps = scores.strongestIdxs.map((i) => CAPACITIES[i]);
   const multiStrongest = strongestCaps.length > 1;
-  const strongestCap = strongestCaps[0]; // accent colour for the box / max-logic line
+  const strongestCap = strongestCaps[0]; // accent colour for the strongest callout (may be undefined)
 
   // Control variable labels for display
   const controlLabels: Record<string, { label: string; options: Record<string, string> }> = {
@@ -679,17 +682,19 @@ function ResultScreen({ answers, onRestart, onDownloadJSON, onDownloadPDF }: { a
     </div>
   );
 
-  const scoreBar = (label: string, value: number, color: string, sublabel?: string, delay = 0.3) => (
+  const scoreBar = (label: string, value: number | null, color: string, sublabel?: string, delay = 0.3) => (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "5px" }}>
         <span style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "13px", fontWeight: 500, color: "rgba(255,255,255,0.7)" }}>
           {label}
           {sublabel && <span style={{ fontSize: "11px", color: "rgba(255,255,255,0.5)", marginLeft: "8px" }}>{sublabel}</span>}
         </span>
-        <span style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "14px", fontWeight: 600, color }}>{Math.round(value * 100)}%</span>
+        <span style={{ fontFamily: value == null ? "Inter, sans-serif" : "Space Grotesk, sans-serif", fontSize: value == null ? "12px" : "14px", fontWeight: 600, fontStyle: value == null ? "italic" : "normal", color: value == null ? "rgba(255,255,255,0.4)" : color }}>
+          {value == null ? "nicht beantwortet" : `${Math.round(value * 100)}%`}
+        </span>
       </div>
       <div style={{ height: "4px", borderRadius: "2px", background: "rgba(255,255,255,0.06)" }}>
-        <motion.div initial={{ width: 0 }} animate={{ width: `${value * 100}%` }} transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay }} style={{ height: "100%", borderRadius: "2px", background: color }} />
+        {value != null && <motion.div initial={{ width: 0 }} animate={{ width: `${value * 100}%` }} transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay }} style={{ height: "100%", borderRadius: "2px", background: color }} />}
       </div>
     </div>
   );
@@ -752,47 +757,64 @@ function ResultScreen({ answers, onRestart, onDownloadJSON, onDownloadPDF }: { a
 
       {/* ── Section 1: Radar + Level + Capacity Scores ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16" style={{ alignItems: "stretch" }}>
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: "32px", borderRadius: "16px", background: "rgba(10,12,30,0.8)", border: "1px solid rgba(139,164,255,0.1)", boxShadow: `0 0 60px ${level.color}15` }}>
-          <CapacityRadar values={scores.radarValues} color={level.color} size={660} />
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: "32px", borderRadius: "16px", background: "rgba(10,12,30,0.8)", border: "1px solid rgba(139,164,255,0.1)", boxShadow: `0 0 60px ${accent}15` }}>
+          <CapacityRadar values={scores.radarValues} color={accent} size={660} />
         </div>
 
         <div>
-          {/* Level match */}
-          <div style={{ padding: "20px 24px", borderRadius: "12px", background: level.colorBg, border: `1px solid ${level.colorBorder}`, marginBottom: "24px" }}>
-            <span style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "11px", fontWeight: 600, letterSpacing: "0.15em", color: level.color, textTransform: "uppercase" }}>
-              {level.tag} — {level.title}
-            </span>
-            <p style={{ color: "rgba(255,255,255,0.55)", fontSize: "14px", lineHeight: 1.6, marginTop: "8px" }}>{level.description}</p>
-          </div>
+          {/* Level match — or hint when no capacity is answered */}
+          {level ? (
+            <div style={{ padding: "20px 24px", borderRadius: "12px", background: level.colorBg, border: `1px solid ${level.colorBorder}`, marginBottom: "24px" }}>
+              <span style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "11px", fontWeight: 600, letterSpacing: "0.15em", color: level.color, textTransform: "uppercase" }}>
+                {level.tag} — {level.title}
+              </span>
+              <p style={{ color: "rgba(255,255,255,0.55)", fontSize: "14px", lineHeight: 1.6, marginTop: "8px" }}>{level.description}</p>
+            </div>
+          ) : (
+            <div style={{ padding: "20px 24px", borderRadius: "12px", background: "rgba(255,159,46,0.08)", border: "1px solid rgba(255,159,46,0.25)", marginBottom: "24px", display: "flex", gap: "12px", alignItems: "flex-start" }}>
+              <AlertTriangle size={18} style={{ color: "#FF9F2E", marginTop: "1px", flexShrink: 0 }} />
+              <div>
+                <p style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "13px", fontWeight: 600, color: "#FF9F2E", marginBottom: "4px" }}>Noch keine Einordnung möglich</p>
+                <p style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.55)", lineHeight: 1.6, margin: 0 }}>
+                  Es wurde noch keine Capacity bewertet. Bitte beantworten Sie mindestens eine Frage je Capacity, um eine Souveränitäts-Einordnung zu erhalten.
+                </p>
+              </div>
+            </div>
+          )}
 
-          {/* Capacity scores */}
+          {/* Capacity scores — unanswered stays explicit, no fabricated value */}
           <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginBottom: "24px" }}>
-            {CAPACITIES.map((c, i) => scoreBar(c.title, scores.radarValues[i], c.color, c.tag))}
+            {CAPACITIES.map((c, i) => (
+              <div key={c.key}>{scoreBar(c.title, scores.capacityScores[CAP_DIMS[i]], c.color, c.tag)}</div>
+            ))}
           </div>
 
           {/* Max-Logic + Average */}
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            <div style={{ padding: "14px 20px", borderRadius: "10px", background: level.colorBg, border: `1px solid ${level.colorBorder}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <Shield size={14} style={{ color: level.color }} />
-                <span style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.6)" }}>
-                  Max-Logik — stärkste Capacity bestimmt
-                </span>
+            {level && scores.maxCapacityScore != null && (
+              <div style={{ padding: "14px 20px", borderRadius: "10px", background: level.colorBg, border: `1px solid ${level.colorBorder}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <Shield size={14} style={{ color: level.color }} />
+                  <span style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.6)" }}>
+                    Max-Logik — stärkste Capacity bestimmt
+                  </span>
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  <span style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "24px", fontWeight: 600, color: level.color }}>{Math.round(scores.maxCapacityScore * 100)}%</span>
+                  <span style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", color: "rgba(255,255,255,0.5)", marginLeft: "8px" }}>({strongestCaps.map((c) => c.tag).join(" · ")})</span>
+                </div>
               </div>
-              <div style={{ textAlign: "right" }}>
-                <span style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "24px", fontWeight: 600, color: level.color }}>{Math.round(scores.maxCapacityScore * 100)}%</span>
-                <span style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", color: "rgba(255,255,255,0.5)", marginLeft: "8px" }}>({strongestCaps.map((c) => c.tag).join(" · ")})</span>
-              </div>
-            </div>
+            )}
             <div style={{ padding: "14px 20px", borderRadius: "10px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.5)" }}>Ø der 4 Capacities</span>
-              <span style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "18px", fontWeight: 600, color: "rgba(255,255,255,0.7)" }}>{Math.round(scores.overall * 100)}%</span>
+              <span style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.5)" }}>Ø der beantworteten Capacities</span>
+              <span style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "18px", fontWeight: 600, color: "rgba(255,255,255,0.7)" }}>{scores.overall != null ? `${Math.round(scores.overall * 100)}%` : "—"}</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── Section 2: Strongest capacity callout (max-logic) — handles ties ── */}
+      {/* ── Section 2: Strongest capacity callout (max-logic) — ties; hidden when nothing answered ── */}
+      {strongestCap && (
       <div style={{ padding: "20px 24px", borderRadius: "12px", background: `${strongestCap.color}0a`, border: `1px solid ${strongestCap.color}22`, marginBottom: "48px" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
           <TrendingUp size={16} style={{ color: strongestCap.color }} />
@@ -827,6 +849,7 @@ function ResultScreen({ answers, onRestart, onDownloadJSON, onDownloadPDF }: { a
           ))}
         </div>
       </div>
+      )}
 
       {/* ── Section 2b: Context factors & enablers ── */}
       <div style={{ marginBottom: "48px" }}>
@@ -930,19 +953,19 @@ function ResultScreen({ answers, onRestart, onDownloadJSON, onDownloadPDF }: { a
 
 function downloadJSON(answers: Answers) {
   const scores = calculateScores(answers);
-  const { level } = getSovereigntyLevel(scores.maxCapacityScore);
+  const level = scores.maxCapacityScore != null ? getSovereigntyLevel(scores.maxCapacityScore).level : null;
   const data = {
     timestamp: new Date().toISOString(),
     version: "org-capacities-v2",
-    level: { stage: level.tag, title: level.title },
+    level: level ? { stage: level.tag, title: level.title } : null,
     scores: {
-      determining: Math.round(scores.maxCapacityScore * 100),
+      determining: scores.maxCapacityScore != null ? Math.round(scores.maxCapacityScore * 100) : null,
       strongestCapacities: scores.strongestIdxs.map((i) => CAPACITIES[i].tag),
-      average: Math.round(scores.overall * 100),
+      average: scores.overall != null ? Math.round(scores.overall * 100) : null,
       capacities: Object.fromEntries(
-        CAP_DIMS.map((_d, i) => [CAPACITIES[i].tag, Math.round(scores.radarValues[i] * 100)])
+        CAP_DIMS.map((d, i) => [CAPACITIES[i].tag, scores.capacityScores[d] == null ? null : Math.round((scores.capacityScores[d] as number) * 100)])
       ),
-      outcomes: Object.fromEntries(Object.entries(scores.outcomeScores).map(([k, v]) => [k, Math.round(v * 100)])),
+      outcomes: Object.fromEntries(Object.entries(scores.outcomeScores).map(([k, v]) => [k, v == null ? null : Math.round(v * 100)])),
     },
     criticality: scores.critRaw,
     contextFactors: scores.contextFactors,
@@ -961,7 +984,7 @@ function downloadJSON(answers: Answers) {
 
 function downloadPDF(answers: Answers) {
   const scores = calculateScores(answers);
-  const { level } = getSovereigntyLevel(scores.maxCapacityScore);
+  const level = scores.maxCapacityScore != null ? getSovereigntyLevel(scores.maxCapacityScore).level : null;
   const doc = new jsPDF();
   let y = 20;
 
@@ -983,16 +1006,21 @@ function downloadPDF(answers: Answers) {
   addGap(8);
 
   // Level
-  addLine(`Souveränitäts-Stufe: ${level.tag} — ${level.title}`, 12, true);
-  addLine(`Max-Logik (stärkste Capacity bestimmt): ${Math.round(scores.maxCapacityScore * 100)}% (${scores.strongestIdxs.map((i) => CAPACITIES[i].tag).join(", ")})`, 11);
-  addLine(`Ø der 4 Capacities: ${Math.round(scores.overall * 100)}%`, 11);
+  if (level && scores.maxCapacityScore != null) {
+    addLine(`Souveränitäts-Stufe: ${level.tag} — ${level.title}`, 12, true);
+    addLine(`Max-Logik (stärkste Capacity bestimmt): ${Math.round(scores.maxCapacityScore * 100)}% (${scores.strongestIdxs.map((i) => CAPACITIES[i].tag).join(", ")})`, 11);
+    addLine(`Ø der beantworteten Capacities: ${scores.overall != null ? Math.round(scores.overall * 100) : "—"}%`, 11);
+  } else {
+    addLine("Souveränitäts-Stufe: noch keine Capacity bewertet", 12, true);
+  }
   addGap(8);
 
   // Capacity scores
   addLine("Capacities", 12, true);
   addGap(2);
-  CAP_DIMS.forEach((_d, i) => {
-    addLine(`  ${CAPACITIES[i].tag} (${CAPACITIES[i].title}): ${Math.round(scores.radarValues[i] * 100)}%`, 10);
+  CAP_DIMS.forEach((d, i) => {
+    const v = scores.capacityScores[d];
+    addLine(`  ${CAPACITIES[i].tag} (${CAPACITIES[i].title}): ${v == null ? "nicht beantwortet" : `${Math.round(v * 100)}%`}`, 10);
   });
   addGap(8);
 
@@ -1013,12 +1041,16 @@ function downloadPDF(answers: Answers) {
   addGap(8);
 
   // Outcomes
+  const opct = (k: string) => {
+    const v = scores.outcomeScores[k];
+    return v == null ? "nicht beantwortet" : `${Math.round(v * 100)}%`;
+  };
   addLine("Outcomes", 12, true);
   addGap(2);
-  addLine(`  TCO-Position: ${Math.round(scores.outcomeScores["TCO"] * 100)}%`, 10);
-  addLine(`  Hold-up-Exposition (Schutz): ${Math.round(scores.outcomeScores["HU"] * 100)}%`, 10);
-  addLine(`  Strategische Flexibilität: ${Math.round(scores.outcomeScores["FLX"] * 100)}%`, 10);
-  addLine(`  Digitale Innovationsfähigkeit: ${Math.round(scores.outcomeScores["INN"] * 100)}%`, 10);
+  addLine(`  TCO-Position: ${opct("TCO")}`, 10);
+  addLine(`  Hold-up-Exposition (Schutz): ${opct("HU")}`, 10);
+  addLine(`  Strategische Flexibilität: ${opct("FLX")}`, 10);
+  addLine(`  Digitale Innovationsfähigkeit: ${opct("INN")}`, 10);
   addGap(8);
 
   // Control variables
