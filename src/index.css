@@ -109,6 +109,42 @@
   .glass, .glass-strong { background: rgba(20, 22, 34, 0.9); }
 }
 
+/* ── Global background field (GlassBackground.tsx) ─────────────
+   Desktop keeps the deliberately very dark look. Mobile gets a
+   lifted base + stronger glows via the media query below, because
+   phone OLED panels render near-black navy as pure black, which
+   otherwise collapses the colour glows to invisible. */
+.glass-bg {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    radial-gradient(70vmax 70vmax at 12% -5%, rgba(58,85,216,0.26), transparent 60%),
+    radial-gradient(60vmax 60vmax at 92% 26%, rgba(109,63,192,0.18), transparent 60%),
+    radial-gradient(65vmax 65vmax at 25% 108%, rgba(10,143,120,0.14), transparent 62%),
+    radial-gradient(140% 120% at 50% 0%, #05070f 0%, #010207 60%);
+}
+.glass-bg-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+  background-size: 64px 64px;
+  -webkit-mask-image: radial-gradient(120% 80% at 50% 30%, #000 30%, transparent 80%);
+  mask-image: radial-gradient(120% 80% at 50% 30%, #000 30%, transparent 80%);
+}
+@media (max-width: 768px) {
+  .glass-bg {
+    background:
+      radial-gradient(95vmax 95vmax at 12% -6%, rgba(86,116,255,0.50), transparent 60%),
+      radial-gradient(85vmax 85vmax at 96% 20%, rgba(140,92,235,0.40), transparent 60%),
+      radial-gradient(90vmax 90vmax at 16% 108%, rgba(24,185,158,0.32), transparent 62%),
+      radial-gradient(160% 130% at 50% 0%, #121a33 0%, #070b18 70%);
+  }
+}
+
 @keyframes glass-drift1 { from { transform: translate(0,0) scale(1); } to { transform: translate(16vw,12vh) scale(1.15); } }
 @keyframes glass-drift2 { from { transform: translate(0,0) scale(1); } to { transform: translate(-14vw,16vh) scale(1.1); } }
 @keyframes glass-drift3 { from { transform: translate(0,0) scale(1); } to { transform: translate(10vw,-14vh) scale(1.2); } }
