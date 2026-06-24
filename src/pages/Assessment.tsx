@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { jsPDF } from "jspdf";
 import CapacityRadar, { CAPACITIES, LEVELS } from "../components/CapacityRadar";
+import ConstructionStamp from "../components/ConstructionStamp"; // TEMP
 import ConsultingCTA from "../components/ConsultingCTA";
 import {
   surveyBlocks,
@@ -730,6 +731,8 @@ function ResultScreen({ answers, onRestart, onDownloadJSON, onDownloadPDF }: { a
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="max-w-[1600px] mx-auto px-6 lg:px-10 pb-16">
+      {/* TEMP: In-Construction-Stempel — diese Zeile + den Import löschen zum Entfernen */}
+      <ConstructionStamp />
       {/* Header */}
       <div style={{ textAlign: "center", marginBottom: "48px" }}>
         <div style={{ fontSize: "11px", fontFamily: "Space Grotesk, sans-serif", fontWeight: 600, letterSpacing: "0.2em", color: "rgba(139,164,255,0.6)", textTransform: "uppercase", marginBottom: "12px" }}>

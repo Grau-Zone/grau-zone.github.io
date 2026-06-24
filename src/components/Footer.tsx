@@ -203,7 +203,7 @@ const Footer = () => {
             {[
               { label: "Kontakt", href: "mailto:adrian.bohrer@unisg.ch,andreas.hein@unisg.ch" },
               { label: "IWI-HSG", href: "https://iwi.unisg.ch" },
-              { label: "GenAI Competence Center", href: "https://iwi.unisg.ch/de/competence-center-for-genai/" },
+              { label: "Center for Digital Enterprise Transformation", href: "https://iwi.unisg.ch/cdet" },
               { label: "STACKIT", href: "https://stackit.de" },
               { label: "Impressum", href: "/impressum" },
             ].map(({ label, href }) => (
