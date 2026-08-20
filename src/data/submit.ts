@@ -25,8 +25,25 @@
 //    Tabelle MUSS ausschließlich INSERT erlauben, sonst kann jeder alle
 //    Antworten auslesen.
 //
-export const ENDPOINT = "";
-export const HEADERS: Record<string, string> = {};
+// ── Aktiv: Supabase, Projekt digital-sovereignty-survey, Region Frankfurt ──
+// Der publishable key steht hier oeffentlich. Das ist bei Supabase vorgesehen,
+// aber nur weil die Tabelle ausschliesslich INSERT erlaubt. Am 2026-08-20 geprueft:
+//   SELECT  -> 401 permission denied     DELETE -> 401 permission denied
+//   INSERT  -> 201 angelegt              >200 KB -> 400 check constraint
+// Kommt hier je eine select-Policy dazu, kann jeder alle Antworten auslesen.
+const SUPABASE_KEY = "sb_publishable_znfxxZr_nEsUfL8elloRew_h31U0DJo";
+export const ENDPOINT = "https://zwhgrdaaysvdtqkpghra.supabase.co/rest/v1/responses";
+export const HEADERS: Record<string, string> = {
+  apikey: SUPABASE_KEY,
+  Authorization: `Bearer ${SUPABASE_KEY}`,
+  Prefer: "return=minimal",
+};
+
+// Supabase erwartet eine Zeile, die zu den Tabellenspalten passt; ein Mail- oder
+// Webhook-Dienst will dagegen die flache Nutzlast. Beim Wechsel des Endpunkts
+// auch das hier umstellen.
+export const SHAPE: "supabase" | "flat" = "supabase";
+const toBody = (p: any) => (SHAPE === "supabase" ? { response_id: p.responseId, payload: p } : p);
 
 const QUEUE = "cds13-queue";
 
@@ -48,7 +65,7 @@ async function post(payload: any): Promise<boolean> {
     const r = await fetch(ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json", Accept: "application/json", ...HEADERS },
-      body: JSON.stringify(payload),
+      body: JSON.stringify(toBody(payload)),
     });
     return r.ok;
   } catch {
