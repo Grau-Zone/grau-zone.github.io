@@ -10,7 +10,9 @@ import { Link } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Home, RotateCcw, FileJson, Info, AlertTriangle, Mail, Check } from "lucide-react";
 import ConstructionStamp from "../components/ConstructionStamp"; // TEMP
 import SovereigntyModelDiagram, { type NodeScores } from "../components/SovereigntyModelDiagram";
-import { SovereigntyMatrix, CausalChain } from "../components/ResultVisuals";
+import { SovereigntyMatrix } from "../components/ResultVisuals";
+import { buildTranscript } from "../data/transcript";
+import { ITEM_NODE, CONSTRUCT_NODES } from "../data/nodeMapping";
 import { CONSTRUCTS, ITEMS, MISSING, type Item, type Lang } from "../data/instrument";
 import { UI, STEPS, CONSTRUCT_NAMES, CONSTRUCT_SUFFIX, FUNCTIONS, FUNCTION_OTHER, FIRM_SIZE, INDUSTRY, HQ, labelOf, anchorsFor, YES_NO, pick } from "../data/surveyUi";
 
@@ -51,6 +53,29 @@ function likertScore(constructKey: string, a: Answers): { value: number | null; 
     answered: vals.length,
     total: items.length,
   };
+}
+
+// Faktenitem auf 0..1: Rang innerhalb der eigenen Optionen. Das Minimum kommt
+// IMMER aus item.options, denn ATR-Items beginnen bei 0, DKC-Items bei 1. Das
+// Flag "inverted" dreht die Richtung (DKC-G: "ja" ist der schlechte Fall).
+// MISSING bleibt null und wird nie zu einer Null gerechnet.
+function factScore(i: Item, v: number | undefined): number | null {
+  if (v === undefined || v === MISSING) return null;
+  const vals = (i.options || []).map((o) => o.value).sort((a, b) => a - b);
+  const r = vals.indexOf(v);
+  if (r < 0) return null;
+  const share = vals.length > 1 ? r / (vals.length - 1) : 1;
+  return i.inverted ? 1 - share : share;
+}
+
+// Ein Item auf 0..1, unabhaengig von seinem Typ.
+function itemScore(i: Item, a: Answers): number | null {
+  const v = a[i.id];
+  if (v === undefined || v === MISSING) return null;
+  if (i.type === "fact") return factScore(i, v);
+  const max = i.scale || 7;
+  const corrected = i.reverse ? max + 1 - v : v;
+  return (corrected - 1) / (max - 1);
 }
 
 // Faktenindizes bleiben Stufen — formatives Composite, kein Mittelwert.
@@ -591,8 +616,7 @@ function Result({ lang: surveyLang, answers, intake, onRestart }: any) {
     return s;
   }, [answers]);
 
-  const exportJson = () => {
-    const data = {
+  const buildExport = () => ({
       timestamp: new Date().toISOString(), instrument: "v13_Instrument_final", lang: surveyLang,
       intake: {
         ...intake,
@@ -611,8 +635,30 @@ function Result({ lang: surveyLang, answers, intake, onRestart }: any) {
       }))])),
       rawAnswers: answers,
       note: "MISSING=99 is 'do not know' and is never scored as zero.",
-    };
-    const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" }));
+  });
+
+  const reportName = `sovereignty-assessment-${new Date().toISOString().slice(0, 10)}.txt`;
+
+  // Lesbares Protokoll plus vollstaendiges JSON in einer Datei: eine mailto-URL
+  // kann nichts anhaengen, also laedt der Klick die Datei herunter und der
+  // Mailtext bittet darum, sie anzuhaengen.
+  const buildReport = () => buildTranscript({
+    lang: surveyLang, date: new Date().toISOString().slice(0, 10),
+    intake, functionLabel: functionLabel(intake, surveyLang),
+    scores, answers,
+    leverLong, leverValue: lever ? lever.value : null,
+    json: buildExport(),
+  });
+
+  const downloadReport = () => {
+    const url = URL.createObjectURL(new Blob([buildReport()], { type: "text/plain;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url; a.download = reportName;
+    a.click(); URL.revokeObjectURL(url);
+  };
+
+  const exportJson = () => {
+    const url = URL.createObjectURL(new Blob([JSON.stringify(buildExport(), null, 2)], { type: "application/json" }));
     const a = document.createElement("a");
     a.href = url; a.download = `sovereignty-assessment-${new Date().toISOString().slice(0, 10)}.json`;
     a.click(); URL.revokeObjectURL(url);
@@ -625,24 +671,28 @@ function Result({ lang: surveyLang, answers, intake, onRestart }: any) {
     </div>
   );
 
-  // Balken nur fuer Konstrukte mit Likert-Items (C2 und T3 sind reine Faktenindizes)
-  // Zuordnung Diagramm-Knoten -> Instrument. Nur namensgleiche Konstrukte werden
-  // eingefaerbt; PSC/IOC/MPM/ORB/AAR erhebt dieses Instrument nicht und bleiben grau.
+  // Knotenwerte fuer das Modelldiagramm.
+  //  - Die sieben Faehigkeits-Knoten kommen aus der Item-Zuordnung in nodeMapping.ts,
+  //    weil Instrument und Modell Spalte 1 verschieden gliedern.
+  //  - ALT, ROC, FTC, CTO und CONT behalten die Konstruktwerte des Instruments,
+  //    damit Verdikt, Matrix und Hebel unveraendert auf den Konstrukten beruhen.
+  // Der Mittelwert je Knoten ist eine Anzeige-Heuristik: bei den Faktenindizes
+  // mittelt er ein formatives Composite, was das Instrument fuer die Auswertung
+  // ausdruecklich nicht tut. In Export und Bericht fliesst er deshalb nicht zurueck.
   const nodeScores: NodeScores = useMemo(() => {
-    const m: NodeScores = {
-      ALT: scores["ALT"].value, ROC: scores["ROC"].value,
-      FTC: scores["FTC"].value, CTO: scores["CTO"].value, CONT: scores["CONT"].value,
-    };
-    // Faktenindizes: Anteil der erreichten Stufen (nur zur Darstellung im Diagramm)
-    const factShare = (ck: string): number | null => {
-      const rows = factRows(ck, answers).filter((r) => r.value !== null);
-      if (!rows.length) return null;
-      const got = rows.reduce((a, r) => a + (r.value! - Math.min(...r.item.options!.map((o) => o.value))), 0);
-      const max = rows.reduce((a, r) => a + (r.maxV - Math.min(...r.item.options!.map((o) => o.value))), 0);
-      return max > 0 ? got / max : null;
-    };
-    m["ATR"] = factShare("C2");   // Audit and Transparency Rights
-    m["DKC"] = factShare("T3");   // Data and Key Control
+    const buckets: Record<string, number[]> = {};
+    Object.values(ITEM_NODE).forEach((n) => { buckets[n] = []; });
+    ACTIVE.forEach((i) => {
+      const node = ITEM_NODE[i.id];
+      if (!node) return;
+      const v = itemScore(i, answers);
+      if (v !== null) buckets[node].push(v);
+    });
+    const m: NodeScores = {};
+    Object.entries(buckets).forEach(([n, vals]) => {
+      m[n] = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+    });
+    CONSTRUCT_NODES.forEach((k) => { m[k] = scores[k].value; });
     return m;
   }, [answers, scores]);
 
@@ -716,14 +766,42 @@ function Result({ lang: surveyLang, answers, intake, onRestart }: any) {
   const ctaMail = (() => {
     const to = "adrian.bohrer@unisg.ch,andreas.hein@unisg.ch";
     const fn = functionLabel(intake, lang);
-    const lines = [
+    const head = [
       "Kontext aus dem Self-Assessment:",
       fn ? `Funktion: ${fn}` : "",
       intake.provider ? `Anbieter: ${intake.provider}` : "",
       leverLong ? `${tr("ctaLever")}: ${leverLong} (${Math.round(lever!.value * 100)}%)` : "",
       "",
     ].filter(Boolean);
-    return `mailto:${to}?subject=${encodeURIComponent(tr("ctaMailSubject"))}&body=${encodeURIComponent(lines.join("\n"))}`;
+
+    // Kompakte Fassung fuer die Mail. Die Datei aus "JSON exportieren" bleibt die
+    // vollstaendige, selbsterklaerende Form; hier zaehlt jedes Zeichen, weil
+    // Mailprogramme mailto-URLs abschneiden (Outlook jenseits von rund 2000).
+    const meta = {
+      instrument: "v13_Instrument_final",
+      date: new Date().toISOString().slice(0, 10),
+      lang: surveyLang,
+      intake: { fn, provider: intake.provider, size: intake.size, industry: intake.industry, hq: intake.hq },
+    };
+    const konstrukte = Object.fromEntries(CONSTRUCTS.map((c) => [
+      c.key, scores[c.key].value === null ? null : Math.round(scores[c.key].value! * 100),
+    ]));
+
+    const build = (payload: any) => {
+      const body = [
+        ...head,
+        tr("ctaMailAttach"), reportName, "",
+        ...(payload ? [tr("ctaMailData"), JSON.stringify(payload)] : []),
+      ].join("\n");
+      return `mailto:${to}?subject=${encodeURIComponent(tr("ctaMailSubject"))}&body=${encodeURIComponent(body)}`;
+    };
+
+    // Die Rohantworten stecken in der angehaengten Datei, im Mailtext steht nur
+    // die Zusammenfassung. Falls ein langer Freitext die URL doch ueber die
+    // Grenze treibt, faellt das JSON weg statt abgeschnitten zu werden.
+    const MAX = 1900;
+    const mitJson = build({ ...meta, scores: konstrukte });
+    return mitJson.length <= MAX ? mitJson : build(null);
   })();
 
   return (
@@ -773,14 +851,14 @@ function Result({ lang: surveyLang, answers, intake, onRestart }: any) {
           {/* Gleicher Mailto-Link wie im Abschluss-CTA, hier bewusst leichter
               gestaltet: der Kasten unten bleibt der primaere Abschluss. */}
           <div style={{ display: "flex", justifyContent: "center", marginTop: "26px" }}>
-            <a href={ctaMail} style={{
-              fontFamily: "Space Grotesk, sans-serif", fontSize: "13.5px", fontWeight: 500,
-              padding: "11px 21px", borderRadius: "9px",
+            <a href={ctaMail} onClick={downloadReport} style={{
+              fontFamily: "Space Grotesk, sans-serif", fontSize: "17px", fontWeight: 600,
+              padding: "17px 34px", borderRadius: "11px",
               border: "1px solid rgba(139,164,255,0.34)", background: "rgba(75,110,255,0.08)",
               color: "#a8bcff", textDecoration: "none",
               display: "flex", alignItems: "center", gap: "9px",
             }}>
-              <Mail size={14} /> {tr("ctaButton")} <ArrowRight size={14} />
+              <Mail size={18} /> {tr("ctaButton")} <ArrowRight size={18} />
             </a>
           </div>
         </div>
@@ -818,21 +896,6 @@ function Result({ lang: surveyLang, answers, intake, onRestart }: any) {
             </div>
           </div>
         </div>
-      </div>
-
-      {/* ── Visualisierung 2: Wirkkette ── */}
-      <div style={{ marginBottom: "40px", padding: "22px 24px", borderRadius: "12px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
-        {section(tr("chainHead"), tr("chainLead"))}
-        <CausalChain lang={lang} steps={STEPS.map((st) => {
-          const keys = constructsOfStep(st.key)
-            .filter((c) => itemsOfConstruct(c.key).some((i) => i.type === "likert"))
-            .map((c) => c.key);
-          const vals = keys.map((k) => scores[k].value).filter((v): v is number => v !== null);
-          return {
-            key: st.key, label: pick(st.label, TERM), color: STEP_COLOR[st.key],
-            value: vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null,
-          };
-        })} />
       </div>
 
       {/* ── Visualisierung 3: eigene Werte im Modell ── */}
@@ -879,19 +942,17 @@ function Result({ lang: surveyLang, answers, intake, onRestart }: any) {
         </div>
 
         <div style={{ display: "flex", gap: "14px", alignItems: "center", flexWrap: "wrap", marginTop: "24px" }}>
-          <a href={ctaMail} style={{
-            fontFamily: "Space Grotesk, sans-serif", fontSize: "14px", fontWeight: 500,
-            padding: "13px 24px", borderRadius: "9px", border: "1px solid rgba(139,164,255,0.45)",
+          <a href={ctaMail} onClick={downloadReport} style={{
+            fontFamily: "Space Grotesk, sans-serif", fontSize: "17px", fontWeight: 600,
+            padding: "17px 34px", borderRadius: "11px", border: "1px solid rgba(139,164,255,0.45)",
             background: "rgba(75,110,255,0.18)", color: "#a8bcff", textDecoration: "none",
             display: "flex", alignItems: "center", gap: "9px",
           }}>
-            <Mail size={15} /> {tr("ctaButton")} <ArrowRight size={15} />
+            <Mail size={18} /> {tr("ctaButton")} <ArrowRight size={18} />
           </a>
-          {leverNames && (
-            <span style={{ fontFamily: "Inter, sans-serif", fontSize: "11.5px", color: "rgba(255,255,255,0.5)", maxWidth: "46ch", lineHeight: 1.5 }}>
-              {tr("ctaLeverNote")}
-            </span>
-          )}
+          <span style={{ fontFamily: "Inter, sans-serif", fontSize: "11.5px", color: "rgba(255,255,255,0.5)", maxWidth: "48ch", lineHeight: 1.5 }}>
+            {leverNames ? `${tr("ctaLeverNote")} ` : ""}{tr("ctaDownloadHint")}
+          </span>
         </div>
       </div>
 
@@ -903,6 +964,13 @@ function Result({ lang: surveyLang, answers, intake, onRestart }: any) {
           color: "rgba(139,164,255,0.85)", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px",
         }}>
           <FileJson size={14} /> {tr("downloadJson")}
+        </button>
+        <button onClick={downloadReport} style={{
+          fontFamily: "Space Grotesk, sans-serif", fontSize: "13px", padding: "12px 20px", borderRadius: "8px",
+          border: "1px solid rgba(139,164,255,0.3)", background: "rgba(139,164,255,0.08)",
+          color: "rgba(139,164,255,0.85)", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px",
+        }}>
+          <FileJson size={14} /> {tr("downloadReport")}
         </button>
         <button onClick={onRestart} style={{
           fontFamily: "Space Grotesk, sans-serif", fontSize: "13px", padding: "12px 20px", borderRadius: "8px",

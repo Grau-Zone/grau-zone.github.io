@@ -244,8 +244,8 @@ export const UI = {
 
   diagramHead: t("Your values in the model", "Ihre Werte im Modell"),
   diagramLead: t(
-    "Nodes are filled by your score. Grey nodes are not measured by this instrument.",
-    "Die Knoten sind nach Ihrem Wert gefüllt. Graue Knoten erhebt dieses Instrument nicht."
+    "Every node is filled by your answers. For mechanisms, sovereignty and outcome the figure is the mean of normalised Likert items; for the seven capabilities it is the share of levels reached — comparable in colour, not in method.",
+    "Jeder Knoten ist nach Ihren Antworten gefüllt. Bei Mechanismen, Souveränität und Outcome ist die Zahl das Mittel normierter Likert-Items, bei den sieben Capabilities der Anteil erreichter Stufen — farblich vergleichbar, methodisch nicht."
   ),
   notMeasured: t("not measured", "nicht erhoben"),
 
@@ -314,6 +314,21 @@ export const UI = {
     t("Strategic fields of action", "Strategische Handlungsfelder"),
   ],
   ctaButton: t("Request a deep dive", "Deep-Dive anfragen"),
+  ctaMailAttach: t(
+    "The full questions and answers are in the file that was just downloaded. Please attach it to this e-mail:",
+    "Die vollständigen Fragen und Antworten stehen in der Datei, die soeben heruntergeladen wurde. Bitte an diese Mail anhängen:"
+  ),
+  ctaDownloadHint: t(
+    "The click also downloads your answers as a file to attach — e-mail links cannot carry attachments themselves.",
+    "Der Klick lädt Ihre Antworten zusätzlich als Datei zum Anhängen herunter — E-Mail-Links können selbst nichts anhängen."
+  ),
+  downloadReport: t("Answers as text", "Antworten als Text"),
+  ctaMailData: t("--- Survey data (JSON, MISSING=99 means 'do not know') ---",
+                 "--- Umfragedaten (JSON, MISSING=99 heißt 'weiß nicht') ---"),
+  ctaMailTruncated: t(
+    "Note: the full raw data did not fit into an e-mail. Please attach the file from 'Export JSON'.",
+    "Hinweis: die vollständigen Rohdaten passen nicht in eine E-Mail. Bitte die Datei aus 'JSON exportieren' anhängen."
+  ),
   ctaMailSubject: t("Deep dive: digital sovereignty", "Deep-Dive: Digitale Souveränität"),
 
   restart: t("Start over", "Erneut durchführen"),
