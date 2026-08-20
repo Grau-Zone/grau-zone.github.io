@@ -10,7 +10,7 @@ const ConstructionStamp = () => (
       position: "fixed",
       inset: 0,
       zIndex: 9999,
-      pointerEvents: "none", // blockiert keine Klicks/Scroll — Seite bleibt bedienbar
+      pointerEvents: "none", // blockiert keine Klicks/Scroll, Seite bleibt bedienbar
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
@@ -34,7 +34,7 @@ const ConstructionStamp = () => (
         boxShadow: `inset 0 0 0 2px ${STAMP}`,
       }}
     >
-      Under Construction!
+      Under Construction
     </div>
   </div>
 );

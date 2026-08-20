@@ -19,7 +19,7 @@ const layers = [
       </svg>
     ),
     description:
-      "Infrastruktur-Souveränität beschreibt, wer die Cloud besitzt, wo Daten physisch liegen und welche Rechtsordnung den Zugriff regelt. Dies ist primär ein US-Hyperscaler-Problem: Amazon, Microsoft und Google kontrollieren rund 70% des europäischen Cloud-Markts.",
+      "Infrastruktur-Souveränität beschreibt, wer die Cloud besitzt, wo Daten physisch liegen und welche Rechtsordnung den Zugriff regelt. Das Problem geht vor allem von US-Hyperscalern aus: Amazon, Microsoft und Google kontrollieren rund 70% des europäischen Cloud-Markts.",
     keyQuestion: "Unter welchem Recht stehen meine Daten?",
     actions: [
       "European Cloud-Anbieter evaluieren: STACKIT, OVHcloud, SAP BTP",
@@ -48,7 +48,7 @@ const layers = [
       </svg>
     ),
     description:
-      "Modell-Souveränität beschreibt, wer das KI-Modell trainiert hat, mit welchen Daten, unter welchem Governance-Framework und wer seine zukünftige Entwicklung kontrolliert. Chinesische Open-Source-Modelle wie DeepSeek und Qwen bieten massive Kostenvorteile — aber mit intransparenter Trainingsprovenienz.",
+      "Modell-Souveränität beschreibt, wer das KI-Modell trainiert hat, mit welchen Daten, unter welchem Governance-Framework und wer seine zukünftige Entwicklung kontrolliert. Chinesische Open-Source-Modelle wie DeepSeek und Qwen bieten deutliche Kostenvorteile. Ihre Trainingsprovenienz bleibt intransparent.",
     keyQuestion: "Was steckt in meinen KI-Modellen?",
     actions: [
       "Europäische KI-Modelle priorisieren: Mistral, Aleph Alpha / PhariaAI",
@@ -128,8 +128,8 @@ const SovereigntyLayers = () => {
             className="text-4xl lg:text-5xl font-semibold text-white mb-4"
             style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.025em" }}
           >
-            Souveränität ist nicht ein —<br />
-            sondern drei Probleme.
+            Souveränität umfasst<br />
+            drei getrennte Probleme.
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -140,7 +140,7 @@ const SovereigntyLayers = () => {
             style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Inter', sans-serif" }}
           >
             Der Sovereignty Radar misst drei Schichten gleichzeitig.
-            Alle drei müssen parallel adressiert werden.
+            Alle drei müssen parallel bearbeitet werden.
           </motion.p>
         </div>
 

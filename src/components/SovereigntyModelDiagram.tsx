@@ -1,10 +1,10 @@
-// Refined Digital Sovereignty Model (v13) — "Two distinct ways to retain
+// Refined Digital Sovereignty Model (v13): "Two distinct ways to retain
 // discretion under provider dependence".
 //
 // 4 Spalten: Response Capabilities → Mechanisms → Digital Sovereignty → Outcome.
 // Zwei Pfade: blau = dependency-reducing (Exit), grün = control-preserving.
 // Grün ist geteilt in A (selbst-durchsetzend, durchgezogen) und B (gewährt,
-// gestrichelt — braucht Anbieter, Vertrag oder Regulierung).
+// gestrichelt: braucht Anbieter, Vertrag oder Regulierung).
 // Das × zwischen Sovereignty und Outcome ist eine Interaktion, keine Addition.
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -55,7 +55,7 @@ type ModelNode = {
 };
 
 const MO_NODES: ModelNode[] = [
-  // 1) RESPONSE CAPABILITIES — Dependency-Reducing (blau)
+  // 1) RESPONSE CAPABILITIES: Dependency-Reducing (blau)
   { id: "PSC", label: ["Provider Switching", "Capability"], path: "dr", group: "DR", column: "C1", x: 210, y: 275,
     def: "Den Anbieter durch eine valide Alternative ersetzen können." },
   { id: "IOC", label: ["In-House Operation", "Capability"], path: "dr", group: "DR", column: "C1", x: 210, y: 380,
@@ -63,21 +63,21 @@ const MO_NODES: ModelNode[] = [
   { id: "MPM", label: ["Multi-Provider", "Management Capability"], path: "dr", group: "DR", column: "C1", x: 210, y: 480,
     def: "Mehrere Anbieter parallel und kontrolliert steuern können." },
 
-  // 1) RESPONSE CAPABILITIES — Control-Preserving A (selbst-durchsetzend)
+  // 1) RESPONSE CAPABILITIES: Control-Preserving A (selbst-durchsetzend)
   { id: "DKC", label: ["Data and Key", "Control Capability"], path: "cp", group: "CPA", column: "C1", x: 210, y: 650,
-    def: "Eigene Schlüssel, clientseitige Verschlüsselung: Der Anbieter hält die Daten und kann sie trotzdem nicht lesen. Braucht niemandes Erlaubnis." },
+    def: "Eigene Schlüssel und clientseitige Verschlüsselung. Der Anbieter hält die Daten und kann sie nicht lesen. Die Organisation setzt das ohne Zustimmung des Anbieters durch." },
   { id: "ORB", label: ["Operational Resilience", "and Backup Capability"], path: "cp", group: "CPA", column: "C1", x: 210, y: 750,
-    def: "Eigene, exportierte Backups außerhalb des Anbieters — sie funktionieren auch dann, wenn der Anbieter komplett ausfällt." },
+    def: "Eigene, exportierte Backups außerhalb des Anbieters. Sie bleiben nutzbar, wenn der Anbieter vollständig ausfällt." },
 
-  // 1) RESPONSE CAPABILITIES — Control-Preserving B (gewährt)
+  // 1) RESPONSE CAPABILITIES: Control-Preserving B (gewährt)
   { id: "AAR", label: ["Administrative Access", "and Rights Capability"], path: "cp", group: "CPB", column: "C1", x: 210, y: 920, granted: true,
-    def: "Hybrid: Die Ausübung (IAM, least privilege) ist einseitig — den Rahmen definiert aber der Anbieter über seine Control Plane." },
+    def: "Hybride Form. Die Ausübung (IAM, least privilege) erfolgt einseitig. Den Rahmen dafür definiert der Anbieter über seine Control Plane." },
   { id: "ATR", label: ["Audit and Transparency", "Rights Capability"], path: "cp", group: "CPB", column: "C1", x: 210, y: 1020, granted: true,
-    def: "Prüfrechte bestehen nur, soweit Vertrag oder Regulierung sie einräumen — reines Zaun-Recht." },
+    def: "Prüfrechte bestehen nur, soweit Vertrag oder Regulierung sie einräumen. Ein rein gewährtes Recht." },
 
   // 2) MECHANISMS
   { id: "ALT", label: ["Credible Alternatives /", "Reconfiguration Options"], path: "dr", column: "C2", x: 880, y: 380,
-    def: "Mindestens eine tragfähige Alternative, die in akzeptabler Zeit, zu akzeptablen Kosten und mit vertretbarer Störung aktiviert werden kann." },
+    def: "Mindestens eine tragfähige Alternative. Sie lässt sich in akzeptabler Zeit, zu akzeptablen Kosten und mit vertretbarer Störung aktivieren." },
   { id: "ROC", label: ["Retained Operational", "Control"], path: "cp", column: "C2", x: 880, y: 835,
     def: "Die Organisation behält zentrale Entscheidungsrechte und operative Kontrolle über kritische Aspekte der Funktion." },
 
@@ -89,7 +89,7 @@ const MO_NODES: ModelNode[] = [
 
   // Interaktion
   { id: "X", label: "×", path: "join", column: "C3", x: 1660, y: 607, labelPos: "below",
-    def: "Interaktion, keine Addition: Beide Formen von Discretion wirken gemeinsam auf die Kontinuität." },
+    def: "Eine Interaktion, keine Addition. Beide Formen von Discretion wirken gemeinsam auf die Kontinuität." },
 
   // 4) OUTCOME
   { id: "CONT", label: ["Continuity under", "Provider Disruption"], path: "join", column: "C4", x: 1860, y: 607, labelPos: "below",
@@ -119,7 +119,7 @@ const MO_EDGES: Edge[] = [
   ["ALT", "FTC", "dr"],
   ["ROC", "CTO", "cp"],
 
-  ["FTC", "CTO", "corr"], // "related but distinct" — Korrelation, kein Kausalpfad
+  ["FTC", "CTO", "corr"], // "related but distinct": Korrelation, kein Kausalpfad
 
   ["FTC", "X", "join"],
   ["CTO", "X", "join"],
@@ -154,7 +154,7 @@ function moCorrCurve(a: Point, b: Point) {
 }
 
 // ─── Liquid glass ────────────────────────────────────────────────────────────
-// Ursprünglich die globale Klasse `.liquid-glass-strong` — hier inline, damit die
+// Ursprünglich die globale Klasse `.liquid-glass-strong`, hier inline, damit die
 // Komponente eigenständig ist.
 const LIQUID_GLASS: React.CSSProperties = {
   background: "rgba(16, 24, 32, 0.55)",
@@ -212,7 +212,7 @@ const SovereigntyModelDiagram = ({ scores }: { scores?: NodeScores } = {}) => {
   const activeGroup = activeNode?.group ? GROUPS.find((g) => g.id === activeNode.group) : null;
   const activeColumn = activeNode ? COLUMNS.find((c) => c.id === activeNode.column) : null;
 
-  // Nur die direkten Kanten — bewusst kompakt gehalten.
+  // Nur die direkten Kanten, bewusst kompakt gehalten.
   const activeEdges = useMemo(() => {
     const incoming: { otherId: string; kind: EdgeKind }[] = [];
     const outgoing: { otherId: string; kind: EdgeKind }[] = [];
@@ -366,7 +366,7 @@ const SovereigntyModelDiagram = ({ scores }: { scores?: NodeScores } = {}) => {
                   style={{ transition: "stroke-opacity 0.25s, stroke-width 0.25s" }}
                   filter={related ? "url(#mo-glow)" : undefined}
                 />
-                {/* Fließendes Signal — nicht auf der Korrelationslinie (kein Kausalpfad) */}
+                {/* Fließendes Signal, nicht auf der Korrelationslinie (kein Kausalpfad) */}
                 {!isCorr && (
                   <circle
                     r={related ? 3.5 : 2.5}
@@ -572,7 +572,7 @@ const SovereigntyModelDiagram = ({ scores }: { scores?: NodeScores } = {}) => {
           })}
         </svg>
 
-        {/* Legende — unten links */}
+        {/* Legende (unten links) */}
         <div
           className="absolute bottom-3 left-4 flex items-center gap-4 text-[10px] tracking-[0.2em] uppercase pointer-events-none flex-wrap"
           style={{ fontFamily: "'Share Tech Mono', monospace", color: "rgba(190,210,230,0.55)" }}
@@ -595,7 +595,7 @@ const SovereigntyModelDiagram = ({ scores }: { scores?: NodeScores } = {}) => {
           </span>
         </div>
 
-        {/* Hinweis — unten rechts */}
+        {/* Hinweis (unten rechts) */}
         <div
           className="absolute bottom-3 right-4 text-[10px] tracking-[0.25em] uppercase pointer-events-none"
           style={{ fontFamily: "'Share Tech Mono', monospace", color: "rgba(190,210,230,0.3)" }}
@@ -683,7 +683,7 @@ const SovereigntyModelDiagram = ({ scores }: { scores?: NodeScores } = {}) => {
                 {activeNode.def}
               </p>
 
-              {/* Direkte Verbindungen — kompakt */}
+              {/* Direkte Verbindungen (kompakt) */}
               <div
                 className="grid grid-cols-2 gap-4 text-[12.5px] pt-4"
                 style={{ fontFamily: "'Geist','Inter',sans-serif", borderTop: "1px solid rgba(200,215,225,0.1)" }}
@@ -696,7 +696,7 @@ const SovereigntyModelDiagram = ({ scores }: { scores?: NodeScores } = {}) => {
                     ← eingehend
                   </div>
                   {activeEdges.incoming.length === 0 ? (
-                    <div style={{ color: "rgba(255,255,255,0.35)" }}>—</div>
+                    <div style={{ color: "rgba(255,255,255,0.35)" }}>keine</div>
                   ) : (
                     activeEdges.incoming.map(({ otherId, kind }, idx) => (
                       <div key={`in-${otherId}-${idx}`} className="mb-1" style={{ color: "rgba(255,255,255,0.85)" }}>
@@ -716,7 +716,7 @@ const SovereigntyModelDiagram = ({ scores }: { scores?: NodeScores } = {}) => {
                     ausgehend →
                   </div>
                   {activeEdges.outgoing.length === 0 ? (
-                    <div style={{ color: "rgba(255,255,255,0.35)" }}>—</div>
+                    <div style={{ color: "rgba(255,255,255,0.35)" }}>keine</div>
                   ) : (
                     activeEdges.outgoing.map(({ otherId, kind }, idx) => (
                       <div key={`out-${otherId}-${idx}`} className="mb-1" style={{ color: "rgba(255,255,255,0.85)" }}>

@@ -79,7 +79,7 @@ function itemScore(i: Item, a: Answers): number | null {
   return (corrected - 1) / (max - 1);
 }
 
-// Faktenindizes bleiben Stufen — formatives Composite, kein Mittelwert.
+// Faktenindizes bleiben Stufen: formatives Composite, kein Mittelwert.
 function factRows(constructKey: string, a: Answers) {
   return itemsOfConstruct(constructKey)
     .filter((i) => i.type === "fact")
@@ -204,7 +204,7 @@ function LanguageGate({ onPick }: { onPick: (l: Lang) => void }) {
       </p>
 
       <div className="flex flex-col items-center gap-4">
-        {/* Empfehlung: Englisch — bewusst groesser */}
+        {/* Empfehlung: Englisch, bewusst groesser */}
         <button
           onClick={() => onPick("en")}
           style={{
@@ -663,7 +663,7 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
   // Der uebermittelte Datensatz enthaelt nur Erhobenes: die gestellten Fragen mit
   // den gegebenen Antworten, dazu den Kontext aus dem Intake. Konstruktwerte,
   // Faktenindizes und Souveraenitaetsdimensionen sind daraus jederzeit neu
-  // berechenbar und stehen bewusst nicht drin — abgeleitete Werte in Rohdaten
+  // berechenbar und stehen bewusst nicht drin. Abgeleitete Werte in Rohdaten
   // zu mischen macht spaeter unklar, was gemessen und was gerechnet wurde.
   const buildRecord = () => ({
     responseId,
@@ -861,7 +861,7 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
     const lines = [
       "Guten Tag",
       "",
-      "wir haben das Self-Assessment zur digitalen Souveränität durchlaufen und möchten gerne einen Deep-Dive-Workshop anfragen.",
+      "wir haben das Self-Assessment zur digitalen Souveränität durchlaufen und möchten einen Deep-Dive-Workshop anfragen.",
       "",
       fn ? `Betrachtete Funktion: ${fn}` : null,
       intake.provider ? `Anbieter: ${intake.provider}` : null,

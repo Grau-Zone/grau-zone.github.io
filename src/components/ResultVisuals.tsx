@@ -1,6 +1,6 @@
 // Zwei Visualisierungen für die Ergebnisseite des Self-Assessments:
-//  1) Souveränitäts-Matrix — FTC (x) gegen CTO (y), Punktfarbe = Outcome
-//  2) Wirkkette — die vier Modellspalten als Stufen, schwächste markiert
+//  1) Souveränitäts-Matrix: FTC (x) gegen CTO (y), Punktfarbe = Outcome
+//  2) Wirkkette: die vier Modellspalten als Stufen, schwächste markiert
 import { motion } from "framer-motion";
 import type { Lang } from "../data/instrument";
 import { UI, pick } from "../data/surveyUi";

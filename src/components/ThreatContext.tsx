@@ -29,9 +29,9 @@ const threats = [
     colorBg: "rgba(255,61,87,0.07)",
     colorBorder: "rgba(255,61,87,0.2)",
     points: [
-      "DeepSeek R1: 0,10 $ / Mio. Token vs. OpenAI 4,40 $ — 20–30× billiger",
+      "DeepSeek R1: 0,10 $ / Mio. Token gegenüber OpenAI 4,40 $. Kostenvorteil 20–30×",
       "Alibaba Qwen unter Apache-2.0-Lizenz: kostenlose Nutzung und Anpassung",
-      "Trainingsherkunft intransparent — Bias und Zensur schwer nachweisbar",
+      "Trainingsherkunft intransparent. Bias und Zensur sind schwer nachweisbar",
       "Open-Weight-Adoption stieg von 23% auf 67% (2025–2027)",
     ],
   },
@@ -46,10 +46,10 @@ const threats = [
     colorBg: "rgba(255,159,46,0.07)",
     colorBorder: "rgba(255,159,46,0.2)",
     points: [
-      "Data Act, AI Act, NIS2, DORA schaffen Nachfrage — aber kein Angebot",
+      "Data Act, AI Act, NIS2 und DORA schaffen Nachfrage, aber kein Angebot",
       "GAIA-X: 600 Katalog-Services, aber CEO bestätigt Anbieterengpässe",
       "EU-Hyperscaler-Investitionen 2025: 240 Mrd. $ (US) vs. ~15 Mrd. € (EU)",
-      "»Wir haben kein Erkenntnisproblem, sondern ein Umsetzungsproblem.« — SAP",
+      "»Wir haben kein Erkenntnisproblem, sondern ein Umsetzungsproblem.« (SAP)",
     ],
   },
 ];
@@ -89,7 +89,7 @@ const ThreatContext = () => {
             className="text-4xl lg:text-5xl font-semibold text-white mb-4"
             style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.025em" }}
           >
-            Europa im Dreifach-Druck
+            Europa unter dreifachem Druck
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -100,7 +100,7 @@ const ThreatContext = () => {
             style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Inter', sans-serif" }}
           >
             Europas Enterprise-IT steht 2026 unter Druck aus drei Richtungen gleichzeitig.
-            Keine Einzelachsen-Analyse erfasst die vollständige Komplexität.
+            Eine Analyse entlang einer einzelnen Achse erfasst die Komplexität nicht vollständig.
           </motion.p>
         </div>
 

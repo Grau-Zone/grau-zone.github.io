@@ -42,7 +42,7 @@ export const SCENARIOS = [
     colorBg: "rgba(255,159,46,0.08)",
     colorBorder: "rgba(255,159,46,0.25)",
     description:
-      "Europa baut konforme Alternativen auf und reguliert intensiv. Doch Plattformabhängigkeiten und die KI-Modelllücke verhindern echte Souveränität. Das System funktioniert — bis es getestet wird.",
+      "Europa baut konforme Alternativen auf und reguliert intensiv. Plattformabhängigkeiten und die KI-Modelllücke verhindern eine belastbare Souveränität. Das System funktioniert, bis es getestet wird.",
     stats: [
       { label: "Sovereign Cloud IaaS (2030)", value: "40+ Mrd. €" },
       { label: "STACKIT Jahresumsatz", value: "1,9 Mrd. €" },
@@ -53,13 +53,13 @@ export const SCENARIOS = [
     id: 2,
     tag: "Pfad 3",
     title: "Strategische Souveränität",
-    subtitle: "Wahlfreiheit statt Isolation",
+    subtitle: "Wahlfreiheit ohne Abschottung",
     values: [0.80, 0.75, 0.85],
     color: "#00C4A0",
     colorBg: "rgba(0,196,160,0.08)",
     colorBorder: "rgba(0,196,160,0.25)",
     description:
-      "Europa ersetzt weder US-Hyperscaler noch verbietet es chinesische Modelle. Stattdessen entsteht echte Wahlfreiheit: eigene Infrastruktur, auditierte KI-Modelle, souveräne Datenarchitekturen — und die Fähigkeit, jederzeit zu wechseln.",
+      "Europa baut eigene Infrastruktur, auditierte KI-Modelle und souveräne Datenarchitekturen auf. US-Hyperscaler werden nicht ersetzt, chinesische Modelle nicht verboten. Organisationen haben die Wahl und können den Anbieter jederzeit wechseln.",
     stats: [
       { label: "Mistral AI Valuation", value: "13,8 Mrd. $" },
       { label: "EuroHPC AI Factories", value: "19 Standorte" },

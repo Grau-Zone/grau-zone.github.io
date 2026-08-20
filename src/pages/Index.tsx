@@ -11,7 +11,7 @@ import ConstructionStamp from "@/components/ConstructionStamp"; // TEMP
 const Index = () => {
   return (
     <div className="min-h-screen overflow-x-hidden relative">
-      {/* TEMP: In-Construction-Stempel — diese Zeile + den Import löschen zum Entfernen */}
+      {/* TEMP: In-Construction-Stempel, diese Zeile + den Import löschen zum Entfernen */}
       <ConstructionStamp />
       <Navbar />
       <Hero />

@@ -47,8 +47,8 @@ const SovereigntyModelSection = () => {
             style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Inter', sans-serif" }}
           >
             Sieben Response Capabilities wirken über zwei Mechanismen auf zwei getrennte
-            Souveränitäts-Dimensionen — und erst beide gemeinsam tragen die Kontinuität, wenn der
-            Anbieter ausfällt oder einseitig handelt. Blau ist der Exit-Pfad (Abhängigkeit
+            Souveränitäts-Dimensionen. Erst beide Dimensionen zusammen tragen die Kontinuität, wenn
+            der Anbieter ausfällt oder einseitig handelt. Blau ist der Exit-Pfad (Abhängigkeit
             reduzieren), grün der Kontroll-Pfad (Kontrolle behalten).
           </motion.p>
         </div>

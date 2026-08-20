@@ -101,15 +101,15 @@ export const STEPS: { key: string; label: T; sub: T }[] = [
     key: "1 Response Capabilities",
     label: t("Response Capabilities", "Response Capabilities"),
     sub: t(
-      "What your organisation is able to do — contractually, technically and organisationally.",
-      "Was Ihre Organisation kann — vertraglich, technisch und organisatorisch."
+      "What your organisation can do contractually, technically and organisationally.",
+      "Was Ihre Organisation vertraglich, technisch und organisatorisch kann."
     ),
   },
   {
     key: "2 Mechanisms",
     label: t("Mechanisms", "Mechanismen"),
     sub: t(
-      "What those capabilities produce: real alternatives, and control you keep.",
+      "What those capabilities produce: real alternatives and retained control.",
       "Was daraus entsteht: echte Alternativen und behaltene Kontrolle."
     ),
   },
@@ -148,19 +148,19 @@ export const UI = {
     "Dieses Assessment gibt es auf Englisch und Deutsch."
   ),
   langEn: t("Continue in English", "Continue in English"),
-  langEnHint: t("Recommended — the instrument was written in English", "Empfohlen — das Instrument wurde auf Englisch entwickelt"),
+  langEnHint: t("Recommended. The instrument was written in English", "Empfohlen. Das Instrument wurde auf Englisch verfasst"),
   langDe: t("Auf Deutsch fortfahren", "Auf Deutsch fortfahren"),
 
   // Intro
   eyebrow: t("Organisation Self-Assessment", "Organisation Self-Assessment"),
   introTitle: t("How sovereign is your organisation?", "Wie souverän ist Ihre Organisation?"),
   introLead: t(
-    "This questionnaire follows the Refined Digital Sovereignty Model (v13): response capabilities produce two mechanisms, which produce two distinct forms of discretion — and both together carry continuity when the provider fails.",
-    "Dieser Fragebogen folgt dem Refined Digital Sovereignty Model (v13): Handlungsfähigkeiten erzeugen zwei Mechanismen, diese zwei getrennte Formen von Handlungsspielraum — und beide zusammen tragen die Kontinuität, wenn der Anbieter ausfällt."
+    "This questionnaire follows the Refined Digital Sovereignty Model (v13). Response capabilities produce two mechanisms. The mechanisms produce two distinct forms of discretion. Both together carry continuity when the provider fails.",
+    "Dieser Fragebogen folgt dem Refined Digital Sovereignty Model (v13). Handlungsfähigkeiten erzeugen zwei Mechanismen. Diese erzeugen zwei getrennte Formen von Handlungsspielraum. Beide zusammen tragen die Kontinuität, wenn der Anbieter ausfällt."
   ),
   introUnit: t(
     "Answer for exactly one critical digital function at one provider. Every question refers to that pair.",
-    "Beantworten Sie alles für genau eine kritische digitale Funktion bei einem Anbieter. Jede Frage bezieht sich auf dieses Paar."
+    "Beantworten Sie alles für eine einzige kritische digitale Funktion bei einem Anbieter. Jede Frage bezieht sich auf dieses Paar."
   ),
   start: t("Start assessment", "Assessment starten"),
   toHome: t("Back to homepage", "Zur Startseite"),
@@ -201,33 +201,33 @@ export const UI = {
   resultTitle: t("Sovereignty profile", "Souveränitätsprofil"),
   resultFor: t("for", "für"),
   atProvider: t("at", "bei"),
-  sovereigntyHead: t("Digital Sovereignty — the two dimensions", "Digitale Souveränität — die zwei Dimensionen"),
+  sovereigntyHead: t("Digital Sovereignty: the two dimensions", "Digitale Souveränität: die zwei Dimensionen"),
   outcomeHead: t("Outcome", "Ergebnis"),
   mechanismsHead: t("Mechanisms", "Mechanismen"),
   capabilitiesHead: t("Response Capabilities", "Response Capabilities"),
   factHead: t("Fact indices", "Faktenindizes"),
   factLead: t(
-    "These are not opinions but recorded facts. They are reported as levels, never averaged into a percentage.",
-    "Das sind keine Einschätzungen, sondern erhobene Tatsachen. Sie werden als Stufen berichtet, nie zu einem Prozentwert gemittelt."
+    "These are recorded facts, not assessments. They are reported as levels and not averaged into a percentage.",
+    "Das sind erhobene Tatsachen, keine Einschätzungen. Sie werden als Stufen berichtet und nicht zu einem Prozentwert gemittelt."
   ),
   independent: t("provider-independent", "anbieterunabhängig"),
   notIndependent: t("depends on the provider", "hängt am Anbieter"),
   level: t("Level", "Stufe"),
   missing: t("no answer", "keine Angabe"),
   missingNote: t(
-    "Counted as missing — deliberately not scored as zero.",
-    "Als fehlend gewertet — bewusst nicht als Null gerechnet."
+    "Counted as missing, deliberately not scored as zero.",
+    "Als fehlend gewertet, bewusst nicht als Null gerechnet."
   ),
   notAnswered: t("not answered", "nicht beantwortet"),
   weakHint: t(
-    "This instrument is not validated. The card sort has not yet confirmed it, and three constructs scored weak — including Continuity, the model's dependent variable. Treat the result as a structured conversation starter, not as a measurement.",
-    "Dieses Instrument ist nicht validiert. Der Card-Sort hat es bisher nicht bestätigt, und drei Konstrukte sind schwach bewertet — darunter Kontinuität, die abhängige Variable des Modells. Behandeln Sie das Ergebnis als strukturierten Gesprächseinstieg, nicht als Messung."
+    "This instrument is not validated. The card sort has not confirmed it so far. Three constructs scored weak, among them Continuity, the model's dependent variable. The result is not a measurement. Use it as a structured entry into a discussion.",
+    "Dieses Instrument ist nicht validiert. Der Card-Sort hat es bisher nicht bestätigt. Drei Konstrukte sind schwach bewertet, darunter Kontinuität, die abhängige Variable des Modells. Das Ergebnis ist keine Messung. Nutzen Sie es als strukturierten Gesprächseinstieg."
   ),
   // Visualisierungen
   matrixHead: t("The two dimensions, side by side", "Die zwei Dimensionen im Verhältnis"),
   matrixLead: t(
-    "Sovereignty is not one axis. Where you sit here says which of the two forms of discretion carries you.",
-    "Souveränität ist keine einzelne Achse. Die Position zeigt, welche der zwei Formen von Handlungsspielraum Sie trägt."
+    "Sovereignty has two axes. The position shows which of the two forms of discretion carries you.",
+    "Souveränität hat zwei Achsen. Die Position zeigt, welche der zwei Formen von Handlungsspielraum Sie trägt."
   ),
   quadSovereign: t("Sovereign", "Souverän"),
   quadExit: t("Exit-oriented", "Exit-orientiert"),
@@ -237,15 +237,15 @@ export const UI = {
 
   chainHead: t("The causal chain", "Die Wirkkette"),
   chainLead: t(
-    "Each column is the average of its constructs. The chain is only as strong as its weakest step.",
-    "Jede Spalte ist der Mittelwert ihrer Konstrukte. Die Kette ist nur so stark wie ihre schwächste Stufe."
+    "Each column is the average of its constructs. The weakest step limits the chain.",
+    "Jede Spalte ist der Mittelwert ihrer Konstrukte. Die schwächste Stufe begrenzt die Kette."
   ),
   chainWeakest: t("weakest step", "schwächste Stufe"),
 
   diagramHead: t("Your values in the model", "Ihre Werte im Modell"),
   diagramLead: t(
-    "Every node is filled by your answers. For mechanisms, sovereignty and outcome the figure is the mean of normalised Likert items; for the seven capabilities it is the share of levels reached — comparable in colour, not in method.",
-    "Jeder Knoten ist nach Ihren Antworten gefüllt. Bei Mechanismen, Souveränität und Outcome ist die Zahl das Mittel normierter Likert-Items, bei den sieben Capabilities der Anteil erreichter Stufen — farblich vergleichbar, methodisch nicht."
+    "Every node is filled from your answers. For mechanisms, sovereignty and outcome the figure is the mean of normalised Likert items. For the seven capabilities it is the share of levels reached. The colours are comparable, the methods are not.",
+    "Jeder Knoten ist nach Ihren Antworten gefüllt. Bei Mechanismen, Souveränität und Outcome ist die Zahl das Mittel normierter Likert-Items. Bei den sieben Capabilities ist es der Anteil erreichter Stufen. Farblich sind die Werte vergleichbar, methodisch nicht."
   ),
   notMeasured: t("not measured", "nicht erhoben"),
 
@@ -266,8 +266,8 @@ export const UI = {
     "Ich bin damit einverstanden, dass meine Antworten an das Forschungsteam der Universität St. Gallen übermittelt und für die Forschung zu digitaler Souveränität verwendet werden."
   ),
   consentDetail: t(
-    "No name or e-mail address is collected. The company profile and the provider name are transmitted — in a small market these can narrow down an organisation. Answers are stored under a random ID.",
-    "Es werden weder Name noch E-Mail-Adresse erhoben. Übermittelt werden Firmenprofil und Anbietername — in einem kleinen Markt kann das eine Organisation eingrenzen. Die Antworten werden unter einer zufälligen Kennung gespeichert."
+    "No name or e-mail address is collected. The company profile and the provider name are transmitted. In a small market these can narrow down an organisation. Answers are stored under a random ID.",
+    "Es werden weder Name noch E-Mail-Adresse erhoben. Übermittelt werden Firmenprofil und Anbietername. In einem kleinen Markt kann das eine Organisation eingrenzen. Die Antworten werden unter einer zufälligen Kennung gespeichert."
   ),
   consentRequired: t("Please agree before starting.", "Bitte stimmen Sie vor dem Start zu."),
 
@@ -292,8 +292,8 @@ export const UI = {
     "Beide Seiten liegen gleichauf. Kontinuität bewegt sich nur, wenn sich beide bewegen."
   ),
   verdictMeasured: t(
-    "Continuity is surveyed on its own, not calculated from the two dimensions. A visible gap between them is worth a second look.",
-    "Kontinuität wird eigenständig erhoben, nicht aus den beiden Dimensionen berechnet. Eine sichtbare Lücke dazwischen lohnt den zweiten Blick."
+    "Continuity is surveyed on its own and not calculated from the two dimensions. A visible gap between them is worth a second look.",
+    "Kontinuität wird eigenständig erhoben und nicht aus den beiden Dimensionen berechnet. Eine sichtbare Lücke dazwischen lohnt den zweiten Blick."
   ),
 
   quadHead: t("Where you sit", "Wo Sie stehen"),
@@ -318,11 +318,11 @@ export const UI = {
 
   // ─── Call to Action am Seitenende ─────────────────────────────────────────
   ctaEyebrow: t("Next step", "Nächster Schritt"),
-  ctaLever: t("Your biggest lever", "Ihr größter Hebel"),
+  ctaLever: t("Where to start", "Wo Sie ansetzen"),
   ctaLeverNone: t("Deepen your sovereignty profile", "Ihr Souveränitätsprofil vertiefen"),
   ctaLead: t(
-    "In a deep-dive workshop and on-site audit we deepen your sovereignty profile with real company data and turn it into a prioritised roadmap.",
-    "Im Deep-Dive-Workshop und On-Site-Audit vertiefen wir Ihr Souveränitätsprofil mit echten Unternehmensdaten und entwickeln daraus eine priorisierte Roadmap."
+    "In a deep-dive workshop and on-site audit we deepen your sovereignty profile with real company data. From that we develop a prioritised roadmap.",
+    "Im Deep-Dive-Workshop und On-Site-Audit vertiefen wir Ihr Souveränitätsprofil mit echten Unternehmensdaten. Daraus entwickeln wir eine priorisierte Roadmap."
   ),
   ctaLeverNote: t(
     "The weaker of the two sovereignty dimensions. It caps what the stronger one can deliver.",
@@ -340,8 +340,8 @@ export const UI = {
     "Die vollständigen Fragen und Antworten stehen in der Datei, die soeben heruntergeladen wurde. Bitte an diese Mail anhängen:"
   ),
   ctaDownloadHint: t(
-    "The click also downloads your answers as a file to attach — e-mail links cannot carry attachments themselves.",
-    "Der Klick lädt Ihre Antworten zusätzlich als Datei zum Anhängen herunter — E-Mail-Links können selbst nichts anhängen."
+    "The click also downloads your answers as a file to attach. E-mail links cannot carry attachments themselves.",
+    "Der Klick lädt Ihre Antworten zusätzlich als Datei zum Anhängen herunter. E-Mail-Links können selbst nichts anhängen."
   ),
   downloadReport: t("Answers as text", "Antworten als Text"),
   ctaMailData: t("--- Survey data (JSON, MISSING=99 means 'do not know') ---",

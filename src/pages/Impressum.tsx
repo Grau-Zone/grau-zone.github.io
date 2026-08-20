@@ -44,14 +44,14 @@ const sections: { title: string; lines: React.ReactNode[] }[] = [
     title: "Welche Daten das Self-Assessment erhebt",
     lines: [
       "Ihre Antworten auf die 39 Fragen des Self-Assessments.",
-      "Die von Ihnen betrachtete digitale Funktion sowie den Namen des Anbieters, den Sie eintragen.",
+      "Die digitale Funktion, die Sie betrachten, und den Namen des Anbieters, den Sie eintragen.",
       "Freiwillige Angaben zu Ihrer Organisation: Größenklasse, Branchen-Hauptkategorie und Hauptsitz.",
       "Erhebungssprache, Zeitpunkt der Übermittlung und eine zufällig erzeugte Antwort-Kennung.",
       "Nicht erhoben werden Name, E-Mail-Adresse und IP-Adresse.",
       <>
-        <strong style={{ color: "rgba(255,255,255,0.85)" }}>Bitte beachten Sie:</strong> Die Kombination
+        <strong style={{ color: "rgba(255,255,255,0.85)" }}>Hinweis:</strong> Die Kombination
         aus Branche, Größenklasse, Hauptsitz und Anbietername kann in kleinen Märkten Rückschlüsse auf
-        eine bestimmte Organisation zulassen. Berücksichtigen Sie das insbesondere bei Freitextangaben.
+        eine bestimmte Organisation zulassen. Berücksichtigen Sie das bei Freitextangaben.
       </>,
     ],
   },
@@ -60,38 +60,38 @@ const sections: { title: string; lines: React.ReactNode[] }[] = [
     lines: [
       "Die Daten dienen der Forschung zur digitalen Souveränität von Organisationen am Institut für Wirtschaftsinformatik der Universität St.Gallen.",
       "Rechtsgrundlage ist Ihre Einwilligung, die vor der ersten Frage eingeholt wird. Ohne Einwilligung startet der Fragebogen nicht.",
-      "Die Teilnahme ist freiwillig. Sie können den Fragebogen jederzeit abbrechen; dann wird nichts übermittelt.",
+      "Die Teilnahme ist freiwillig. Sie können den Fragebogen jederzeit abbrechen. Dann wird nichts übermittelt.",
     ],
   },
   {
     title: "Speicherung",
     lines: [
       "Abgeschlossene Fragebögen werden in einer Datenbank des Anbieters Supabase im Rechenzentrum Frankfurt am Main gespeichert.",
-      "Die Website kann in diese Datenbank ausschließlich schreiben. Lesen, Ändern und Löschen sind ihr technisch verwehrt; Zugriff auf die Daten hat allein das Forschungsteam.",
-      "Supabase wird dabei als Auftragsverarbeiter eingesetzt; die Daten verlassen das Rechenzentrum in Frankfurt am Main nicht.",
+      "Die Website kann in diese Datenbank ausschließlich schreiben. Lesen, Ändern und Löschen sind ihr technisch verwehrt. Zugriff auf die Daten hat allein das Forschungsteam.",
+      "Supabase wird als Auftragsverarbeiter eingesetzt. Die Daten verlassen das Rechenzentrum in Frankfurt am Main nicht.",
       "Die Daten werden bis zum Abschluss des Forschungsprojekts und der zugehörigen Veröffentlichungen aufbewahrt, längstens zehn Jahre nach der Erhebung. Danach werden sie gelöscht. Die Frist folgt den Regeln guter wissenschaftlicher Praxis zur Nachvollziehbarkeit von Forschungsergebnissen.",
     ],
   },
   {
     title: "Fortschritt in Ihrem Browser",
     lines: [
-      "Der Fragebogen speichert Ihren Fortschritt lokal in Ihrem Browser, damit Sie zwischendurch unterbrechen können. Diese Daten verbleiben auf Ihrem Gerät und werden erst mit der abgeschlossenen Übermittlung übertragen.",
-      "Über die Schaltfläche „Erneut durchführen“ am Ende des Fragebogens werden sie gelöscht.",
+      "Der Fragebogen speichert Ihren Fortschritt lokal in Ihrem Browser, damit Sie unterbrechen können. Diese Daten bleiben auf Ihrem Gerät, bis Sie den Fragebogen abschließen und absenden.",
+      "Die Schaltfläche „Erneut durchführen“ am Ende des Fragebogens löscht sie.",
     ],
   },
   {
     title: "Hosting, Schriftarten, kein Tracking",
     lines: [
       "Diese Seite wird über GitHub Pages (GitHub Inc.) ausgeliefert. Beim Aufruf verarbeitet GitHub technisch notwendige Verbindungsdaten einschließlich Ihrer IP-Adresse. Darauf haben wir keinen Zugriff.",
-      "Die verwendeten Schriftarten werden zusammen mit der Seite ausgeliefert. Es besteht keine Verbindung zu Google Fonts oder anderen Anbietern von Schriftarten, und es wird keine IP-Adresse an Dritte übertragen.",
-      "Es werden keine Analyse- oder Trackingwerkzeuge eingesetzt und keine Cookies zu Werbe- oder Analysezwecken gesetzt.",
+      "Die Schriftarten werden zusammen mit der Seite ausgeliefert. Eine Verbindung zu Google Fonts oder anderen Anbietern von Schriftarten besteht nicht, und dabei wird keine IP-Adresse an Dritte übertragen.",
+      "Es werden keine Analyse- oder Trackingwerkzeuge eingesetzt. Cookies zu Werbe- oder Analysezwecken werden nicht gesetzt.",
     ],
   },
   {
     title: "Ihre Rechte",
     lines: [
       "Sie haben das Recht auf Auskunft, Berichtigung und Löschung Ihrer Daten sowie das Recht, Ihre Einwilligung jederzeit zu widerrufen.",
-      "Da wir bewusst keine Kontaktdaten erheben, lässt sich Ihr Datensatz ausschließlich über die Antwort-Kennung auffinden, die Ihnen am Ende des Fragebogens angezeigt wird. Notieren Sie sich diese Kennung, wenn Sie sich diese Möglichkeit offenhalten möchten.",
+      "Wir erheben keine Kontaktdaten. Ihr Datensatz lässt sich deshalb nur über die Antwort-Kennung auffinden, die am Ende des Fragebogens angezeigt wird. Notieren Sie diese Kennung, wenn Sie sich diese Möglichkeit offenhalten möchten.",
       <>Für Auskunft, Löschung oder Widerruf genügt eine E-Mail an {mail} unter Angabe der Antwort-Kennung.</>,
     ],
   },

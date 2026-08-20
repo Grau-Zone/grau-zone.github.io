@@ -62,7 +62,7 @@ const OrgSovereignty = () => {
             Souveränität auf Organisationsebene ist die Fähigkeit, bei kritischen digitalen
             Funktionen auch unter externer Abhängigkeit einen kontrollierten Handlungsraum zu
             behalten. Sie entsteht formativ aus vier Capacities. Alle vier zusammen bestimmen den
-            Handlungsspielraum Ihrer Organisation.
+            Handlungsspielraum einer Organisation.
           </motion.p>
         </div>
 
@@ -170,7 +170,7 @@ const OrgSovereignty = () => {
                   {cap.description}
                 </p>
 
-                {/* Woran es hängt — three fixed roles, comparable across all four cards */}
+                {/* Woran es hängt: three fixed roles, comparable across all four cards */}
                 <div className="rounded-xl p-5 mb-7" style={{ background: cap.colorBg, border: `1px solid ${cap.colorBorder}` }}>
                   <div
                     className="text-xs font-semibold uppercase tracking-widest mb-4"

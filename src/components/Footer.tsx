@@ -33,14 +33,15 @@ const Footer = () => {
               style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Inter', sans-serif", maxWidth: "42ch" }}
             >
               Die Dieter Schwarz Stiftung und Schwarz Digits fördern diese Initiative,
-              um europäische KMU mit einem konkreten Instrument auszustatten: dem Sovereignty Radar.
+              um europäische KMU mit einem Instrument auszustatten: dem Sovereignty Radar.
             </p>
             <p
               className="text-sm leading-relaxed"
               style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Inter', sans-serif", maxWidth: "42ch" }}
             >
-              Ziel ist es, Souveränität von einem abstrakten Thema zu einem messbaren,
-              steuerbaren ökonomischen Parameter zu machen — auf Makro-, Anbieter- und Anwenderebene.
+              Ziel ist es, Souveränität von einem abstrakten Thema zu einem messbaren und
+              steuerbaren ökonomischen Parameter zu machen. Das gilt für die Makro-, die Anbieter-
+              und die Anwenderebene.
             </p>
           </motion.div>
 
@@ -138,7 +139,7 @@ const Footer = () => {
               {
                 n: "#1",
                 title: "Makro-Ebene",
-                desc: "Monitoring und Indexierung des Umfelds. Kennzahlensystem für Lock-in, Option Value und Technical Debt — als Entscheidungsgrundlage für CEOs, CFOs und Aufsichtsräte.",
+                desc: "Monitoring und Indexierung des Umfelds. Kennzahlensystem für Lock-in, Option Value und Technical Debt als Entscheidungsgrundlage für CEOs, CFOs und Aufsichtsräte.",
               },
               {
                 n: "#2",

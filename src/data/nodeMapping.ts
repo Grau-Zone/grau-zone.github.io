@@ -57,6 +57,6 @@ export const CONSTRUCT_NODES = ["ALT", "ROC", "FTC", "CTO", "CONT"] as const;
 export const UNMAPPED: Record<string, string> = {
   "O3-2": "Beschreibt einen Zustand der Systemlandschaft (automatischer Datenaustausch mit "
         + "Kernanwendungen), keine Faehigkeit. Wirkt inhaltlich als Kopplungsgrad und damit "
-        + "gegen die Wechselfaehigkeit — waere nur als reverse gepoltes PSC-Item verwendbar, "
+        + "gegen die Wechselfaehigkeit. Verwendbar waere es nur als reverse gepoltes PSC-Item, "
         + "ist im Instrument aber positiv gepolt.",
 };

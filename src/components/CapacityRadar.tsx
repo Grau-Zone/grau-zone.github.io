@@ -25,15 +25,15 @@ export const AXES = [
 // ─── Capacity definitions (single source of truth for the org part) ─────────────
 export interface Capacity {
   key: "sw" | "in" | "ms" | "ne";
-  tag: string;        // canonical (English) name — shown on the tab + axis
+  tag: string;        // canonical (English) name, shown on the tab + axis
   title: string;      // German title
   keyQuestion: string;
   color: string;
   colorBg: string;
   colorBorder: string;
-  definition: string;  // "Kurz" — one-line definition
+  definition: string;  // "Kurz": one-line definition
   description: string; // "Erklärung"
-  // "Woran es hängt" — three fixed roles per card, bound to the model (A-/B-codes)
+  // "Woran es hängt": three fixed roles per card, bound to the model (A-/B-codes)
   drivers: { name: string; role: "Schlüssel-Enabler" | "Voraussetzung" | "Schützt vor" }[];
   actions: string[];   // "Empfohlene Maßnahmen" (4)
 }
@@ -49,7 +49,7 @@ export const CAPACITIES: Capacity[] = [
     colorBorder: "rgba(75,110,255,0.25)",
     definition: "Einen Anbieter in akzeptabler Zeit und mit vertretbarem Risiko ersetzen.",
     description:
-      "Switching Capacity beschreibt, wie schnell und risikoarm eine Organisation einen Anbieter durch einen anderen ersetzen kann. Sie hängt an technischer Entkopplung, Datenportabilität, vertraglicher Flexibilität und echten Alternativen am Markt.",
+      "Switching Capacity beschreibt, wie schnell und risikoarm eine Organisation einen Anbieter durch einen anderen ersetzen kann. Sie hängt an technischer Entkopplung, Datenportabilität, vertraglicher Flexibilität und glaubhaften Alternativen am Markt.",
     drivers: [
       { name: "Technische Entkopplung (B1)", role: "Schlüssel-Enabler" },
       { name: "Datenportabilität (B2)", role: "Voraussetzung" },
@@ -79,7 +79,7 @@ export const CAPACITIES: Capacity[] = [
       { name: "Totale Anbieterabhängigkeit", role: "Schützt vor" },
     ],
     actions: [
-      "Interne technische Kernkompetenz gezielt aufbauen und halten",
+      "Interne technische Kernkompetenz aufbauen und halten",
       "Architektur und Datenflüsse vollständig dokumentieren",
       "Kritische Funktionen mit Eigenbetriebs-Option designen",
       "Ressourcen, Budget und Know-how für Insourcing einplanen",
@@ -118,7 +118,7 @@ export const CAPACITIES: Capacity[] = [
     colorBorder: "rgba(255,159,46,0.25)",
     definition: "Preise, Vertragsbedingungen, Datenrechte und Governance aktiv beeinflussen.",
     description:
-      "Negotiation Capacity beschreibt, wie stark eine Organisation Preise, Vertragsbedingungen, Datenrechte und Governance gegenüber Anbietern beeinflussen kann. Sie ist die relationale Capacity: Sie speist sich aus glaubhaften Outside Options, die wiederum aus Switching, Internalization und Multi-Sourcing entstehen, plus vertraglicher Flexibilität und strategischer Bedeutung für den Anbieter.",
+      "Negotiation Capacity beschreibt, wie stark eine Organisation Preise, Vertragsbedingungen, Datenrechte und Governance gegenüber Anbietern beeinflussen kann. Sie ist die relationale Capacity. Sie speist sich aus glaubhaften Outside Options, die aus Switching, Internalization und Multi-Sourcing entstehen. Hinzu kommen vertragliche Flexibilität und strategische Bedeutung für den Anbieter.",
     drivers: [
       { name: "Glaubhafte Outside Options (aus Cap. 01 bis 03)", role: "Schlüssel-Enabler" },
       { name: "Vertragliche Flexibilität (B3), strategische Bedeutung (B8)", role: "Voraussetzung" },
@@ -157,7 +157,7 @@ export const LEVELS: Level[] = [
     colorBg: "rgba(255,61,87,0.08)",
     colorBorder: "rgba(255,61,87,0.25)",
     description:
-      "Ihre Organisation ist bei kritischen digitalen Funktionen stark von einzelnen Anbietern abhängig. Der kontrollierte Handlungsraum ist gering — einseitige Entscheidungen des Anbieters lassen sich kaum abwehren.",
+      "Ihre Organisation ist bei kritischen digitalen Funktionen stark von einzelnen Anbietern abhängig. Der kontrollierte Handlungsraum ist gering. Einseitige Entscheidungen des Anbieters lassen sich kaum abwehren.",
   },
   {
     max: 0.7,
@@ -167,7 +167,7 @@ export const LEVELS: Level[] = [
     colorBg: "rgba(255,159,46,0.08)",
     colorBorder: "rgba(255,159,46,0.25)",
     description:
-      "Ihre Organisation hat in einzelnen Capacities Handlungsspielraum, bleibt in anderen aber verwundbar. Souveränität ist gegeben, solange sie nicht ernsthaft getestet wird.",
+      "Ihre Organisation hat in einzelnen Capacities Handlungsspielraum, bleibt in anderen aber verwundbar. Die Souveränität hält, solange sie nicht ernsthaft getestet wird.",
   },
   {
     max: 1.01,
@@ -210,7 +210,7 @@ function anchorFor(angle: number): "start" | "middle" | "end" {
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 interface CapacityRadarProps {
-  values?: number[];        // 4 values 0..1 — defaults to baseline
+  values?: number[];        // 4 values 0..1, defaults to baseline
   color?: string;
   activeIndex?: number;     // highlight one axis (others dimmed)
   size?: number;
@@ -306,7 +306,7 @@ const CapacityRadar = ({ values, color = "#4B6EFF", activeIndex, size = 440 }: C
           const dim = hasHighlight && i !== activeIndex;
           const labelColor = dim ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.85)";
 
-          // badge offsets — outward (toward the label); flips inward only near 100% so it never overlaps the outer label
+          // badge offsets, outward (toward the label); flips inward only near 100% so it never overlaps the outer label
           const nearMax = vals[i] > 0.85;
           const bx = ax.angle === 0 ? (nearMax ? -12 : 12) : ax.angle === 180 ? (nearMax ? 12 : -12) : 0;
           const by = ax.angle === -90 ? (nearMax ? 16 : -12) : ax.angle === 90 ? (nearMax ? -8 : 18) : 4;

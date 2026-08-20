@@ -41,7 +41,7 @@ const SovereigntyRadarSection = () => {
             className="text-4xl lg:text-5xl font-semibold text-white mb-4"
             style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.025em" }}
           >
-            Drei Pfade für Europa — 2030
+            Drei Pfade für Europa, 2030
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -51,7 +51,7 @@ const SovereigntyRadarSection = () => {
             className="text-base max-w-xl"
             style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Inter', sans-serif" }}
           >
-            Wählen Sie einen Zukunftspfad und sehen Sie, wie souverän Europa in den drei Dimensionen aufgestellt wäre.
+            Wählen Sie einen Pfad. Die Darstellung zeigt, wie souverän Europa in den drei Dimensionen aufgestellt wäre.
           </motion.p>
         </div>
 

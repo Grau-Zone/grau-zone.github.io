@@ -1,14 +1,14 @@
 // Übermittlung abgeschlossener Fragebögen an einen externen Endpunkt.
 //
 // ────────────────────────────────────────────────────────────────────────────
-//  HIER EINTRAGEN — ohne Endpunkt wird nichts übermittelt, die Seite läuft
+//  HIER EINTRAGEN. Ohne Endpunkt wird nichts übermittelt, die Seite läuft
 //  aber unverändert weiter (Download und Mail funktionieren wie bisher).
 // ────────────────────────────────────────────────────────────────────────────
 //
 //  Variante A · FormSubmit (kein Konto nötig, schickt jede Antwort als Mail)
 //    ENDPOINT = "https://formsubmit.co/ajax/adrian.bohrer@unisg.ch"
 //    Die allererste Übermittlung löst eine Bestätigungsmail aus. Erst nach
-//    dem Klick darin kommen weitere Antworten an — vorher gehen sie verloren.
+//    dem Klick darin kommen weitere Antworten an. Vorher gehen sie verloren.
 //    Also nach dem Eintragen einmal selbst durchklicken und bestätigen.
 //
 //  Variante B · Formspree (Konto nötig, Dashboard und CSV-Export)
@@ -21,7 +21,7 @@
 //    ENDPOINT = "https://<projekt>.supabase.co/rest/v1/responses"
 //    HEADERS  = { apikey: "<anon key>", Authorization: "Bearer <anon key>",
 //                 Prefer: "return=minimal" }
-//    Der anon key ist öffentlich lesbar — die Row-Level-Security-Regel der
+//    Der anon key ist öffentlich lesbar. Die Row-Level-Security-Regel der
 //    Tabelle MUSS ausschließlich INSERT erlauben, sonst kann jeder alle
 //    Antworten auslesen.
 //

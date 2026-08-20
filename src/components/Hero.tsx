@@ -172,7 +172,7 @@ const Hero = () => {
             style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Inter', sans-serif" }}
           >
             Europäische KMU stehen zwischen zwei digitalen Machtblöcken.
-            Der Sovereignty Radar macht Abhängigkeiten sichtbar — und zeigt den Weg zu echter technologischer Handlungsfreiheit.
+            Der Sovereignty Radar macht Abhängigkeiten sichtbar und zeigt Wege zu technologischer Handlungsfreiheit.
           </motion.p>
 
           {/* CTAs */}
