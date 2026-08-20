@@ -2,11 +2,6 @@ import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 
-// Offene Punkte werden bewusst sichtbar markiert, damit sie nicht unbemerkt
-// mit einer unfertigen Datenschutzerklaerung online gehen.
-const offen = (t: string) => (
-  <span style={{ color: "#d9a559" }}>Noch festzulegen — {t}</span>
-);
 const mail = (
   <a href="mailto:adrian.bohrer@unisg.ch" style={{ color: "#8ba4ff", textDecoration: "none" }}>
     adrian.bohrer@unisg.ch
@@ -40,9 +35,9 @@ const sections: { title: string; lines: React.ReactNode[] }[] = [
   {
     title: "Datenschutz · Verantwortliche Stelle",
     lines: [
-      "Adrian Bohrer, Institut für Wirtschaftsinformatik, Universität St.Gallen, Müller-Friedberg-Strasse 8, CH-9000 St.Gallen",
+      "Universität St.Gallen, Institut für Wirtschaftsinformatik, Müller-Friedberg-Strasse 8, CH-9000 St.Gallen",
+      "Vertreten durch Adrian Bohrer, verantwortlich für die Durchführung der Erhebung.",
       <>Anfragen zum Datenschutz: {mail}</>,
-      offen("ob die Universität St.Gallen als verantwortliche Stelle eintritt oder Adrian Bohrer persönlich."),
     ],
   },
   {
@@ -73,8 +68,8 @@ const sections: { title: string; lines: React.ReactNode[] }[] = [
     lines: [
       "Abgeschlossene Fragebögen werden in einer Datenbank des Anbieters Supabase im Rechenzentrum Frankfurt am Main gespeichert.",
       "Die Website kann in diese Datenbank ausschließlich schreiben. Lesen, Ändern und Löschen sind ihr technisch verwehrt; Zugriff auf die Daten hat allein das Forschungsteam.",
-      offen("die Aufbewahrungsdauer und der Zeitpunkt der Löschung."),
-      offen("ob ein Auftragsverarbeitungsvertrag mit Supabase geschlossen wird."),
+      "Supabase wird dabei als Auftragsverarbeiter eingesetzt; die Daten verlassen das Rechenzentrum in Frankfurt am Main nicht.",
+      "Die Daten werden bis zum Abschluss des Forschungsprojekts und der zugehörigen Veröffentlichungen aufbewahrt, längstens zehn Jahre nach der Erhebung. Danach werden sie gelöscht. Die Frist folgt den Regeln guter wissenschaftlicher Praxis zur Nachvollziehbarkeit von Forschungsergebnissen.",
     ],
   },
   {
@@ -88,7 +83,7 @@ const sections: { title: string; lines: React.ReactNode[] }[] = [
     title: "Hosting, Schriftarten, kein Tracking",
     lines: [
       "Diese Seite wird über GitHub Pages (GitHub Inc.) ausgeliefert. Beim Aufruf verarbeitet GitHub technisch notwendige Verbindungsdaten einschließlich Ihrer IP-Adresse. Darauf haben wir keinen Zugriff.",
-      "Die verwendeten Schriftarten werden beim Seitenaufruf von Google Fonts geladen. Dabei wird Ihre IP-Adresse an Google übertragen.",
+      "Die verwendeten Schriftarten werden zusammen mit der Seite ausgeliefert. Es besteht keine Verbindung zu Google Fonts oder anderen Anbietern von Schriftarten, und es wird keine IP-Adresse an Dritte übertragen.",
       "Es werden keine Analyse- oder Trackingwerkzeuge eingesetzt und keine Cookies zu Werbe- oder Analysezwecken gesetzt.",
     ],
   },
