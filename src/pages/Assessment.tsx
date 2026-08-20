@@ -660,26 +660,48 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
     return s;
   }, [answers]);
 
-  const buildExport = () => ({
-      timestamp: new Date().toISOString(), instrument: "v13_Instrument_final", lang: surveyLang,
-      intake: {
-        ...intake,
-        functionLabel: functionLabel(intake, surveyLang),
-        sizeLabel: labelOf(FIRM_SIZE, intake.size, surveyLang),
-        industryLabel: labelOf(INDUSTRY, intake.industry, surveyLang),
-        hqLabel: labelOf(HQ, intake.hq, surveyLang),
-      },
-      constructs: Object.fromEntries(CONSTRUCTS.map((c) => [c.key, {
-        name: c.name, step: c.step,
-        likert: scores[c.key].value === null ? null : Math.round(scores[c.key].value! * 100),
-        answered: scores[c.key].answered, total: scores[c.key].total,
-      }])),
-      factIndices: Object.fromEntries(CONSTRUCTS.filter((c) => itemsOfConstruct(c.key).some((i) => i.type === "fact")).map((c) => c.key).map((k) => [k, factRows(k, answers).map((r) => ({
-        id: r.item.id, level: r.value, max: r.maxV, providerIndependent: r.independent,
-      }))])),
-      rawAnswers: answers,
-      note: "MISSING=99 is 'do not know' and is never scored as zero.",
+  // Der uebermittelte Datensatz enthaelt nur Erhobenes: die gestellten Fragen mit
+  // den gegebenen Antworten, dazu den Kontext aus dem Intake. Konstruktwerte,
+  // Faktenindizes und Souveraenitaetsdimensionen sind daraus jederzeit neu
+  // berechenbar und stehen bewusst nicht drin — abgeleitete Werte in Rohdaten
+  // zu mischen macht spaeter unklar, was gemessen und was gerechnet wurde.
+  const buildRecord = () => ({
+    responseId,
+    zeitpunkt: new Date().toISOString(),
+    instrument: "v13_Instrument_final",
+    erhebungssprache: surveyLang,
+    intake: {
+      funktion: functionLabel(intake, surveyLang),
+      anbieter: intake.provider,
+      mitarbeiterzahl: labelOf(FIRM_SIZE, intake.size, surveyLang),
+      branche: labelOf(INDUSTRY, intake.industry, surveyLang),
+      hauptsitz: labelOf(HQ, intake.hq, surveyLang),
+    },
+    antworten: ACTIVE.map((i) => {
+      const v = answers[i.id];
+      const beantwortet = v !== undefined && v !== MISSING;
+      const werte = (i.options || []).map((o) => o.value);
+      const opt = i.type === "fact" && beantwortet ? i.options?.find((o) => o.value === v) : undefined;
+      return {
+        id: i.id,
+        frage: surveyLang === "en" ? i.en : i.de,
+        antwort: beantwortet ? v : null,
+        antworttext: opt ? pick(opt, surveyLang) : undefined,
+        skala: i.type === "fact" && werte.length
+          ? `${Math.min(...werte)}-${Math.max(...werte)}`
+          : `1-${i.scale || 7}`,
+        umgekehrt: i.reverse ? true : undefined,
+        status: v === MISSING ? "weiss nicht" : beantwortet ? undefined : "nicht beantwortet",
+      };
+    }),
   });
+
+  const exportJson = () => {
+    const url = URL.createObjectURL(new Blob([JSON.stringify(buildRecord(), null, 2)], { type: "application/json" }));
+    const a = document.createElement("a");
+    a.href = url; a.download = `sovereignty-assessment-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click(); URL.revokeObjectURL(url);
+  };
 
   const reportName = `sovereignty-assessment-${new Date().toISOString().slice(0, 10)}.txt`;
 
@@ -691,20 +713,13 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
     intake, functionLabel: functionLabel(intake, surveyLang),
     scores, answers,
     leverLong, leverValue: lever ? lever.value : null,
-    json: buildExport(),
+    json: buildRecord(),
   });
 
   const downloadReport = () => {
     const url = URL.createObjectURL(new Blob([buildReport()], { type: "text/plain;charset=utf-8" }));
     const a = document.createElement("a");
     a.href = url; a.download = reportName;
-    a.click(); URL.revokeObjectURL(url);
-  };
-
-  const exportJson = () => {
-    const url = URL.createObjectURL(new Blob([JSON.stringify(buildExport(), null, 2)], { type: "application/json" }));
-    const a = document.createElement("a");
-    a.href = url; a.download = `sovereignty-assessment-${new Date().toISOString().slice(0, 10)}.json`;
     a.click(); URL.revokeObjectURL(url);
   };
 
@@ -819,22 +834,14 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
     if (done.includes(responseId)) { sentRef.current = true; setSubmitState("ok"); return; }
     sentRef.current = true;
 
+    // Uebermittelt wird ausschliesslich der Rohdatensatz. Das lesbare Protokoll
+    // steht bewusst NICHT drin: es wiederholt dieselben Fragen und Antworten und
+    // traegt zusaetzlich die berechneten Kennzahlen. Wer es lesen will, bekommt
+    // es als Datei ueber den Deep-Dive-Knopf.
     const payload = {
       _subject: `Sovereignty Assessment · ${functionLabel(intake, surveyLang) || "ohne Funktion"}`
         + (intake.provider ? ` · ${intake.provider}` : ""),
-      responseId,
-      zeitpunkt: new Date().toISOString(),
-      erhebungssprache: surveyLang,
-      funktion: functionLabel(intake, surveyLang),
-      anbieter: intake.provider,
-      mitarbeiterzahl: labelOf(FIRM_SIZE, intake.size, surveyLang),
-      branche: labelOf(INDUSTRY, intake.industry, surveyLang),
-      hauptsitz: labelOf(HQ, intake.hq, surveyLang),
-      FTC: scores["FTC"].value === null ? null : Math.round(scores["FTC"].value! * 100),
-      CTO: scores["CTO"].value === null ? null : Math.round(scores["CTO"].value! * 100),
-      CONT: scores["CONT"].value === null ? null : Math.round(scores["CONT"].value! * 100),
-      protokoll: buildReport(),
-      datensatz: buildExport(),
+      ...buildRecord(),
     };
 
     submitResult(payload).then((st) => {

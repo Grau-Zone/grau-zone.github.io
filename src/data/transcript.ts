@@ -109,8 +109,10 @@ export function buildTranscript(inp: TranscriptInput): string {
 
   // ── Maschinenlesbar unten dran, damit eine Datei fuer beides reicht ───────
   if (inp.json) {
-    out.push("", RULE, "DATENSATZ (JSON)", RULE);
-    out.push("MISSING = 99 bedeutet 'weiss nicht' und ist keine Null.");
+    out.push("", RULE, "DATENSATZ (JSON): FRAGEN UND ANTWORTEN", RULE);
+    out.push("Nur Erhobenes. Nicht beantwortet und 'weiss nicht' stehen als null");
+    out.push("mit einem Feld status, damit beides unterscheidbar bleibt und");
+    out.push("nirgends als Null in eine Rechnung geraet.");
     out.push("");
     out.push(JSON.stringify(inp.json, null, 2));
   }
