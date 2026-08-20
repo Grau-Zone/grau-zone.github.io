@@ -1,0 +1,42 @@
+# Haelt das Supabase-Projekt wach.
+#
+# Kostenlose Supabase-Projekte werden nach etwa einer Woche ohne API-Anfrage
+# pausiert. Eine Antwort, die waehrend der Pause eintrifft, landet nur in der
+# lokalen Warteschlange im Browser der teilnehmenden Person und kommt praktisch
+# nie an — ohne dass jemand davon erfaehrt. Dieser Lauf schickt taeglich eine
+# echte Datenbankabfrage und verhindert das.
+#
+# Zweiter Zweck: Der Schritt schlaegt fehl, wenn die Antwort nicht 200 ist.
+# Damit wird aus einem stillen Ausfall eine Mail von GitHub an den Repository-
+# Besitzer. Der Herzschlag ist also zugleich die Ueberwachung.
+#
+# Der Schluessel steht hier im Klartext, weil er ohnehin oeffentlich im
+# Frontend liegt. Er darf ausschliesslich INSERT auf "responses" und SELECT auf
+# "heartbeat". Auf "responses" darf niemals eine select-Policy entstehen.
+name: Supabase wachhalten
+
+on:
+  schedule:
+    # Taeglich 06:17 UTC. Bewusst nicht zur vollen Stunde: dort staut sich der
+    # Scheduler von GitHub und Laeufe verzoegern sich teils um eine Stunde.
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Heartbeat-Tabelle abfragen
+        run: |
+          KEY="sb_publishable_znfxxZr_nEsUfL8elloRew_h31U0DJo"
+          BASE="https://zwhgrdaaysvdtqkpghra.supabase.co/rest/v1"
+          code=$(curl -sS -o antwort.txt -w "%{http_code}" \
+            -H "apikey: $KEY" -H "Authorization: Bearer $KEY" \
+            "$BASE/heartbeat?select=id&limit=1")
+          echo "HTTP $code"
+          cat antwort.txt
+          if [ "$code" != "200" ]; then
+            echo "::error::Supabase antwortet nicht mit 200. Projekt pausiert, Schluessel abgelaufen oder Policy geaendert."
+            exit 1
+          fi
+          echo "Projekt ist wach."
