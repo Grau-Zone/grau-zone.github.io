@@ -166,8 +166,8 @@ export const UI = {
   toHome: t("Back to homepage", "Zur Startseite"),
   questionsCount: t("questions", "Fragen"),
   minutes: t(
-    "approx. 12 minutes from knowledge · the 6 fact questions need contract and operations records · nothing is stored",
-    "ca. 12 Minuten aus dem Kopf · für die 6 Faktenfragen brauchen Sie Vertrags- und Betriebsunterlagen · nichts wird gespeichert"
+    "approx. 12 minutes from knowledge · the 6 fact questions need contract and operations records",
+    "ca. 12 Minuten aus dem Kopf · für die 6 Faktenfragen brauchen Sie Vertrags- und Betriebsunterlagen"
   ),
 
   // Intake
@@ -257,6 +257,27 @@ export const UI = {
   firmSize: t("Number of employees", "Mitarbeiterzahl Ihres Unternehmens"),
   firmIndustry: t("Main industry category", "Branchen-Hauptkategorie"),
   firmHq: t("Company headquarters", "Hauptsitz Ihres Unternehmens"),
+
+  // ─── Einwilligung und Uebermittlung ──────────────────────────────────────
+  minutesNoStore: t("nothing is stored", "nichts wird gespeichert"),
+
+  consentLabel: t(
+    "I agree that my answers are transmitted to the research team at the University of St. Gallen and used for research on digital sovereignty.",
+    "Ich bin damit einverstanden, dass meine Antworten an das Forschungsteam der Universität St. Gallen übermittelt und für die Forschung zu digitaler Souveränität verwendet werden."
+  ),
+  consentDetail: t(
+    "No name or e-mail address is collected. The company profile and the provider name are transmitted — in a small market these can narrow down an organisation. Answers are stored under a random ID.",
+    "Es werden weder Name noch E-Mail-Adresse erhoben. Übermittelt werden Firmenprofil und Anbietername — in einem kleinen Markt kann das eine Organisation eingrenzen. Die Antworten werden unter einer zufälligen Kennung gespeichert."
+  ),
+  consentRequired: t("Please agree before starting.", "Bitte stimmen Sie vor dem Start zu."),
+
+  submitOk: t("Your answers have been transmitted.", "Ihre Antworten wurden übermittelt."),
+  submitFailed: t(
+    "Your answers could not be transmitted and are stored locally. They will be sent again the next time you open this page.",
+    "Ihre Antworten konnten nicht übermittelt werden und liegen lokal. Beim nächsten Aufruf dieser Seite werden sie erneut gesendet."
+  ),
+  submitPending: t("Transmitting …", "Wird übermittelt …"),
+  responseIdLabel: t("Response ID", "Antwort-Kennung"),
 
   // ─── Verdikt: welche der beiden Dimensionen begrenzt heute? ───────────────
   verdictHead: t("Your position", "Ihre Position"),

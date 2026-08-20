@@ -13,13 +13,14 @@ import SovereigntyModelDiagram, { type NodeScores } from "../components/Sovereig
 import { SovereigntyMatrix } from "../components/ResultVisuals";
 import { buildTranscript } from "../data/transcript";
 import { ITEM_NODE, CONSTRUCT_NODES } from "../data/nodeMapping";
+import { submitResult, flushQueue, isEnabled, newResponseId, type SubmitState } from "../data/submit";
 import { CONSTRUCTS, ITEMS, MISSING, type Item, type Lang } from "../data/instrument";
 import { UI, STEPS, CONSTRUCT_NAMES, CONSTRUCT_SUFFIX, FUNCTIONS, FUNCTION_OTHER, FIRM_SIZE, INDUSTRY, HQ, labelOf, anchorsFor, YES_NO, pick } from "../data/surveyUi";
 
 type Answers = Record<string, number>;
 type Phase = "lang" | "intro" | "intake" | "blocks" | "result";
 
-const LS = { lang: "cds13-lang", ans: "cds13-answers", phase: "cds13-phase", block: "cds13-block", intake: "cds13-intake" };
+const LS = { lang: "cds13-lang", ans: "cds13-answers", phase: "cds13-phase", block: "cds13-block", intake: "cds13-intake", rid: "cds13-rid", consent: "cds13-consent" };
 const load = <T,>(k: string, f: T): T => {
   try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : f; } catch { return f; }
 };
@@ -113,6 +114,8 @@ export default function Assessment() {
   const [phase, setPhase] = useState<Phase>(() => load<Phase>(LS.phase, "lang"));
   const [blockIndex, setBlockIndex] = useState<number>(() => load(LS.block, 0));
   const [answers, setAnswers] = useState<Answers>(() => load<Answers>(LS.ans, {}));
+  const [consent, setConsent] = useState<boolean>(() => load(LS.consent, false));
+  const [responseId, setResponseId] = useState<string>(() => load(LS.rid, ""));
   const [intake, setIntake] = useState<Intake>(() => {
     const raw = load<any>(LS.intake, EMPTY_INTAKE);
     // aelterer Stand mit freiem Funktionsfeld
@@ -127,6 +130,11 @@ export default function Assessment() {
   useEffect(() => { localStorage.setItem(LS.block, JSON.stringify(blockIndex)); }, [blockIndex]);
   useEffect(() => { localStorage.setItem(LS.ans, JSON.stringify(answers)); }, [answers]);
   useEffect(() => { localStorage.setItem(LS.intake, JSON.stringify(intake)); }, [intake]);
+  useEffect(() => { localStorage.setItem(LS.consent, JSON.stringify(consent)); }, [consent]);
+  useEffect(() => { localStorage.setItem(LS.rid, JSON.stringify(responseId)); }, [responseId]);
+
+  // Liegengebliebene Uebermittlungen aus frueheren Durchlaeufen nachreichen.
+  useEffect(() => { flushQueue(); }, []);
 
   const L = (lang || "en") as Lang;
   // ctaItems ist als einziger UI-Eintrag ein Array und wird direkt gerendert,
@@ -138,7 +146,7 @@ export default function Assessment() {
 
   const reset = () => {
     setAnswers({}); setBlockIndex(0); setIntake(EMPTY_INTAKE);
-    setPhase("lang"); setLang(null);
+    setPhase("lang"); setLang(null); setConsent(false); setResponseId("");
     Object.values(LS).forEach((k) => localStorage.removeItem(k));
   };
 
@@ -152,7 +160,10 @@ export default function Assessment() {
         <LanguageGate key="lang" onPick={(l) => { setLang(l); setPhase("intro"); }} />
       )}
       {phase === "intro" && lang && (
-        <Intro key="intro" lang={L} tr={tr} onStart={() => setPhase("intake")} />
+        <Intro
+          key="intro" lang={L} tr={tr} consent={consent} setConsent={setConsent}
+          onStart={() => { if (!responseId) setResponseId(newResponseId()); setPhase("intake"); }}
+        />
       )}
       {phase === "intake" && lang && (
         <Intake
@@ -169,7 +180,7 @@ export default function Assessment() {
         />
       )}
       {phase === "result" && lang && (
-        <Result key="result" lang={L} tr={tr} answers={answers} intake={intake} onRestart={reset} />
+        <Result key="result" lang={L} tr={tr} answers={answers} intake={intake} onRestart={reset} responseId={responseId} consent={consent} />
       )}
     </div>
   );
@@ -228,7 +239,8 @@ function LanguageGate({ onPick }: { onPick: (l: Lang) => void }) {
 }
 
 // ─── Intro ───────────────────────────────────────────────────────────────────
-function Intro({ lang, tr, onStart }: { lang: Lang; tr: (k: any) => string; onStart: () => void }) {
+function Intro({ lang, tr, onStart, consent, setConsent }: any) {
+  const [touched, setTouched] = useState(false);
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
@@ -259,8 +271,39 @@ function Intro({ lang, tr, onStart }: { lang: Lang; tr: (k: any) => string; onSt
         ))}
       </div>
 
+      {/* Einwilligung vor dem ersten Item, nicht danach: wer nicht zustimmt,
+          soll die Fragen gar nicht erst beantwortet haben. */}
+      {isEnabled() && (
+        <div style={{
+          maxWidth: "620px", textAlign: "left", padding: "17px 19px", borderRadius: "11px",
+          background: "rgba(255,255,255,0.03)",
+          border: `1px solid ${touched && !consent ? "rgba(217,165,89,0.5)" : "rgba(255,255,255,0.09)"}`,
+          marginBottom: "24px",
+        }}>
+          <label style={{ display: "flex", gap: "11px", alignItems: "flex-start", cursor: "pointer" }}>
+            <input
+              type="checkbox" checked={!!consent}
+              onChange={(e) => setConsent(e.target.checked)}
+              style={{ marginTop: "3px", width: "17px", height: "17px", accentColor: "#8ba4ff", flexShrink: 0, cursor: "pointer" }}
+            />
+            <span style={{ fontFamily: "Inter, sans-serif", fontSize: "13.5px", lineHeight: 1.55, color: "rgba(255,255,255,0.78)" }}>
+              {tr("consentLabel")}
+            </span>
+          </label>
+          <p style={{ fontFamily: "Inter, sans-serif", fontSize: "11.5px", lineHeight: 1.55, color: "rgba(255,255,255,0.5)", margin: "10px 0 0 28px" }}>
+            {tr("consentDetail")}{" "}
+            <Link to="/impressum" style={{ color: "rgba(139,164,255,0.85)" }}>Impressum</Link>
+          </p>
+          {touched && !consent && (
+            <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "#d9a559", margin: "9px 0 0 28px" }}>
+              {tr("consentRequired")}
+            </p>
+          )}
+        </div>
+      )}
+
       <div className="flex gap-3 flex-wrap justify-center">
-        <button onClick={onStart} style={{
+        <button onClick={() => { setTouched(true); if (!isEnabled() || consent) onStart(); }} style={{
           fontFamily: "Space Grotesk, sans-serif", fontWeight: 500, fontSize: "15px",
           padding: "14px 32px", borderRadius: "10px",
           border: "1px solid rgba(75,110,255,0.4)", background: "rgba(75,110,255,0.15)",
@@ -280,6 +323,7 @@ function Intro({ lang, tr, onStart }: { lang: Lang; tr: (k: any) => string; onSt
 
       <p style={{ marginTop: "22px", fontSize: "12px", color: "rgba(255,255,255,0.4)" }}>
         {ACTIVE.length} {tr("questionsCount")} · {tr("minutes")}
+        {!isEnabled() && <> · {tr("minutesNoStore")}</>}
       </p>
     </motion.div>
   );
@@ -602,7 +646,7 @@ function QuestionCard({ item, lang, tr, color, value, onAnswer, fill }: {
 }
 
 // ─── Ergebnis ────────────────────────────────────────────────────────────────
-function Result({ lang: surveyLang, answers, intake, onRestart }: any) {
+function Result({ lang: surveyLang, answers, intake, onRestart, responseId, consent }: any) {
   // Die Ergebnisseite ist bewusst deutsch, unabhaengig davon, in welcher Sprache
   // der Fragebogen ausgefuellt wurde: gelesen und weitergereicht wird sie im
   // deutschsprachigen Haus. Die Fachbegriffe des Modells bleiben englisch, weil
@@ -762,6 +806,44 @@ function Result({ lang: surveyLang, answers, intake, onRestart }: any) {
       </div>
     );
   };
+
+  // ── Automatische Uebermittlung, einmal je abgeschlossenem Durchlauf ───────
+  // Bewusst beim Erreichen der Ergebnisseite und nicht erst beim Klick auf den
+  // CTA: sonst kaemen nur Datensaetze von Leuten an, die ohnehin Kontakt wollen.
+  const [submitState, setSubmitState] = useState<SubmitState>(isEnabled() ? "pending" : "off");
+  const sentRef = useRef(false);
+  useEffect(() => {
+    if (sentRef.current || !isEnabled() || !consent || !responseId) return;
+    let done: string[] = [];
+    try { done = JSON.parse(localStorage.getItem("cds13-sent") || "[]"); } catch { done = []; }
+    if (done.includes(responseId)) { sentRef.current = true; setSubmitState("ok"); return; }
+    sentRef.current = true;
+
+    const payload = {
+      _subject: `Sovereignty Assessment · ${functionLabel(intake, surveyLang) || "ohne Funktion"}`
+        + (intake.provider ? ` · ${intake.provider}` : ""),
+      responseId,
+      zeitpunkt: new Date().toISOString(),
+      erhebungssprache: surveyLang,
+      funktion: functionLabel(intake, surveyLang),
+      anbieter: intake.provider,
+      mitarbeiterzahl: labelOf(FIRM_SIZE, intake.size, surveyLang),
+      branche: labelOf(INDUSTRY, intake.industry, surveyLang),
+      hauptsitz: labelOf(HQ, intake.hq, surveyLang),
+      FTC: scores["FTC"].value === null ? null : Math.round(scores["FTC"].value! * 100),
+      CTO: scores["CTO"].value === null ? null : Math.round(scores["CTO"].value! * 100),
+      CONT: scores["CONT"].value === null ? null : Math.round(scores["CONT"].value! * 100),
+      protokoll: buildReport(),
+      datensatz: buildExport(),
+    };
+
+    submitResult(payload).then((st) => {
+      setSubmitState(st);
+      if (st === "ok") {
+        try { localStorage.setItem("cds13-sent", JSON.stringify([...done, responseId].slice(-50))); } catch { /* voll */ }
+      }
+    });
+  }, [consent, responseId]);
 
   const ctaMail = (() => {
     const to = "adrian.bohrer@unisg.ch,andreas.hein@unisg.ch";
@@ -955,6 +1037,20 @@ function Result({ lang: surveyLang, answers, intake, onRestart }: any) {
           </span>
         </div>
       </div>
+
+      {/* Uebermittlungsstatus */}
+      {submitState !== "off" && (
+        <div style={{ textAlign: "center", marginBottom: "16px", fontFamily: "Inter, sans-serif", fontSize: "12.5px", lineHeight: 1.6 }}>
+          <span style={{ color: submitState === "failed" ? "#d9a559" : "rgba(255,255,255,0.55)" }}>
+            {submitState === "ok" ? tr("submitOk") : submitState === "failed" ? tr("submitFailed") : tr("submitPending")}
+          </span>
+          {responseId && (
+            <div style={{ color: "rgba(255,255,255,0.4)", fontSize: "11px", marginTop: "4px", fontFamily: "Share Tech Mono, monospace" }}>
+              {tr("responseIdLabel")}: {responseId}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Aktionen */}
       <div style={{ display: "flex", gap: "11px", flexWrap: "wrap", justifyContent: "center", paddingBottom: "30px" }}>
