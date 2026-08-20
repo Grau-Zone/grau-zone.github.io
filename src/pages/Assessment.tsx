@@ -292,7 +292,7 @@ function Intro({ lang, tr, onStart, consent, setConsent }: any) {
           </label>
           <p style={{ fontFamily: "Inter, sans-serif", fontSize: "11.5px", lineHeight: 1.55, color: "rgba(255,255,255,0.5)", margin: "10px 0 0 28px" }}>
             {tr("consentDetail")}{" "}
-            <Link to="/impressum" style={{ color: "rgba(139,164,255,0.85)" }}>Impressum</Link>
+            <Link to="/impressum" style={{ color: "rgba(139,164,255,0.85)" }}>Impressum und Datenschutz</Link>
           </p>
           {touched && !consent && (
             <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "#d9a559", margin: "9px 0 0 28px" }}>

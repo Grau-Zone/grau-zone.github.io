@@ -2,6 +2,17 @@ import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 
+// Offene Punkte werden bewusst sichtbar markiert, damit sie nicht unbemerkt
+// mit einer unfertigen Datenschutzerklaerung online gehen.
+const offen = (t: string) => (
+  <span style={{ color: "#d9a559" }}>Noch festzulegen — {t}</span>
+);
+const mail = (
+  <a href="mailto:adrian.bohrer@unisg.ch" style={{ color: "#8ba4ff", textDecoration: "none" }}>
+    adrian.bohrer@unisg.ch
+  </a>
+);
+
 const sections: { title: string; lines: React.ReactNode[] }[] = [
   {
     title: "Angaben zum Anbieter",
@@ -25,6 +36,69 @@ const sections: { title: string; lines: React.ReactNode[] }[] = [
   {
     title: "Förderung",
     lines: ["Dieses Forschungsprojekt wird durch die Schwarz Stiftung gefördert."],
+  },
+  {
+    title: "Datenschutz · Verantwortliche Stelle",
+    lines: [
+      "Adrian Bohrer, Institut für Wirtschaftsinformatik, Universität St.Gallen, Müller-Friedberg-Strasse 8, CH-9000 St.Gallen",
+      <>Anfragen zum Datenschutz: {mail}</>,
+      offen("ob die Universität St.Gallen als verantwortliche Stelle eintritt oder Adrian Bohrer persönlich."),
+    ],
+  },
+  {
+    title: "Welche Daten das Self-Assessment erhebt",
+    lines: [
+      "Ihre Antworten auf die 39 Fragen des Self-Assessments.",
+      "Die von Ihnen betrachtete digitale Funktion sowie den Namen des Anbieters, den Sie eintragen.",
+      "Freiwillige Angaben zu Ihrer Organisation: Größenklasse, Branchen-Hauptkategorie und Hauptsitz.",
+      "Erhebungssprache, Zeitpunkt der Übermittlung und eine zufällig erzeugte Antwort-Kennung.",
+      "Nicht erhoben werden Name, E-Mail-Adresse und IP-Adresse.",
+      <>
+        <strong style={{ color: "rgba(255,255,255,0.85)" }}>Bitte beachten Sie:</strong> Die Kombination
+        aus Branche, Größenklasse, Hauptsitz und Anbietername kann in kleinen Märkten Rückschlüsse auf
+        eine bestimmte Organisation zulassen. Berücksichtigen Sie das insbesondere bei Freitextangaben.
+      </>,
+    ],
+  },
+  {
+    title: "Zweck und Rechtsgrundlage",
+    lines: [
+      "Die Daten dienen der Forschung zur digitalen Souveränität von Organisationen am Institut für Wirtschaftsinformatik der Universität St.Gallen.",
+      "Rechtsgrundlage ist Ihre Einwilligung, die vor der ersten Frage eingeholt wird. Ohne Einwilligung startet der Fragebogen nicht.",
+      "Die Teilnahme ist freiwillig. Sie können den Fragebogen jederzeit abbrechen; dann wird nichts übermittelt.",
+    ],
+  },
+  {
+    title: "Speicherung",
+    lines: [
+      "Abgeschlossene Fragebögen werden in einer Datenbank des Anbieters Supabase im Rechenzentrum Frankfurt am Main gespeichert.",
+      "Die Website kann in diese Datenbank ausschließlich schreiben. Lesen, Ändern und Löschen sind ihr technisch verwehrt; Zugriff auf die Daten hat allein das Forschungsteam.",
+      offen("die Aufbewahrungsdauer und der Zeitpunkt der Löschung."),
+      offen("ob ein Auftragsverarbeitungsvertrag mit Supabase geschlossen wird."),
+    ],
+  },
+  {
+    title: "Fortschritt in Ihrem Browser",
+    lines: [
+      "Der Fragebogen speichert Ihren Fortschritt lokal in Ihrem Browser, damit Sie zwischendurch unterbrechen können. Diese Daten verbleiben auf Ihrem Gerät und werden erst mit der abgeschlossenen Übermittlung übertragen.",
+      "Über die Schaltfläche „Erneut durchführen“ am Ende des Fragebogens werden sie gelöscht.",
+    ],
+  },
+  {
+    title: "Hosting, Schriftarten, kein Tracking",
+    lines: [
+      "Diese Seite wird über GitHub Pages (GitHub Inc.) ausgeliefert. Beim Aufruf verarbeitet GitHub technisch notwendige Verbindungsdaten einschließlich Ihrer IP-Adresse. Darauf haben wir keinen Zugriff.",
+      "Die verwendeten Schriftarten werden beim Seitenaufruf von Google Fonts geladen. Dabei wird Ihre IP-Adresse an Google übertragen.",
+      "Es werden keine Analyse- oder Trackingwerkzeuge eingesetzt und keine Cookies zu Werbe- oder Analysezwecken gesetzt.",
+    ],
+  },
+  {
+    title: "Ihre Rechte",
+    lines: [
+      "Sie haben das Recht auf Auskunft, Berichtigung und Löschung Ihrer Daten sowie das Recht, Ihre Einwilligung jederzeit zu widerrufen.",
+      "Da wir bewusst keine Kontaktdaten erheben, lässt sich Ihr Datensatz ausschließlich über die Antwort-Kennung auffinden, die Ihnen am Ende des Fragebogens angezeigt wird. Notieren Sie sich diese Kennung, wenn Sie sich diese Möglichkeit offenhalten möchten.",
+      <>Für Auskunft, Löschung oder Widerruf genügt eine E-Mail an {mail} unter Angabe der Antwort-Kennung.</>,
+    ],
   },
   {
     title: "Haftungsausschluss",
