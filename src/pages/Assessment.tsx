@@ -852,45 +852,28 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
     });
   }, [consent, responseId]);
 
+  // Kurze, hoefliche Anfrage. Die Antworten liegen bereits in der Datenbank,
+  // deshalb traegt die Mail nur die Antwort-Kennung: damit findet das Team den
+  // Datensatz, und niemand muss eine Datei anhaengen oder JSON mitschicken.
   const ctaMail = (() => {
     const to = "adrian.bohrer@unisg.ch,andreas.hein@unisg.ch";
     const fn = functionLabel(intake, lang);
-    const head = [
-      "Kontext aus dem Self-Assessment:",
-      fn ? `Funktion: ${fn}` : "",
-      intake.provider ? `Anbieter: ${intake.provider}` : "",
-      leverLong ? `${tr("ctaLever")}: ${leverLong} (${Math.round(lever!.value * 100)}%)` : "",
+    const lines = [
+      "Guten Tag",
       "",
-    ].filter(Boolean);
-
-    // Kompakte Fassung fuer die Mail. Die Datei aus "JSON exportieren" bleibt die
-    // vollstaendige, selbsterklaerende Form; hier zaehlt jedes Zeichen, weil
-    // Mailprogramme mailto-URLs abschneiden (Outlook jenseits von rund 2000).
-    const meta = {
-      instrument: "v13_Instrument_final",
-      date: new Date().toISOString().slice(0, 10),
-      lang: surveyLang,
-      intake: { fn, provider: intake.provider, size: intake.size, industry: intake.industry, hq: intake.hq },
-    };
-    const konstrukte = Object.fromEntries(CONSTRUCTS.map((c) => [
-      c.key, scores[c.key].value === null ? null : Math.round(scores[c.key].value! * 100),
-    ]));
-
-    const build = (payload: any) => {
-      const body = [
-        ...head,
-        tr("ctaMailAttach"), reportName, "",
-        ...(payload ? [tr("ctaMailData"), JSON.stringify(payload)] : []),
-      ].join("\n");
-      return `mailto:${to}?subject=${encodeURIComponent(tr("ctaMailSubject"))}&body=${encodeURIComponent(body)}`;
-    };
-
-    // Die Rohantworten stecken in der angehaengten Datei, im Mailtext steht nur
-    // die Zusammenfassung. Falls ein langer Freitext die URL doch ueber die
-    // Grenze treibt, faellt das JSON weg statt abgeschnitten zu werden.
-    const MAX = 1900;
-    const mitJson = build({ ...meta, scores: konstrukte });
-    return mitJson.length <= MAX ? mitJson : build(null);
+      "wir haben das Self-Assessment zur digitalen Souveränität durchlaufen und möchten gerne einen Deep-Dive-Workshop anfragen.",
+      "",
+      fn ? `Betrachtete Funktion: ${fn}` : null,
+      intake.provider ? `Anbieter: ${intake.provider}` : null,
+      responseId ? `Antwort-Kennung: ${responseId}` : null,
+      "",
+      "Über einen Terminvorschlag freuen wir uns.",
+      "",
+      "Freundliche Grüsse",
+      "",
+    ].filter((l) => l !== null) as string[];
+    const body = lines.join("\n");
+    return `mailto:${to}?subject=${encodeURIComponent(tr("ctaMailSubject"))}&body=${encodeURIComponent(body)}`;
   })();
 
   return (
@@ -940,7 +923,7 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
           {/* Gleicher Mailto-Link wie im Abschluss-CTA, hier bewusst leichter
               gestaltet: der Kasten unten bleibt der primaere Abschluss. */}
           <div style={{ display: "flex", justifyContent: "center", marginTop: "26px" }}>
-            <a href={ctaMail} onClick={downloadReport} style={{
+            <a href={ctaMail} style={{
               fontFamily: "Space Grotesk, sans-serif", fontSize: "17px", fontWeight: 600,
               padding: "17px 34px", borderRadius: "11px",
               border: "1px solid rgba(139,164,255,0.34)", background: "rgba(75,110,255,0.08)",
@@ -1031,7 +1014,7 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
         </div>
 
         <div style={{ display: "flex", gap: "14px", alignItems: "center", flexWrap: "wrap", marginTop: "24px" }}>
-          <a href={ctaMail} onClick={downloadReport} style={{
+          <a href={ctaMail} style={{
             fontFamily: "Space Grotesk, sans-serif", fontSize: "17px", fontWeight: 600,
             padding: "17px 34px", borderRadius: "11px", border: "1px solid rgba(139,164,255,0.45)",
             background: "rgba(75,110,255,0.18)", color: "#a8bcff", textDecoration: "none",
@@ -1040,7 +1023,7 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
             <Mail size={18} /> {tr("ctaButton")} <ArrowRight size={18} />
           </a>
           <span style={{ fontFamily: "Inter, sans-serif", fontSize: "11.5px", color: "rgba(255,255,255,0.5)", maxWidth: "48ch", lineHeight: 1.5 }}>
-            {leverNames ? `${tr("ctaLeverNote")} ` : ""}{tr("ctaDownloadHint")}
+            {leverNames ? tr("ctaLeverNote") : ""}
           </span>
         </div>
       </div>
