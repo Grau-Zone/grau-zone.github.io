@@ -9,9 +9,9 @@ const RINGS = 4;
 
 // 3 axes evenly spaced from the top (-90°)
 const AXES = [
-  { label: "Infrastruktur", sublabel: "Cloud & Rechenzentren", angle: -90 },
-  { label: "Modell", sublabel: "KI & Algorithmen", angle: 30 },
-  { label: "Daten", sublabel: "Governance & Flüsse", angle: 150 },
+  { label: "Cloud und Infrastruktur", sublabel: "Rechenzentren und Betrieb", angle: -90 },
+  { label: "KI-Modelle", sublabel: "Modelle und Anbieter", angle: 30 },
+  { label: "Daten", sublabel: "Daten und Schnittstellen", angle: 150 },
 ];
 
 export const SCENARIOS = [
@@ -36,13 +36,13 @@ export const SCENARIOS = [
     id: 1,
     tag: "Pfad 2",
     title: "Hybride Kontrolle",
-    subtitle: "Compliance ohne vollständige Kontrolle",
+    subtitle: "Regulatorische Anforderungen bei fortbestehenden Abhängigkeiten",
     values: [0.55, 0.40, 0.65],
     color: "#FF9F2E",
     colorBg: "rgba(255,159,46,0.08)",
     colorBorder: "rgba(255,159,46,0.25)",
     description:
-      "Europa baut konforme Alternativen auf und reguliert intensiv. Plattformabhängigkeiten und die KI-Modelllücke verhindern eine belastbare Souveränität. Das System funktioniert, bis es getestet wird.",
+      "Europäische Anbieter und regulatorische Rahmenbedingungen entwickeln sich weiter. Gleichzeitig bestehen Abhängigkeiten von globalen Cloud-, Plattform- und KI-Anbietern fort.",
     stats: [
       { label: "Sovereign Cloud IaaS (2030)", value: "40+ Mrd. €" },
       { label: "STACKIT Jahresumsatz", value: "1,9 Mrd. €" },
@@ -59,7 +59,7 @@ export const SCENARIOS = [
     colorBg: "rgba(0,196,160,0.08)",
     colorBorder: "rgba(0,196,160,0.25)",
     description:
-      "Europa baut eigene Infrastruktur, auditierte KI-Modelle und souveräne Datenarchitekturen auf. US-Hyperscaler werden nicht ersetzt, chinesische Modelle nicht verboten. Organisationen haben die Wahl und können den Anbieter jederzeit wechseln.",
+      "Europa baut eigene Infrastruktur, auditierte KI-Modelle und interoperable Datenarchitekturen auf. US-Hyperscaler werden nicht ersetzt, chinesische Modelle nicht verboten. Organisationen haben die Wahl und können den Anbieter jederzeit wechseln.",
     stats: [
       { label: "Mistral AI Valuation", value: "13,8 Mrd. $" },
       { label: "EuroHPC AI Factories", value: "19 Standorte" },
@@ -170,24 +170,6 @@ const RadarVisual = ({ activeScenario = 0, customValues, customColor, size = 440
           />
         ))}
 
-        {/* Ring percentage labels */}
-        {Array.from({ length: RINGS }).map((_, i) => {
-          const fraction = (i + 1) / RINGS;
-          const y = CY - MAX_R * fraction - 5;
-          return (
-            <text
-              key={i}
-              x={CX + 6}
-              y={y}
-              fill="rgba(139,164,255,0.5)"
-              fontSize="9"
-              fontFamily="Inter, sans-serif"
-            >
-              {(i + 1) * 25}%
-            </text>
-          );
-        })}
-
         {/* Axis lines */}
         {AXES.map((ax) => {
           const end = polar(ax.angle, MAX_R);
@@ -226,7 +208,6 @@ const RadarVisual = ({ activeScenario = 0, customValues, customColor, size = 440
         {AXES.map((ax, i) => {
           const labelPt = polar(ax.angle, MAX_R + 32);
           const dotPt = polar(ax.angle, MAX_R * values[i]);
-          const pct = Math.round(values[i] * 100);
 
           // Adjust text anchor based on axis position
           let anchor: "start" | "middle" | "end" = "middle";
@@ -274,22 +255,6 @@ const RadarVisual = ({ activeScenario = 0, customValues, customColor, size = 440
                     transition={{ delay: i * 0.08, duration: 0.4 }}
                     style={{ transformOrigin: `${dotPt.x}px ${dotPt.y}px` }}
                   />
-                  {/* % badge */}
-                  <motion.text
-                    x={dotPt.x + (ax.angle === 150 ? -12 : 12)}
-                    y={dotPt.y + (ax.angle === -90 ? -12 : 4)}
-                    textAnchor={ax.angle === 150 ? "end" : "start"}
-                    fill={color}
-                    fontSize="9"
-                    fontFamily="Space Grotesk, sans-serif"
-                    fontWeight="600"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ delay: i * 0.08 + 0.2 }}
-                  >
-                    {pct}%
-                  </motion.text>
                 </motion.g>
               </AnimatePresence>
             </g>

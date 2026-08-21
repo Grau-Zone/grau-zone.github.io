@@ -5,8 +5,9 @@ const layers = [
   {
     id: "infra",
     number: "01",
-    title: "Infrastruktur-Souveränität",
-    subtitle: "Wer besitzt die Cloud?",
+    title: "Cloud und Infrastruktur",
+    subtitle:
+      "Wie stark ist die Organisation technisch und vertraglich an bestimmte Infrastruktur-Anbieter gebunden?",
     color: "#4B6EFF",
     colorBg: "rgba(75,110,255,0.08)",
     colorBorder: "rgba(75,110,255,0.2)",
@@ -19,10 +20,10 @@ const layers = [
       </svg>
     ),
     description:
-      "Infrastruktur-Souveränität beschreibt, wer die Cloud besitzt, wo Daten physisch liegen und welche Rechtsordnung den Zugriff regelt. Das Problem geht vor allem von US-Hyperscalern aus: Amazon, Microsoft und Google kontrollieren rund 70% des europäischen Cloud-Markts.",
-    keyQuestion: "Unter welchem Recht stehen meine Daten?",
+      "Abhängigkeiten entstehen hier durch Anbieter, Standorte und Rechtsordnungen. Der europäische Cloud-Markt wird von US-Hyperscalern geprägt: Amazon, Microsoft und Google halten rund 70% des Markts. Je enger eine Organisation an einen Anbieter gebunden ist, desto kleiner ist ihr Handlungsspielraum.",
+    keyQuestion: "Wie hoch sind die Wechselkosten?",
     actions: [
-      "European Cloud-Anbieter evaluieren: STACKIT, OVHcloud, SAP BTP",
+      "Europäische Cloud-Anbieter evaluieren: STACKIT, OVHcloud, SAP BTP",
       "Datenlokalisierung vertraglich sichern (DORA, Data Act)",
       "Exit-Strategie und Wechselkosten berechnen",
       "Hybrid-Cloud-Architektur als Übergangsmodell",
@@ -36,8 +37,9 @@ const layers = [
   {
     id: "model",
     number: "02",
-    title: "Modell-Souveränität",
-    subtitle: "Wer hat die KI trainiert?",
+    title: "KI-Modelle und Services",
+    subtitle:
+      "Welche Abhängigkeiten entstehen durch Modelle, APIs und Anbieterökosysteme?",
     color: "#A855F7",
     colorBg: "rgba(168,85,247,0.08)",
     colorBorder: "rgba(168,85,247,0.2)",
@@ -48,12 +50,12 @@ const layers = [
       </svg>
     ),
     description:
-      "Modell-Souveränität beschreibt, wer das KI-Modell trainiert hat, mit welchen Daten, unter welchem Governance-Framework und wer seine zukünftige Entwicklung kontrolliert. Chinesische Open-Source-Modelle wie DeepSeek und Qwen bieten deutliche Kostenvorteile. Ihre Trainingsprovenienz bleibt intransparent.",
-    keyQuestion: "Was steckt in meinen KI-Modellen?",
+      "Abhängigkeiten entstehen hier durch Modelle, APIs und die Ökosysteme der Anbieter. Wer ein Modell trainiert hat und wer seine weitere Entwicklung kontrolliert, bestimmt die Bindung an diesen Anbieter. Chinesische Open-Source-Modelle wie DeepSeek und Qwen bieten deutliche Kostenvorteile. Ihre Trainingsprovenienz bleibt intransparent.",
+    keyQuestion: "Wie austauschbar sind Modelle und APIs?",
     actions: [
       "Europäische KI-Modelle priorisieren: Mistral, Aleph Alpha / PhariaAI",
       "Open-Source-Modelle auf Bias und Zensur auditieren (EuroHPC AI Factories)",
-      "SAP Joule für Enterprise-Workflows als souveräne Alternative",
+      "SAP Joule für Enterprise-Workflows als europäische Alternative prüfen",
       "Fine-Tuning auf eigenen Daten auf europäischer Infrastruktur",
     ],
     indicators: [
@@ -65,8 +67,9 @@ const layers = [
   {
     id: "data",
     number: "03",
-    title: "Datensouveränität",
-    subtitle: "Wer kontrolliert den Datenfluss?",
+    title: "Daten und Schnittstellen",
+    subtitle:
+      "Welche Abhängigkeiten entstehen durch Speicherung, Zugriff, Übertragung und Portabilität von Daten?",
     color: "#00C4A0",
     colorBg: "rgba(0,196,160,0.08)",
     colorBorder: "rgba(0,196,160,0.2)",
@@ -78,8 +81,8 @@ const layers = [
       </svg>
     ),
     description:
-      "Datensouveränität beschreibt, wo Daten liegen, wer unter welcher Rechtsgrundlage darauf zugreifen kann und wie Datenflüsse über Organisations- und Ländergrenzen hinweg geregelt werden. Catena-X zeigt mit 190+ Mitgliedern, dass souveräner Datenaustausch in der Praxis funktioniert.",
-    keyQuestion: "Wer kann auf meine Daten zugreifen?",
+      "Abhängigkeiten entstehen hier durch Speicherorte, Zugriffsrechte, Formate und Schnittstellen. Sie bestimmen, wie leicht Daten zu einem anderen Anbieter verlagert werden können. Catena-X zeigt mit 190+ Mitgliedern, dass geregelter Datenaustausch zwischen Organisationen in der Praxis funktioniert.",
+    keyQuestion: "Wie portabel sind die Daten?",
     actions: [
       "Data-Governance-Framework einführen (EU Data Act, DORA-konform)",
       "Datenflüsse kartieren: intern, mit Partnern, mit Clouds",
@@ -118,7 +121,7 @@ const SovereigntyLayers = () => {
             className="inline-block text-xs font-semibold tracking-[0.2em] uppercase mb-4"
             style={{ color: "rgba(139,164,255,0.6)", fontFamily: "'Space Grotesk', sans-serif" }}
           >
-            Die drei Dimensionen
+            Sovereignty Radar
           </motion.span>
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
@@ -128,8 +131,8 @@ const SovereigntyLayers = () => {
             className="text-4xl lg:text-5xl font-semibold text-white mb-4"
             style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.025em" }}
           >
-            Souveränität umfasst<br />
-            drei getrennte Probleme.
+            Drei Bereiche<br />
+            digitaler Abhängigkeit
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -139,8 +142,9 @@ const SovereigntyLayers = () => {
             className="text-base max-w-xl"
             style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Inter', sans-serif" }}
           >
-            Der Sovereignty Radar misst drei Schichten gleichzeitig.
-            Alle drei müssen parallel bearbeitet werden.
+            Digitale Abhängigkeiten können in unterschiedlichen technologischen Bereichen
+            entstehen. Der Sovereignty Radar unterscheidet drei zentrale Bereiche:
+            Cloud-Infrastruktur, KI-Modelle sowie Daten und Schnittstellen.
           </motion.p>
         </div>
 

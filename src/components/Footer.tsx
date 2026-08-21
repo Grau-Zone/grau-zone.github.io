@@ -26,22 +26,23 @@ const Footer = () => {
               style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.025em" }}
             >
               Digitale Souveränität<br />
-              als steuerbarer Parameter.
+              systematisch erfassen.
             </h2>
             <p
               className="text-sm leading-relaxed mb-4"
               style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Inter', sans-serif", maxWidth: "42ch" }}
             >
-              Die Dieter Schwarz Stiftung und Schwarz Digits fördern diese Initiative,
-              um europäische KMU mit einem Instrument auszustatten: dem Sovereignty Radar.
+              Die Dieter Schwarz Stiftung und Schwarz Digits fördern das Forschungsprojekt zur
+              Messung digitaler Souveränität von Organisationen.
             </p>
             <p
               className="text-sm leading-relaxed"
               style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Inter', sans-serif", maxWidth: "42ch" }}
             >
-              Ziel ist es, Souveränität von einem abstrakten Thema zu einem messbaren und
-              steuerbaren ökonomischen Parameter zu machen. Das gilt für die Makro-, die Anbieter-
-              und die Anwenderebene.
+              Ziel des Forschungsprojekts ist es, digitale Abhängigkeiten und den daraus
+              resultierenden organisationalen Handlungsspielraum systematisch zu erfassen. Der
+              Sovereignty Radar soll Organisationen dabei unterstützen, Abhängigkeiten sichtbar zu
+              machen, zu vergleichen und gezielt zu adressieren.
             </p>
           </motion.div>
 
@@ -80,8 +81,9 @@ const Footer = () => {
                     className="text-xs leading-relaxed"
                     style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Inter', sans-serif" }}
                   >
-                    Auftraggeber und Förderer der Initiative. STACKIT (Schwarz Digits) ist Europas
-                    führender unabhängiger Cloud-Anbieter mit €11 Mrd. Investition in Lübbenau.
+                    Förder- und Praxispartner des Forschungsprojekts. Schwarz Digits bringt
+                    insbesondere die Perspektive eines europäischen Anbieters digitaler
+                    Infrastruktur in das Projekt ein.
                   </div>
                 </div>
               </div>
@@ -114,8 +116,15 @@ const Footer = () => {
                     className="text-xs leading-relaxed"
                     style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Inter', sans-serif" }}
                   >
-                    Forschungspartner. Prof. Dr. Mahei Li · Prof. Dr. Andreas Janson ·
-                    Prof. Dr. Andreas Hein. Szenarioanalyse und empirische Grundlagen. März 2026.
+                    Wissenschaftliche Durchführung durch das Institut für Wirtschaftsinformatik der
+                    Universität St.Gallen. Entwicklung des Messmodells, empirische Untersuchung und
+                    Analyse organisationaler digitaler Souveränität.
+                  </div>
+                  <div
+                    className="text-xs leading-relaxed mt-2"
+                    style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Inter', sans-serif" }}
+                  >
+                    Prof. Dr. Mahei Li · Prof. Dr. Andreas Janson · Prof. Dr. Andreas Hein
                   </div>
                 </div>
               </div>
@@ -139,17 +148,17 @@ const Footer = () => {
               {
                 n: "#1",
                 title: "Makro-Ebene",
-                desc: "Monitoring und Indexierung des Umfelds. Kennzahlensystem für Lock-in, Option Value und Technical Debt als Entscheidungsgrundlage für CEOs, CFOs und Aufsichtsräte.",
+                desc: "Analyse technologischer, marktlicher und regulatorischer Entwicklungen, die digitale Abhängigkeiten von Organisationen beeinflussen.",
               },
               {
                 n: "#2",
                 title: "Anbieter-Ebene",
-                desc: "Transformation klassischer IT zu Plattform- und KI-Services. Compliance-by-Design und Kooperation mit vertrauenswürdigen Anbietern wie STACKIT und SAP.",
+                desc: "Analyse von Eigenschaften digitaler Anbieter und Services, die Abhängigkeiten von Organisationen reduzieren oder verstärken.",
               },
               {
                 n: "#3",
-                title: "Anwender-Ebene",
-                desc: "Strategisches IT-Management durch Enterprise Architecture (EAM). Fortbildungsprogramme und Strukturen für Transparenz über Datenflüsse im Unternehmen.",
+                title: "Organisationsebene",
+                desc: "Messung des organisationalen Handlungsspielraums im Umgang mit digitalen Abhängigkeiten anhand von Switching, Internalization, Multi-Sourcing und Negotiation Capacity.",
               },
             ].map(({ n, title, desc }) => (
               <div key={n}>

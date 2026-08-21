@@ -15,7 +15,8 @@ import { buildTranscript } from "../data/transcript";
 import { ITEM_NODE, CONSTRUCT_NODES } from "../data/nodeMapping";
 import { submitResult, flushQueue, isEnabled, newResponseId, type SubmitState } from "../data/submit";
 import { CONSTRUCTS, ITEMS, MISSING, type Item, type Lang } from "../data/instrument";
-import { UI, STEPS, CONSTRUCT_NAMES, CONSTRUCT_SUFFIX, FUNCTIONS, FUNCTION_OTHER, FIRM_SIZE, INDUSTRY, HQ, labelOf, anchorsFor, YES_NO, pick } from "../data/surveyUi";
+import { UI, CONTEXT_GROUPS, CONSTRUCT_NAMES, FUNCTIONS, FUNCTION_OTHER, FIRM_SIZE, INDUSTRY, HQ, labelOf, anchorsFor, YES_NO, pick } from "../data/surveyUi";
+import { CAPACITIES, CAP_ITEMS, itemsOfCapacity, scoreCapacity, pickCap, MIN_VALID, type CapacityKey } from "../data/capacityItems";
 
 type Answers = Record<string, number>;
 type Phase = "lang" | "intro" | "intake" | "blocks" | "result";
@@ -36,6 +37,29 @@ const STEP_COLOR: Record<string, string> = {
 const ACTIVE = ITEMS.filter((i) => i.selected);
 const itemsOfConstruct = (c: string) => ACTIVE.filter((i) => i.construct === c);
 const constructsOfStep = (s: string) => CONSTRUCTS.filter((c) => c.step === s);
+
+// Fuenf Bloecke des Fragebogens. Die ersten vier sind das oeffentliche
+// Capacity-Modell, der fuenfte sammelt die Items des Forschungsinstruments.
+// Die Items des fuenften Blocks fliessen nicht in die Capacity-Werte ein.
+export type BlockDef =
+  | { kind: "cap"; key: CapacityKey }
+  | { kind: "ctx"; key: "CTX" };
+const BLOCKS: BlockDef[] = [
+  ...CAPACITIES.map((c) => ({ kind: "cap" as const, key: c.key })),
+  { kind: "ctx" as const, key: "CTX" as const },
+];
+const CTX_COLOR = "rgba(160,175,205,1)";
+const blockColor = (b: BlockDef) =>
+  b.kind === "cap" ? CAPACITIES.find((c) => c.key === b.key)!.color : CTX_COLOR;
+
+// Items eines Blocks. Fuer den Kontextblock die im Instrument ausgewaehlten Items,
+// gruppiert nach den neutralen Ueberschriften aus CONTEXT_GROUPS.
+const ctxItemsOfGroup = (g: { constructs: string[] }) =>
+  ACTIVE.filter((i) => g.constructs.includes(i.construct));
+const itemIdsOfBlock = (b: BlockDef): string[] =>
+  b.kind === "cap"
+    ? itemsOfCapacity(b.key).map((i) => i.id)
+    : CONTEXT_GROUPS.flatMap((g) => ctxItemsOfGroup(g).map((i) => i.id));
 
 // ─── Auswertung ──────────────────────────────────────────────────────────────
 // Likert je Konstrukt: Mittel der beantworteten Items, reverse gedreht, auf 0..1.
@@ -176,7 +200,7 @@ export default function Assessment() {
           key={`b-${blockIndex}`} lang={L} tr={tr} blockIndex={blockIndex}
           answers={answers} onAnswer={answer} intake={intake}
           onBack={() => (blockIndex > 0 ? setBlockIndex(blockIndex - 1) : setPhase("intake"))}
-          onNext={() => (blockIndex < STEPS.length - 1 ? setBlockIndex(blockIndex + 1) : setPhase("result"))}
+          onNext={() => (blockIndex < BLOCKS.length - 1 ? setBlockIndex(blockIndex + 1) : setPhase("result"))}
         />
       )}
       {phase === "result" && lang && (
@@ -188,51 +212,31 @@ export default function Assessment() {
 
 // ─── Sprachauswahl ───────────────────────────────────────────────────────────
 function LanguageGate({ onPick }: { onPick: (l: Lang) => void }) {
+  // Beide Sprachfassungen sind gleichwertig. Eine sichtbare Empfehlung fuer
+  // Englisch wuerde die deutsche Fassung abwerten.
+  const btn: React.CSSProperties = {
+    fontFamily: "Space Grotesk, sans-serif", fontWeight: 500, fontSize: "17px",
+    padding: "18px 34px", borderRadius: "11px", minWidth: "250px",
+    border: "1px solid rgba(75,110,255,0.4)", background: "rgba(75,110,255,0.13)",
+    color: "#8ba4ff", cursor: "pointer",
+  };
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+      initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
       className="flex flex-col items-center justify-center min-h-[70vh] text-center px-4"
     >
       <div style={{ fontSize: "11px", fontFamily: "Space Grotesk, sans-serif", fontWeight: 600, letterSpacing: "0.2em", color: "rgba(139,164,255,0.6)", textTransform: "uppercase", marginBottom: "14px" }}>
-        {UI.eyebrow.en}
+        {UI.eyebrow.de}
       </div>
       <h1 style={{ fontFamily: "Space Grotesk, sans-serif", fontWeight: 300, fontSize: "clamp(26px, 4.5vw, 42px)", color: "white", marginBottom: "10px", letterSpacing: "-0.025em" }}>
         {UI.langTitle.en} · {UI.langTitle.de}
       </h1>
       <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "14.5px", marginBottom: "40px" }}>
-        {UI.langLead.en}
+        {UI.langLead.de}
       </p>
-
-      <div className="flex flex-col items-center gap-4">
-        {/* Empfehlung: Englisch, bewusst groesser */}
-        <button
-          onClick={() => onPick("en")}
-          style={{
-            fontFamily: "Space Grotesk, sans-serif", fontWeight: 600, fontSize: "21px",
-            padding: "22px 56px", borderRadius: "14px",
-            border: "1px solid rgba(75,110,255,0.55)", background: "rgba(75,110,255,0.22)",
-            color: "#ffffff", cursor: "pointer",
-            display: "flex", alignItems: "center", gap: "12px",
-            boxShadow: "0 0 50px rgba(75,110,255,0.25)",
-          }}
-        >
-          {UI.langEn.en} <ArrowRight size={20} />
-        </button>
-        <div style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(139,164,255,0.85)", marginTop: "-6px" }}>
-          ★ {UI.langEnHint.en}
-        </div>
-
-        <button
-          onClick={() => onPick("de")}
-          style={{
-            fontFamily: "Space Grotesk, sans-serif", fontWeight: 500, fontSize: "14px",
-            padding: "11px 26px", borderRadius: "10px",
-            border: "1px solid rgba(255,255,255,0.14)", background: "rgba(255,255,255,0.05)",
-            color: "rgba(255,255,255,0.7)", cursor: "pointer", marginTop: "10px",
-          }}
-        >
-          {UI.langDe.de}
-        </button>
+      <div className="flex flex-col sm:flex-row gap-3 justify-center">
+        <button onClick={() => onPick("en")} style={btn}>{UI.langEn.en}</button>
+        <button onClick={() => onPick("de")} style={btn}>{UI.langDe.de}</button>
       </div>
     </motion.div>
   );
@@ -259,17 +263,28 @@ function Intro({ lang, tr, onStart, consent, setConsent }: any) {
         {tr("introUnit")}
       </p>
 
-      <div className="flex flex-wrap gap-3 justify-center mb-9">
-        {STEPS.map((s, i) => (
-          <div key={s.key} style={{
+      <div className="flex flex-wrap gap-3 justify-center mb-7">
+        {CAPACITIES.map((c, i) => (
+          <div key={c.key} style={{
             padding: "8px 15px", borderRadius: "9px",
-            background: `${STEP_COLOR[s.key]}14`, border: `1px solid ${STEP_COLOR[s.key]}40`,
-            fontFamily: "Space Grotesk, sans-serif", fontSize: "12.5px", color: STEP_COLOR[s.key],
+            background: `${c.color}14`, border: `1px solid ${c.color}40`,
+            fontFamily: "Space Grotesk, sans-serif", fontSize: "12.5px", color: c.color,
           }}>
-            {i + 1} · {pick(s.label, lang)}
+            {i + 1} · {pickCap(c.label, lang)}
           </div>
         ))}
+        <div style={{
+          padding: "8px 15px", borderRadius: "9px",
+          background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.12)",
+          fontFamily: "Space Grotesk, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.6)",
+        }}>
+          5 · {tr("contextTitle")}
+        </div>
       </div>
+
+      <p style={{ color: "rgba(255,255,255,0.55)", fontSize: "13.5px", lineHeight: 1.65, marginBottom: "30px", maxWidth: "620px" }}>
+        {tr("introStage")}
+      </p>
 
       {/* Einwilligung vor dem ersten Item, nicht danach: wer nicht zustimmt,
           soll die Fragen gar nicht erst beantwortet haben. */}
@@ -322,7 +337,7 @@ function Intro({ lang, tr, onStart, consent, setConsent }: any) {
       </div>
 
       <p style={{ marginTop: "22px", fontSize: "12px", color: "rgba(255,255,255,0.4)" }}>
-        {ACTIVE.length} {tr("questionsCount")} · {tr("minutes")}
+        {CAP_ITEMS.length + ACTIVE.length} {tr("questionsCount")} · {tr("minutes")}
         {!isEnabled() && <> · {tr("minutesNoStore")}</>}
       </p>
     </motion.div>
@@ -333,7 +348,12 @@ function Intro({ lang, tr, onStart, consent, setConsent }: any) {
 function Intake({ lang, tr, intake, setIntake, onBack, onNext }: any) {
   const [touched, setTouched] = useState(false);
   const chosen = intake.fnKey as string;
-  const valid = chosen && (chosen !== FUNCTION_OTHER || intake.fnOther.trim().length > 0);
+  // Ohne Anbieter ist die Funktion-Anbieter-Konstellation nicht vollstaendig
+  // definiert, und jede Antwort bezieht sich auf genau diese Kombination.
+  const valid =
+    chosen &&
+    (chosen !== FUNCTION_OTHER || intake.fnOther.trim().length > 0) &&
+    intake.provider.trim().length > 0;
 
   // Kompakte Auswahlreihe; erneutes Klicken hebt die Auswahl wieder auf,
   // damit eine freiwillige Angabe auch zurueckgenommen werden kann.
@@ -453,6 +473,9 @@ function Intake({ lang, tr, intake, setIntake, onBack, onNext }: any) {
             color: "white", fontFamily: "Inter, sans-serif", fontSize: "15px", outline: "none",
           }}
         />
+        <p style={{ fontFamily: "Inter, sans-serif", fontSize: "11.5px", lineHeight: 1.55, color: "rgba(255,255,255,0.5)", marginTop: "7px" }}>
+          {tr("intakeProviderNote")}
+        </p>
       </div>
 
       <Nav tr={tr} onBack={onBack} color="#8ba4ff" nextLabel={tr("next")}
@@ -484,29 +507,34 @@ function Nav({ tr, onBack, onNext, nextLabel, color }: any) {
   );
 }
 
-// ─── Fragenblock (eine Modellspalte) ─────────────────────────────────────────
+// ─── Fragenblock ─────────────────────────────────────────────────────────────
+// Bloecke 1 bis 4 erheben je eine der vier Faehigkeiten. Block 5 sammelt die
+// Items des Forschungsinstruments unter neutralen Ueberschriften. Konstruktnamen,
+// Konstruktcodes und Item-IDs bleiben unsichtbar: sie wuerden Teilnehmende primen
+// und neben den vier Faehigkeiten ein zweites Modell aufmachen.
 function BlockScreen({ lang, tr, blockIndex, answers, onAnswer, onBack, onNext, intake }: any) {
-  const step = STEPS[blockIndex];
-  const color = STEP_COLOR[step.key];
-  const constructs = constructsOfStep(step.key);
-  const all = constructs.flatMap((c) => itemsOfConstruct(c.key));
-  const answered = all.filter((i) => answers[i.id] !== undefined).length;
+  const block = BLOCKS[blockIndex];
+  const cap = block.kind === "cap" ? CAPACITIES.find((c) => c.key === block.key)! : null;
+  const color = blockColor(block);
+  const ids = itemIdsOfBlock(block);
+  const answered = ids.filter((id) => answers[id] !== undefined).length;
+  const vollstaendig = answered === ids.length;
+  const [touched, setTouched] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
-  useEffect(() => { topRef.current?.scrollIntoView({ behavior: "smooth" }); }, [blockIndex]);
+  useEffect(() => { topRef.current?.scrollIntoView({ behavior: "smooth" }); setTouched(false); }, [blockIndex]);
 
-  // Platzhalter der Items durch die Angaben aus dem Intake ersetzen
   const fnLabel = functionLabel(intake, lang);
-  const fill = (s: string) =>
-    s.replace(/\[FUNCTION\]|<FUNCTION>/g, fnLabel || (lang === "en" ? "this function" : "diese Funktion"))
+  const fill = (x: string) =>
+    x.replace(/\[FUNCTION\]|<FUNCTION>/g, fnLabel || (lang === "en" ? "this function" : "diese Funktion"))
      .replace(/\[PROVIDER\]|<PROVIDER>/g, intake.provider || (lang === "en" ? "this provider" : "diesem Anbieter"));
 
   return (
-    <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }}
+    <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }}
       className="max-w-3xl mx-auto px-4">
       <div ref={topRef} />
       <div style={{ display: "flex", gap: "4px", marginBottom: "26px" }}>
-        {STEPS.map((s, i) => (
-          <div key={s.key} style={{
+        {BLOCKS.map((b, i) => (
+          <div key={b.key} style={{
             height: "3px", flex: 1, borderRadius: "2px",
             background: i < blockIndex ? "#6b9bd8" : i === blockIndex ? color : "rgba(255,255,255,0.09)",
           }} />
@@ -515,59 +543,95 @@ function BlockScreen({ lang, tr, blockIndex, answers, onAnswer, onBack, onNext, 
 
       <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "4px" }}>
         <span style={{ fontFamily: "Space Grotesk, sans-serif", fontWeight: 600, fontSize: "11px", letterSpacing: "0.2em", color, textTransform: "uppercase" }}>
-          {tr("block")} {blockIndex + 1} {tr("of")} {STEPS.length}
+          {tr("block")} {blockIndex + 1} {tr("of")} {BLOCKS.length}
         </span>
         <span style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", color: "rgba(255,255,255,0.4)", marginLeft: "auto" }}>
-          {answered}/{all.length} {tr("answered")}
+          {answered}/{ids.length} {tr("answered")}
         </span>
       </div>
-      <h2 style={{ fontFamily: "Space Grotesk, sans-serif", fontWeight: 300, fontSize: "clamp(22px,4vw,32px)", color: "white", marginBottom: "6px", letterSpacing: "-0.02em" }}>
-        {pick(step.label, lang)}
+
+      <h2 style={{ fontFamily: "Space Grotesk, sans-serif", fontWeight: 300, fontSize: "clamp(22px,4vw,32px)", color: "white", marginBottom: "4px", letterSpacing: "-0.02em" }}>
+        {cap ? pickCap(cap.label, lang) : tr("contextTitle")}
       </h2>
-      <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "14px", marginBottom: "26px" }}>{pick(step.sub, lang)}</p>
+      {cap && (
+        <div style={{ fontFamily: "Share Tech Mono, monospace", fontSize: "11px", letterSpacing: "0.14em", color: `${color}cc`, textTransform: "uppercase", marginBottom: "10px" }}>
+          {cap.term}
+        </div>
+      )}
+      <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px", lineHeight: 1.65, marginBottom: "22px", maxWidth: "68ch" }}>
+        {cap ? pickCap(cap.definition, lang) : tr("contextSub")}
+      </p>
+
+      {!cap && (
+        <div style={{ padding: "14px 17px", borderRadius: "10px", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.1)", marginBottom: "24px" }}>
+          <p style={{ fontFamily: "Inter, sans-serif", fontSize: "13.5px", lineHeight: 1.6, color: "rgba(255,255,255,0.7)", margin: 0 }}>
+            {tr("contextLead")}
+          </p>
+        </div>
+      )}
 
       {(fnLabel || intake.provider) && (
-        <div style={{ padding: "12px 16px", borderRadius: "9px", background: `${color}0d`, border: `1px solid ${color}26`, marginBottom: "26px", display: "flex", gap: "10px", alignItems: "flex-start" }}>
+        <div style={{ padding: "12px 16px", borderRadius: "9px", background: `${color}0d`, border: `1px solid ${color}26`, marginBottom: "24px", display: "flex", gap: "10px", alignItems: "flex-start" }}>
           <Info size={15} style={{ color, marginTop: "2px", flexShrink: 0 }} />
           <span style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.65)" }}>
-            {fnLabel || "—"} {tr("atProvider")} {intake.provider || "—"}
+            {fnLabel} {tr("atProvider")} {intake.provider}
           </span>
         </div>
       )}
 
-      {constructs.map((c) => (
-        <div key={c.key} style={{ marginBottom: "30px" }}>
-          <h3 style={{ fontFamily: "Space Grotesk, sans-serif", fontWeight: 500, fontSize: "14.5px", color: "rgba(255,255,255,0.75)", marginBottom: "2px" }}>
-            {pick(CONSTRUCT_NAMES[c.key], lang)}
-            {CONSTRUCT_SUFFIX[c.key] && (
-              <span style={{ color: "rgba(255,255,255,0.4)", fontSize: "12px" }}> · {pick(CONSTRUCT_SUFFIX[c.key], lang)}</span>
-            )}
-          </h3>
-          <div style={{ fontFamily: "Share Tech Mono, monospace", fontSize: "10.5px", letterSpacing: "0.12em", color: `${color}cc`, textTransform: "uppercase", marginBottom: "12px" }}>
-            {c.key}{c.fact ? " · " + tr("factHead") : ""}
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: "11px" }}>
-            {itemsOfConstruct(c.key).map((it) => (
-              <QuestionCard key={it.id} item={it} lang={lang} tr={tr} color={color}
-                value={answers[it.id]} onAnswer={onAnswer} fill={fill} />
-            ))}
-          </div>
+      {cap ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: "11px" }}>
+          {itemsOfCapacity(cap.key).map((it) => (
+            <QuestionCard key={it.id} lang={lang} tr={tr} color={color} fill={fill}
+              id={it.id} text={pickCap(it.text, lang)} scale={it.scale}
+              value={answers[it.id]} onAnswer={onAnswer} />
+          ))}
         </div>
-      ))}
+      ) : (
+        CONTEXT_GROUPS.map((g) => {
+          const items = ctxItemsOfGroup(g);
+          if (!items.length) return null;
+          return (
+            <div key={g.key} style={{ marginBottom: "30px" }}>
+              <h3 style={{ fontFamily: "Space Grotesk, sans-serif", fontWeight: 500, fontSize: "14.5px", color: "rgba(255,255,255,0.75)", marginBottom: "12px" }}>
+                {pick(g.label, lang)}
+              </h3>
+              <div style={{ display: "flex", flexDirection: "column", gap: "11px" }}>
+                {items.map((it) => (
+                  <QuestionCard key={it.id} lang={lang} tr={tr} color={color} fill={fill}
+                    id={it.id} text={lang === "en" ? it.en : it.de} scale={it.scale || 7}
+                    options={it.type === "fact" ? it.options : undefined}
+                    value={answers[it.id]} onAnswer={onAnswer} />
+                ))}
+              </div>
+            </div>
+          );
+        })
+      )}
 
-      <Nav tr={tr} onBack={onBack} onNext={onNext} color={color}
-        nextLabel={blockIndex === STEPS.length - 1 ? tr("showResult") : tr("next")} />
+      {touched && !vollstaendig && (
+        <div style={{ marginTop: "18px", fontFamily: "Inter, sans-serif", fontSize: "13px", color: "#d9a559" }}>
+          {tr("incompleteHint")}
+        </div>
+      )}
+
+      <Nav tr={tr} onBack={onBack} color={color}
+        onNext={() => { setTouched(true); if (vollstaendig) onNext(); }}
+        nextLabel={blockIndex === BLOCKS.length - 1 ? tr("showResult") : tr("next")} />
     </motion.div>
   );
 }
 
 // ─── Einzelfrage ─────────────────────────────────────────────────────────────
-function QuestionCard({ item, lang, tr, color, value, onAnswer, fill }: {
-  item: Item; lang: Lang; tr: (k: any) => string; color: string;
-  value: number | undefined; onAnswer: (id: string, v: number) => void; fill: (s: string) => string;
+// Eine Frage. Ohne Item-ID und ohne Konstruktcode. Bei Faktenfragen wird nur der
+// Antworttext gezeigt: sichtbare Zahlen suggerieren eine Rangfolge und beeinflussen
+// die Antwort. Die numerischen Werte bleiben allein im Datensatz.
+function QuestionCard({ id, text, scale, options, lang, tr, color, value, onAnswer, fill }: {
+  id: string; text: string; scale: number; options?: { value: number; en: string; de: string }[];
+  lang: Lang; tr: (k: any) => string; color: string;
+  value: number | undefined; onAnswer: (itemId: string, v: number) => void; fill: (s: string) => string;
 }) {
-  const text = fill(lang === "en" ? item.en : item.de);
+  const frage = fill(text);
   const answered = value !== undefined;
   const btn = (active: boolean, extra: React.CSSProperties = {}): React.CSSProperties => ({
     fontFamily: "Inter, sans-serif", fontSize: "12.5px", padding: "8px 13px", borderRadius: "8px",
@@ -582,93 +646,85 @@ function QuestionCard({ item, lang, tr, color, value, onAnswer, fill }: {
       padding: "15px 18px", borderRadius: "10px", background: "rgba(255,255,255,0.025)",
       border: `1px solid ${answered ? `${color}33` : "rgba(255,255,255,0.06)"}`, transition: "border-color 0.2s",
     }}>
-      <div style={{ display: "flex", gap: "10px", marginBottom: "11px" }}>
-        <span style={{ fontFamily: "Share Tech Mono, monospace", fontSize: "10px", color: `${color}99`, paddingTop: "3px", flexShrink: 0 }}>
-          {item.id}
-        </span>
-        <p style={{ color: "rgba(255,255,255,0.8)", fontSize: "14px", lineHeight: 1.55, margin: 0 }}>{text}</p>
-      </div>
+      <p style={{ color: "rgba(255,255,255,0.82)", fontSize: "14px", lineHeight: 1.55, margin: "0 0 12px" }}>
+        {frage}
+      </p>
 
-      {item.type === "likert" ? (
-        (item.scale || 7) === 2 ? (
-          // 2-stufiges Item (C2-4): als Ja/Nein statt als Zustimmungsskala
-          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-            <button onClick={() => onAnswer(item.id, 2)} style={btn(value === 2, { padding: "9px 22px" })}>
-              {pick(YES_NO.yes, lang)}
-            </button>
-            <button onClick={() => onAnswer(item.id, 1)} style={btn(value === 1, { padding: "9px 22px" })}>
-              {pick(YES_NO.no, lang)}
-            </button>
-            <button onClick={() => onAnswer(item.id, MISSING)}
-              style={btn(value === MISSING, { fontStyle: "italic", marginLeft: "6px" })}>
-              {tr("dontKnow")}
-            </button>
-          </div>
-        ) : (
-          <>
-            <div style={{ display: "flex", gap: "5px", flexWrap: "wrap", alignItems: "center" }}>
-              {Array.from({ length: item.scale || 7 }, (_, k) => k + 1).map((n) => (
-                <button key={n} onClick={() => onAnswer(item.id, n)}
-                  style={btn(value === n, { minWidth: "36px", textAlign: "center", fontWeight: 600 })}>
-                  {n}
-                </button>
-              ))}
-              <button onClick={() => onAnswer(item.id, MISSING)}
-                style={btn(value === MISSING, { fontStyle: "italic", marginLeft: "6px" })}>
-                {tr("dontKnow")}
-              </button>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", marginTop: "6px", fontFamily: "Inter, sans-serif", fontSize: "10.5px", color: "rgba(255,255,255,0.4)" }}>
-              <span>1 = {pick(anchorsFor(item.scale || 7).low, lang)}</span>
-              <span>{item.scale || 7} = {pick(anchorsFor(item.scale || 7).high, lang)}</span>
-            </div>
-          </>
-        )
-      ) : (
+      {options ? (
         <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
-          {item.options?.map((o) => (
-            <button key={o.value} onClick={() => onAnswer(item.id, o.value)}
+          {options.map((o) => (
+            <button key={o.value} onClick={() => onAnswer(id, o.value)}
               style={btn(value === o.value, { textAlign: "left", fontSize: "13px", padding: "10px 14px" })}>
-              <span style={{ fontFamily: "Share Tech Mono, monospace", fontSize: "10px", opacity: 0.65, marginRight: "9px" }}>
-                {o.value}
-              </span>
               {pick(o, lang)}
             </button>
           ))}
-          <button onClick={() => onAnswer(item.id, MISSING)}
+          <button onClick={() => onAnswer(id, MISSING)}
             style={btn(value === MISSING, { textAlign: "left", fontStyle: "italic", fontSize: "13px", padding: "10px 14px" })}>
             {tr("dontKnow")}
           </button>
         </div>
+      ) : scale === 2 ? (
+        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+          <button onClick={() => onAnswer(id, 2)} style={btn(value === 2, { padding: "9px 22px" })}>
+            {pick(YES_NO.yes, lang)}
+          </button>
+          <button onClick={() => onAnswer(id, 1)} style={btn(value === 1, { padding: "9px 22px" })}>
+            {pick(YES_NO.no, lang)}
+          </button>
+          <button onClick={() => onAnswer(id, MISSING)}
+            style={btn(value === MISSING, { fontStyle: "italic", marginLeft: "6px" })}>
+            {tr("dontKnow")}
+          </button>
+        </div>
+      ) : (
+        <>
+          <div style={{ display: "flex", gap: "5px", flexWrap: "wrap", alignItems: "center" }}>
+            {Array.from({ length: scale }, (_, k) => k + 1).map((n) => (
+              <button key={n} onClick={() => onAnswer(id, n)}
+                style={btn(value === n, { minWidth: "36px", textAlign: "center", fontWeight: 600 })}>
+                {n}
+              </button>
+            ))}
+            <button onClick={() => onAnswer(id, MISSING)}
+              style={btn(value === MISSING, { fontStyle: "italic", marginLeft: "6px" })}>
+              {tr("dontKnow")}
+            </button>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: "6px", fontFamily: "Inter, sans-serif", fontSize: "10.5px", color: "rgba(255,255,255,0.4)" }}>
+            <span>1 = {pick(anchorsFor(scale).low, lang)}</span>
+            <span>{scale} = {pick(anchorsFor(scale).high, lang)}</span>
+          </div>
+        </>
       )}
     </div>
   );
 }
 
 // ─── Ergebnis ────────────────────────────────────────────────────────────────
+// Zeigt ausschliesslich die vier Faehigkeiten des oeffentlichen Modells. Die
+// Konstrukte des Forschungsinstruments werden erhoben und exportiert, aber weder
+// angezeigt noch auf die Faehigkeiten abgebildet. Keine Prozentwerte: die
+// siebenstufige Selbsteinschaetzung wird so berichtet, wie gefragt wurde.
 function Result({ lang: surveyLang, answers, intake, onRestart, responseId, consent }: any) {
-  // Die Ergebnisseite ist bewusst deutsch, unabhaengig davon, in welcher Sprache
-  // der Fragebogen ausgefuellt wurde: gelesen und weitergereicht wird sie im
-  // deutschsprachigen Haus. Die Fachbegriffe des Modells bleiben englisch, weil
-  // sie so im Instrument, im Diagramm und in der Publikation heissen.
-  const lang: Lang = "de";
-  const TERM: Lang = "en";
+  const lang: Lang = surveyLang;
   const tr = (k: string) => pick((UI as any)[k], lang);
-  const scores = useMemo(() => {
-    const s: Record<string, ReturnType<typeof likertScore>> = {};
-    CONSTRUCTS.forEach((c) => { s[c.key] = likertScore(c.key, answers); });
-    return s;
-  }, [answers]);
+  const fmt = (s: string, vals: Record<string, string | number>) =>
+    Object.entries(vals).reduce((acc, [k, v]) => acc.replace("{" + k + "}", String(v)), s);
 
-  // Der uebermittelte Datensatz enthaelt nur Erhobenes: die gestellten Fragen mit
-  // den gegebenen Antworten, dazu den Kontext aus dem Intake. Konstruktwerte,
-  // Faktenindizes und Souveraenitaetsdimensionen sind daraus jederzeit neu
-  // berechenbar und stehen bewusst nicht drin. Abgeleitete Werte in Rohdaten
-  // zu mischen macht spaeter unklar, was gemessen und was gerechnet wurde.
+  const caps = useMemo(
+    () => CAPACITIES.map((c) => ({ cap: c, score: scoreCapacity(c.key, answers, MISSING) })),
+    [answers]
+  );
+  const ohneWert = caps.filter((c) => c.score.mean === null).length;
+  const alleIds = [...CAP_ITEMS.map((i) => i.id), ...ACTIVE.map((i) => i.id)];
+  const beantwortet = alleIds.filter((id) => answers[id] !== undefined).length;
+
+  // Datensatz: Fragen und Antworten. Die Herkunft jedes Items bleibt erhalten,
+  // damit die Forschungskonstrukte spaeter getrennt ausgewertet werden koennen.
   const buildRecord = () => ({
     responseId,
     zeitpunkt: new Date().toISOString(),
-    instrument: "v13_Instrument_final",
+    instrument: "capacity-v1 + v13_research",
     erhebungssprache: surveyLang,
     intake: {
       funktion: functionLabel(intake, surveyLang),
@@ -677,154 +733,78 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
       branche: labelOf(INDUSTRY, intake.industry, surveyLang),
       hauptsitz: labelOf(HQ, intake.hq, surveyLang),
     },
-    antworten: ACTIVE.map((i) => {
-      const v = answers[i.id];
-      const beantwortet = v !== undefined && v !== MISSING;
-      const werte = (i.options || []).map((o) => o.value);
-      const opt = i.type === "fact" && beantwortet ? i.options?.find((o) => o.value === v) : undefined;
-      return {
-        id: i.id,
-        frage: surveyLang === "en" ? i.en : i.de,
-        antwort: beantwortet ? v : null,
-        antworttext: opt ? pick(opt, surveyLang) : undefined,
-        skala: i.type === "fact" && werte.length
-          ? `${Math.min(...werte)}-${Math.max(...werte)}`
-          : `1-${i.scale || 7}`,
-        umgekehrt: i.reverse ? true : undefined,
-        status: v === MISSING ? "weiss nicht" : beantwortet ? undefined : "nicht beantwortet",
-      };
-    }),
+    antworten: [
+      ...CAP_ITEMS.map((i) => {
+        const v = answers[i.id];
+        return {
+          id: i.id,
+          publicBlock: i.publicBlock,
+          researchConstruct: null,
+          includeInPublicScore: true,
+          frage: pickCap(i.text, surveyLang),
+          antwort: v === undefined || v === MISSING ? null : v,
+          skala: "1-" + i.scale,
+          status: v === MISSING ? "weiss nicht" : v === undefined ? "nicht beantwortet" : undefined,
+        };
+      }),
+      ...ACTIVE.map((i) => {
+        const v = answers[i.id];
+        const beantw = v !== undefined && v !== MISSING;
+        const werte = (i.options || []).map((o) => o.value);
+        const opt = i.type === "fact" && beantw ? i.options?.find((o) => o.value === v) : undefined;
+        return {
+          id: i.id,
+          publicBlock: "Context",
+          researchConstruct: i.construct,
+          includeInPublicScore: false,
+          frage: surveyLang === "en" ? i.en : i.de,
+          antwort: beantw ? v : null,
+          antworttext: opt ? pick(opt, surveyLang) : undefined,
+          skala: i.type === "fact" && werte.length
+            ? Math.min(...werte) + "-" + Math.max(...werte)
+            : "1-" + (i.scale || 7),
+          umgekehrt: i.reverse ? true : undefined,
+          status: v === MISSING ? "weiss nicht" : beantw ? undefined : "nicht beantwortet",
+        };
+      }),
+    ],
   });
 
   const exportJson = () => {
     const url = URL.createObjectURL(new Blob([JSON.stringify(buildRecord(), null, 2)], { type: "application/json" }));
     const a = document.createElement("a");
-    a.href = url; a.download = `sovereignty-assessment-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click(); URL.revokeObjectURL(url);
+    a.href = url;
+    a.download = "sovereignty-assessment-" + new Date().toISOString().slice(0, 10) + ".json";
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
-  const reportName = `sovereignty-assessment-${new Date().toISOString().slice(0, 10)}.txt`;
+  const ctaMail = (() => {
+    const to = "adrian.bohrer@unisg.ch,andreas.hein@unisg.ch";
+    const fn = functionLabel(intake, lang);
+    const de = lang === "de";
+    const lines = [
+      de ? "Guten Tag" : "Dear colleagues",
+      "",
+      de
+        ? "wir haben das Self-Assessment zur digitalen Souveränität durchgeführt und möchten die Ergebnisse in einer vertiefenden Analyse einordnen."
+        : "we completed the self-assessment on digital sovereignty and would like to discuss the results in a more detailed analysis.",
+      "",
+      fn ? (de ? "Betrachtete Funktion: " : "Function under review: ") + fn : null,
+      intake.provider ? (de ? "Anbieter: " : "Provider: ") + intake.provider : null,
+      responseId ? (de ? "Antwort-Kennung: " : "Response ID: ") + responseId : null,
+      "",
+      de ? "Über einen Terminvorschlag freuen wir uns." : "We would appreciate a proposed date.",
+      "",
+      de ? "Freundliche Grüsse" : "Kind regards",
+      "",
+    ].filter((l) => l !== null) as string[];
+    return "mailto:" + to
+      + "?subject=" + encodeURIComponent(tr("ctaMailSubject"))
+      + "&body=" + encodeURIComponent(lines.join("\n"));
+  })();
 
-  // Lesbares Protokoll plus vollstaendiges JSON in einer Datei: eine mailto-URL
-  // kann nichts anhaengen, also laedt der Klick die Datei herunter und der
-  // Mailtext bittet darum, sie anzuhaengen.
-  const buildReport = () => buildTranscript({
-    lang: surveyLang, date: new Date().toISOString().slice(0, 10),
-    intake, functionLabel: functionLabel(intake, surveyLang),
-    scores, answers,
-    leverLong, leverValue: lever ? lever.value : null,
-    json: buildRecord(),
-  });
-
-  const downloadReport = () => {
-    const url = URL.createObjectURL(new Blob([buildReport()], { type: "text/plain;charset=utf-8" }));
-    const a = document.createElement("a");
-    a.href = url; a.download = reportName;
-    a.click(); URL.revokeObjectURL(url);
-  };
-
-  const section = (title: string, sub?: string) => (
-    <div style={{ marginBottom: "14px" }}>
-      <h3 style={{ fontFamily: "Space Grotesk, sans-serif", fontWeight: 500, fontSize: "16px", color: "white", marginBottom: sub ? "3px" : 0 }}>{title}</h3>
-      {sub && <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.45)" }}>{sub}</p>}
-    </div>
-  );
-
-  // Knotenwerte fuer das Modelldiagramm.
-  //  - Die sieben Faehigkeits-Knoten kommen aus der Item-Zuordnung in nodeMapping.ts,
-  //    weil Instrument und Modell Spalte 1 verschieden gliedern.
-  //  - ALT, ROC, FTC, CTO und CONT behalten die Konstruktwerte des Instruments,
-  //    damit Verdikt, Matrix und Hebel unveraendert auf den Konstrukten beruhen.
-  // Der Mittelwert je Knoten ist eine Anzeige-Heuristik: bei den Faktenindizes
-  // mittelt er ein formatives Composite, was das Instrument fuer die Auswertung
-  // ausdruecklich nicht tut. In Export und Bericht fliesst er deshalb nicht zurueck.
-  const nodeScores: NodeScores = useMemo(() => {
-    const buckets: Record<string, number[]> = {};
-    Object.values(ITEM_NODE).forEach((n) => { buckets[n] = []; });
-    ACTIVE.forEach((i) => {
-      const node = ITEM_NODE[i.id];
-      if (!node) return;
-      const v = itemScore(i, answers);
-      if (v !== null) buckets[node].push(v);
-    });
-    const m: NodeScores = {};
-    Object.entries(buckets).forEach(([n, vals]) => {
-      m[n] = vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
-    });
-    CONSTRUCT_NODES.forEach((k) => { m[k] = scores[k].value; });
-    return m;
-  }, [answers, scores]);
-
-  // Groesster Hebel = die SCHWAECHERE der beiden Souveraenitaetsdimensionen.
-  // Begruendung aus dem Modell: FTC und CTO treiben Kontinuitaet gemeinsam
-  // (Interaktionsknoten), also deckelt die schwaechere, was die staerkere
-  // leisten kann. Bewusst NICHT die global schwaechste Response Capability:
-  // an einer Capability zu arbeiten, die nicht auf die eigene Schwachstelle
-  // einzahlt, hebt nichts.
-  const lever = useMemo(() => {
-    const f = scores["FTC"].value, c = scores["CTO"].value;
-    if (f === null && c === null) return null;
-    if (f === null) return { keys: ["CTO"], value: c as number, tie: false };
-    if (c === null) return { keys: ["FTC"], value: f, tie: false };
-    if (Math.abs(f - c) < 1e-9) return { keys: ["FTC", "CTO"], value: f, tie: true };
-    return f < c
-      ? { keys: ["FTC"], value: f, tie: false }
-      : { keys: ["CTO"], value: c, tie: false };
-  }, [scores]);
-
-  const leverNames = lever ? lever.keys.map((k) => pick(CONSTRUCT_SUFFIX[k], TERM)).join(" + ") : null;
-  const leverLong  = lever ? lever.keys.map((k) => pick(CONSTRUCT_NAMES[k], TERM)).join(" · ") : null;
-
-  // Quadrant der Matrix in Worten: Schwelle ist die Mitte der Skala.
-  const quadrant = useMemo(() => {
-    const f = scores["FTC"].value, c = scores["CTO"].value;
-    if (f === null || c === null) return null;
-    // Streng groesser: der Skalenmittelpunkt ist Unentschiedenheit, keine Zustimmung.
-    // Bei genau 0.5 waere "souveraen" eine Behauptung, die die Antwort nicht hergibt.
-    const hiF = f > 0.5, hiC = c > 0.5;
-    if (hiF && hiC)  return { name: UI.quadSovereign, desc: UI.quadDesc.sovereign, color: "#6cc2b5" };
-    if (hiF && !hiC) return { name: UI.quadExit,      desc: UI.quadDesc.exit,      color: "#6b9bd8" };
-    if (!hiF && hiC) return { name: UI.quadSettled,   desc: UI.quadDesc.settled,   color: "#d9a559" };
-    return { name: UI.quadExposed, desc: UI.quadDesc.exposed, color: "#cf87a5" };
-  }, [scores]);
-
-  // Eine Kennzahl im Verdikt-Streifen
-  const figure = (key: string, color: string, binding: boolean) => {
-    const sc = scores[key];
-    const label = CONSTRUCT_SUFFIX[key] ? pick(CONSTRUCT_SUFFIX[key], TERM) : pick(CONSTRUCT_NAMES[key], TERM);
-    return (
-      <div style={{ textAlign: "center", minWidth: "150px" }}>
-        <div style={{
-          fontFamily: "Space Grotesk, sans-serif", fontWeight: 300,
-          fontSize: "clamp(34px,5vw,52px)", lineHeight: 1.05, letterSpacing: "-0.03em",
-          color: sc.value === null ? "rgba(255,255,255,0.28)" : color,
-        }}>
-          {sc.value === null ? "—" : `${Math.round(sc.value * 100)}%`}
-        </div>
-        <div style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.72)", marginTop: "7px", lineHeight: 1.35 }}>
-          {label}
-        </div>
-        {sc.answered < sc.total && (
-          <div style={{ fontFamily: "Inter, sans-serif", fontSize: "11px", color: "rgba(255,255,255,0.5)", marginTop: "3px" }}>
-            {sc.answered}/{sc.total} {tr("answered")}
-          </div>
-        )}
-        {binding && (
-          <div style={{
-            display: "inline-block", marginTop: "8px", padding: "3px 10px", borderRadius: "5px",
-            fontFamily: "Inter, sans-serif", fontSize: "10.5px", letterSpacing: "0.04em",
-            background: "rgba(217,165,89,0.18)", color: "#d9a559", border: "1px solid rgba(217,165,89,0.32)",
-          }}>
-            {lever?.tie ? tr("verdictBoth") : tr("verdictBinding")}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // ── Automatische Uebermittlung, einmal je abgeschlossenem Durchlauf ───────
-  // Bewusst beim Erreichen der Ergebnisseite und nicht erst beim Klick auf den
-  // CTA: sonst kaemen nur Datensaetze von Leuten an, die ohnehin Kontakt wollen.
+  // Uebermittlung, einmal je abgeschlossenem Durchlauf.
   const [submitState, setSubmitState] = useState<SubmitState>(isEnabled() ? "pending" : "off");
   const sentRef = useRef(false);
   useEffect(() => {
@@ -833,17 +813,11 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
     try { done = JSON.parse(localStorage.getItem("cds13-sent") || "[]"); } catch { done = []; }
     if (done.includes(responseId)) { sentRef.current = true; setSubmitState("ok"); return; }
     sentRef.current = true;
-
-    // Uebermittelt wird ausschliesslich der Rohdatensatz. Das lesbare Protokoll
-    // steht bewusst NICHT drin: es wiederholt dieselben Fragen und Antworten und
-    // traegt zusaetzlich die berechneten Kennzahlen. Wer es lesen will, bekommt
-    // es als Datei ueber den Deep-Dive-Knopf.
     const payload = {
-      _subject: `Sovereignty Assessment · ${functionLabel(intake, surveyLang) || "ohne Funktion"}`
-        + (intake.provider ? ` · ${intake.provider}` : ""),
+      _subject: "Self-Assessment · " + (functionLabel(intake, surveyLang) || "ohne Funktion")
+        + (intake.provider ? " · " + intake.provider : ""),
       ...buildRecord(),
     };
-
     submitResult(payload).then((st) => {
       setSubmitState(st);
       if (st === "ok") {
@@ -852,35 +826,22 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
     });
   }, [consent, responseId]);
 
-  // Kurze, hoefliche Anfrage. Die Antworten liegen bereits in der Datenbank,
-  // deshalb traegt die Mail nur die Antwort-Kennung: damit findet das Team den
-  // Datensatz, und niemand muss eine Datei anhaengen oder JSON mitschicken.
-  const ctaMail = (() => {
-    const to = "adrian.bohrer@unisg.ch,andreas.hein@unisg.ch";
-    const fn = functionLabel(intake, lang);
-    const lines = [
-      "Guten Tag",
-      "",
-      "wir haben das Self-Assessment zur digitalen Souveränität durchlaufen und möchten einen Deep-Dive-Workshop anfragen.",
-      "",
-      fn ? `Betrachtete Funktion: ${fn}` : null,
-      intake.provider ? `Anbieter: ${intake.provider}` : null,
-      responseId ? `Antwort-Kennung: ${responseId}` : null,
-      "",
-      "Über einen Terminvorschlag freuen wir uns.",
-      "",
-      "Freundliche Grüsse",
-      "",
-    ].filter((l) => l !== null) as string[];
-    const body = lines.join("\n");
-    return `mailto:${to}?subject=${encodeURIComponent(tr("ctaMailSubject"))}&body=${encodeURIComponent(body)}`;
-  })();
+  const antwortText = (i: Item): string => {
+    const v = answers[i.id];
+    if (v === undefined) return tr("notAnswered");
+    if (v === MISSING) return tr("dontKnow");
+    if (i.type === "fact") {
+      const o = i.options?.find((x) => x.value === v);
+      return o ? pick(o, lang) : String(v);
+    }
+    if ((i.scale || 7) === 2) return v === 2 ? pick(YES_NO.yes, lang) : pick(YES_NO.no, lang);
+    return v + " / " + (i.scale || 7);
+  };
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
-      className="max-w-[1600px] mx-auto px-6 lg:px-10">
-      {/* Kopf */}
-      <div style={{ textAlign: "center", marginBottom: "40px" }}>
+      className="max-w-[1100px] mx-auto px-6 lg:px-10">
+      <div style={{ textAlign: "center", marginBottom: "26px" }}>
         <div style={{ fontSize: "11px", fontFamily: "Space Grotesk, sans-serif", fontWeight: 600, letterSpacing: "0.2em", color: "rgba(139,164,255,0.6)", textTransform: "uppercase", marginBottom: "10px" }}>
           {tr("resultEyebrow")}
         </div>
@@ -889,116 +850,102 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
         </h2>
         {(functionLabel(intake, lang) || intake.provider) && (
           <p style={{ fontFamily: "Inter, sans-serif", fontSize: "13.5px", color: "rgba(255,255,255,0.5)", marginTop: "8px" }}>
-            {functionLabel(intake, lang)} {intake.provider ? `${tr("atProvider")} ${intake.provider}` : ""}
+            {functionLabel(intake, lang)} {intake.provider ? tr("atProvider") + " " + intake.provider : ""}
           </p>
         )}
       </div>
 
-      {/* Warnung: nicht validiert */}
-      <div style={{ padding: "15px 19px", borderRadius: "11px", background: "rgba(217,165,89,0.09)", border: "1px solid rgba(217,165,89,0.28)", marginBottom: "34px", display: "flex", gap: "12px", alignItems: "flex-start" }}>
+      <p style={{ fontFamily: "Inter, sans-serif", fontSize: "14px", lineHeight: 1.7, color: "rgba(255,255,255,0.62)", maxWidth: "80ch", margin: "0 auto 24px", textAlign: "center" }}>
+        {tr("resultLead")}
+      </p>
+
+      <div style={{ padding: "15px 19px", borderRadius: "11px", background: "rgba(217,165,89,0.09)", border: "1px solid rgba(217,165,89,0.28)", marginBottom: "30px", display: "flex", gap: "12px", alignItems: "flex-start" }}>
         <AlertTriangle size={17} style={{ color: "#d9a559", marginTop: "1px", flexShrink: 0 }} />
-        <p style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.6)", lineHeight: 1.6, margin: 0 }}>
+        <p style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.65)", lineHeight: 1.6, margin: 0 }}>
           {tr("weakHint")}
         </p>
       </div>
 
-      {/* ── Verdikt: welche Dimension begrenzt heute? ── */}
-      {(scores["FTC"].value !== null || scores["CTO"].value !== null) && (
-        <div style={{
-          marginBottom: "40px", padding: "26px 28px", borderRadius: "14px",
-          background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.09)",
-        }}>
-          <div style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "11px", fontWeight: 600, letterSpacing: "0.2em", color: "rgba(255,255,255,0.55)", textTransform: "uppercase", marginBottom: "20px" }}>
-            {tr("verdictHead")}
-          </div>
+      <div style={{ marginBottom: "34px" }}>
+        {caps.map(({ cap, score }) => (
+          <div key={cap.key} style={{ marginBottom: "22px" }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: "10px", flexWrap: "wrap", marginBottom: "7px" }}>
+              <span style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "16px", color: "rgba(255,255,255,0.9)" }}>
+                {pickCap(cap.label, lang)}
+              </span>
+              <span style={{ fontFamily: "Share Tech Mono, monospace", fontSize: "10.5px", letterSpacing: "0.12em", color: cap.color + "cc", textTransform: "uppercase" }}>
+                {cap.term}
+              </span>
+              <span style={{ marginLeft: "auto", fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.55)" }}>
+                {fmt(tr("itemsScored"), { a: score.valid, b: score.total })}
+              </span>
+            </div>
 
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "clamp(14px,3vw,44px)", flexWrap: "wrap" }}>
-            {figure("FTC", "#6b9bd8", lever?.keys.includes("FTC") ?? false)}
-            <span style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "26px", color: "rgba(255,255,255,0.35)", lineHeight: 1 }}>×</span>
-            {figure("CTO", "#5cbf8a", lever?.keys.includes("CTO") ?? false)}
-            <span style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "22px", color: "rgba(255,255,255,0.35)", lineHeight: 1 }}>&rarr;</span>
-            {figure("CONT", "#6cc2b5", false)}
-          </div>
+            <div style={{ height: "10px", borderRadius: "5px", background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+              {score.mean !== null && (
+                <div style={{ height: "100%", width: (score.mean / 7) * 100 + "%", borderRadius: "5px", background: cap.color }} />
+              )}
+            </div>
 
-          {/* Gleicher Mailto-Link wie im Abschluss-CTA, hier bewusst leichter
-              gestaltet: der Kasten unten bleibt der primaere Abschluss. */}
-          <div style={{ display: "flex", justifyContent: "center", marginTop: "26px" }}>
-            <a href={ctaMail} style={{
-              fontFamily: "Space Grotesk, sans-serif", fontSize: "17px", fontWeight: 600,
-              padding: "17px 34px", borderRadius: "11px",
-              border: "1px solid rgba(139,164,255,0.34)", background: "rgba(75,110,255,0.08)",
-              color: "#a8bcff", textDecoration: "none",
-              display: "flex", alignItems: "center", gap: "9px",
-            }}>
-              <Mail size={18} /> {tr("ctaButton")} <ArrowRight size={18} />
-            </a>
-          </div>
-        </div>
-      )}
-
-      {/* ── Visualisierung 1: Souveränitaets-Matrix ── */}
-      <div style={{ marginBottom: "40px" }}>
-        {section(tr("matrixHead"), tr("matrixLead"))}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8" style={{ alignItems: "center" }}>
-          <div style={{ display: "flex", justifyContent: "center" }}>
-            <SovereigntyMatrix
-              ftc={scores["FTC"].value} cto={scores["CTO"].value} cont={scores["CONT"].value} lang={lang}
-            />
-          </div>
-          <div>
-            {quadrant ? (
-              <>
-                <div style={{ fontFamily: "Share Tech Mono, monospace", fontSize: "11px", letterSpacing: "0.16em", color: "rgba(255,255,255,0.5)", textTransform: "uppercase", marginBottom: "9px" }}>
-                  {tr("quadHead")}
-                </div>
-                <div style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "clamp(19px,2.2vw,25px)", fontWeight: 400, color: quadrant.color, letterSpacing: "-0.015em", marginBottom: "12px" }}>
-                  {pick(quadrant.name, lang)}
-                </div>
-                <p style={{ fontFamily: "Inter, sans-serif", fontSize: "14.5px", lineHeight: 1.65, color: "rgba(255,255,255,0.68)", maxWidth: "46ch", margin: 0 }}>
-                  {pick(quadrant.desc, lang)}
-                </p>
-              </>
-            ) : (
-              <p style={{ fontFamily: "Inter, sans-serif", fontSize: "14px", color: "rgba(255,255,255,0.5)", fontStyle: "italic", margin: 0 }}>
-                {tr("notAnswered")}
-              </p>
-            )}
-            <div style={{ fontFamily: "Inter, sans-serif", fontSize: "11.5px", color: "rgba(255,255,255,0.5)", marginTop: "16px" }}>
-              {pick(UI.outcomeDot, lang)}
+            <div style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", color: score.mean === null ? "#d9a559" : "rgba(255,255,255,0.7)", marginTop: "6px" }}>
+              {score.mean === null
+                ? tr("notEnough")
+                : fmt(tr("selfRating"), { v: score.mean.toFixed(1).replace(".", lang === "de" ? "," : ".") })}
             </div>
           </div>
-        </div>
+        ))}
+
+        <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.5)", marginTop: "16px" }}>
+          {fmt(tr("answeredSummary"), { a: beantwortet, b: alleIds.length })}
+          {ohneWert === 1 ? " " + tr("notEnoughArea") : ohneWert > 1 ? " " + fmt(tr("notEnoughAreas"), { n: ohneWert }) : ""}
+        </p>
       </div>
 
-      {/* ── Visualisierung 3: eigene Werte im Modell ── */}
-      <div style={{ marginBottom: "44px" }}>
-        {section(tr("diagramHead"), tr("diagramLead"))}
-        <SovereigntyModelDiagram scores={nodeScores} />
+      <div style={{ marginBottom: "34px", padding: "22px 24px", borderRadius: "12px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
+        <h3 style={{ fontFamily: "Space Grotesk, sans-serif", fontWeight: 500, fontSize: "17px", color: "white", marginBottom: "5px" }}>
+          {tr("contextTitle")}
+        </h3>
+        <p style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", lineHeight: 1.6, color: "rgba(255,255,255,0.55)", maxWidth: "78ch" }}>
+          {tr("contextNotScored")}
+        </p>
+        {CONTEXT_GROUPS.map((g) => {
+          const items = ACTIVE.filter((i) => g.constructs.includes(i.construct));
+          if (!items.length) return null;
+          return (
+            <div key={g.key} style={{ marginTop: "18px" }}>
+              <div style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "13.5px", color: "rgba(255,255,255,0.75)", marginBottom: "8px" }}>
+                {pick(g.label, lang)}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                {items.map((i) => (
+                  <div key={i.id} style={{ display: "flex", gap: "14px", alignItems: "baseline", flexWrap: "wrap", fontFamily: "Inter, sans-serif", fontSize: "12.5px" }}>
+                    <span style={{ color: "rgba(255,255,255,0.55)", flex: 1, minWidth: "260px", lineHeight: 1.5 }}>
+                      {lang === "en" ? i.en : i.de}
+                    </span>
+                    <span style={{ color: "rgba(255,255,255,0.8)", whiteSpace: "nowrap" }}>{antwortText(i)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
-      {/* ── Call to Action ── */}
       <div style={{
-        marginBottom: "34px", padding: "30px 32px", borderRadius: "14px",
+        marginBottom: "30px", padding: "30px 32px", borderRadius: "14px",
         background: "linear-gradient(135deg, rgba(75,110,255,0.10), rgba(108,194,181,0.06))",
         border: "1px solid rgba(139,164,255,0.28)",
       }}>
         <div style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "11px", fontWeight: 600, letterSpacing: "0.2em", color: "rgba(139,164,255,0.75)", textTransform: "uppercase", marginBottom: "12px" }}>
           {tr("ctaEyebrow")}
         </div>
-        <h3 style={{ fontFamily: "Space Grotesk, sans-serif", fontWeight: 400, fontSize: "clamp(20px,2.6vw,29px)", color: "white", letterSpacing: "-0.02em", margin: 0 }}>
-          {leverNames ? `${tr("ctaLever")}: ` : ""}
-          <span style={{ color: leverNames ? "#8ba4ff" : "white" }}>{leverNames ?? tr("ctaLeverNone")}</span>
+        <h3 style={{ fontFamily: "Space Grotesk, sans-serif", fontWeight: 400, fontSize: "clamp(20px,2.6vw,28px)", color: "white", letterSpacing: "-0.02em", margin: 0 }}>
+          {tr("ctaHead")}
         </h3>
-        {leverLong && (
-          <div style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.55)", marginTop: "7px" }}>
-            {leverLong} · {Math.round(lever!.value * 100)}%
-          </div>
-        )}
-        <p style={{ fontFamily: "Inter, sans-serif", fontSize: "14.5px", lineHeight: 1.65, color: "rgba(255,255,255,0.65)", maxWidth: "68ch", marginTop: "12px" }}>
+        <p style={{ fontFamily: "Inter, sans-serif", fontSize: "14.5px", lineHeight: 1.65, color: "rgba(255,255,255,0.65)", maxWidth: "78ch", marginTop: "12px" }}>
           {tr("ctaLead")}
         </p>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4" style={{ gap: "12px", marginTop: "22px" }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: "12px", marginTop: "22px" }}>
           {UI.ctaItems.map((it) => (
             <div key={it.en} style={{
               display: "flex", gap: "9px", alignItems: "flex-start",
@@ -1012,8 +959,7 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
             </div>
           ))}
         </div>
-
-        <div style={{ display: "flex", gap: "14px", alignItems: "center", flexWrap: "wrap", marginTop: "24px" }}>
+        <div style={{ display: "flex", marginTop: "24px" }}>
           <a href={ctaMail} style={{
             fontFamily: "Space Grotesk, sans-serif", fontSize: "17px", fontWeight: 600,
             padding: "17px 34px", borderRadius: "11px", border: "1px solid rgba(139,164,255,0.45)",
@@ -1022,13 +968,9 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
           }}>
             <Mail size={18} /> {tr("ctaButton")} <ArrowRight size={18} />
           </a>
-          <span style={{ fontFamily: "Inter, sans-serif", fontSize: "11.5px", color: "rgba(255,255,255,0.5)", maxWidth: "48ch", lineHeight: 1.5 }}>
-            {leverNames ? tr("ctaLeverNote") : ""}
-          </span>
         </div>
       </div>
 
-      {/* Uebermittlungsstatus */}
       {submitState !== "off" && (
         <div style={{ textAlign: "center", marginBottom: "16px", fontFamily: "Inter, sans-serif", fontSize: "12.5px", lineHeight: 1.6 }}>
           <span style={{ color: submitState === "failed" ? "#d9a559" : "rgba(255,255,255,0.55)" }}>
@@ -1042,7 +984,6 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
         </div>
       )}
 
-      {/* Aktionen */}
       <div style={{ display: "flex", gap: "11px", flexWrap: "wrap", justifyContent: "center", paddingBottom: "30px" }}>
         <button onClick={exportJson} style={{
           fontFamily: "Space Grotesk, sans-serif", fontSize: "13px", padding: "12px 20px", borderRadius: "8px",
@@ -1051,13 +992,6 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
         }}>
           <FileJson size={14} /> {tr("downloadJson")}
         </button>
-        <button onClick={downloadReport} style={{
-          fontFamily: "Space Grotesk, sans-serif", fontSize: "13px", padding: "12px 20px", borderRadius: "8px",
-          border: "1px solid rgba(139,164,255,0.3)", background: "rgba(139,164,255,0.08)",
-          color: "rgba(139,164,255,0.85)", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px",
-        }}>
-          <FileJson size={14} /> {tr("downloadReport")}
-        </button>
         <button onClick={onRestart} style={{
           fontFamily: "Space Grotesk, sans-serif", fontSize: "13px", padding: "12px 20px", borderRadius: "8px",
           border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)",
@@ -1065,13 +999,6 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
         }}>
           <RotateCcw size={14} /> {tr("restart")}
         </button>
-        <Link to="/#modell" style={{
-          fontFamily: "Space Grotesk, sans-serif", fontSize: "13px", padding: "12px 20px", borderRadius: "8px",
-          border: "1px solid rgba(75,110,255,0.3)", background: "rgba(75,110,255,0.1)",
-          color: "#8ba4ff", textDecoration: "none", display: "flex", alignItems: "center", gap: "6px",
-        }}>
-          {tr("toModel")} <ArrowRight size={14} />
-        </Link>
         <Link to="/" style={{
           fontFamily: "Space Grotesk, sans-serif", fontSize: "13px", padding: "12px 20px", borderRadius: "8px",
           border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)",

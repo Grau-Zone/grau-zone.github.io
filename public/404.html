@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Sovereignty Radar</title>
+    <script>
+      // GitHub Pages liefert fuer jeden Pfad ausser / eine 404 aus, weil dort
+      // kein Server steht, der die Single-Page-Anwendung ausliefern koennte.
+      // Diese Seite haelt den angeforderten Pfad in der Query fest und laedt
+      // die Startseite. index.html stellt den Pfad danach wieder her, bevor
+      // React startet, sodass /assessment und /impressum als Direktlink und
+      // nach einem Reload funktionieren.
+      (function () {
+        var l = window.location;
+        var pfad = l.pathname.replace(/^\/+/, "");
+        l.replace(
+          l.origin + "/?p=" + encodeURIComponent(pfad) +
+          (l.search ? "&q=" + encodeURIComponent(l.search.slice(1)) : "") +
+          l.hash
+        );
+      })();
+    </script>
+  </head>
+  <body></body>
+</html>

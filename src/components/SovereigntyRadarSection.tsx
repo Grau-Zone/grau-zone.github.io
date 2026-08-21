@@ -51,7 +51,8 @@ const SovereigntyRadarSection = () => {
             className="text-base max-w-xl"
             style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Inter', sans-serif" }}
           >
-            Wählen Sie einen Pfad. Die Darstellung zeigt, wie souverän Europa in den drei Dimensionen aufgestellt wäre.
+            Die drei Szenarien zeigen, wie sich unterschiedliche technologische, marktliche und
+            regulatorische Entwicklungen auf digitale Abhängigkeiten in Europa auswirken könnten.
           </motion.p>
         </div>
 
@@ -150,42 +151,34 @@ const SovereigntyRadarSection = () => {
                   {scenario.description}
                 </p>
 
-                {/* Radar dimension scores */}
-                <div className="space-y-3 mb-8">
-                  {[
-                    { label: "Infrastruktur-Souveränität", value: scenario.values[0] },
-                    { label: "Modell-Souveränität", value: scenario.values[1] },
-                    { label: "Datensouveränität", value: scenario.values[2] },
-                  ].map(({ label, value }) => (
-                    <div key={label}>
-                      <div className="flex justify-between items-center mb-1.5">
+                {/* Bereiche, in denen Abhängigkeiten entstehen */}
+                <div className="mb-8">
+                  <div
+                    className="text-xs font-semibold uppercase tracking-widest mb-3"
+                    style={{ color: "rgba(255,255,255,0.4)", fontFamily: "'Space Grotesk', sans-serif" }}
+                  >
+                    Betroffene Bereiche
+                  </div>
+                  <div className="space-y-2.5">
+                    {[
+                      "Cloud- und Infrastrukturabhängigkeiten",
+                      "Abhängigkeiten von KI-Modellen und -Anbietern",
+                      "Daten- und Schnittstellenabhängigkeiten",
+                    ].map((label) => (
+                      <div key={label} className="flex items-center gap-3">
+                        <span
+                          className="w-1.5 h-1.5 rounded-full shrink-0"
+                          style={{ background: scenario.color }}
+                        />
                         <span
                           className="text-xs font-medium"
-                          style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Space Grotesk', sans-serif" }}
+                          style={{ color: "rgba(255,255,255,0.55)", fontFamily: "'Space Grotesk', sans-serif" }}
                         >
                           {label}
                         </span>
-                        <span
-                          className="text-xs font-bold"
-                          style={{ color: scenario.color, fontFamily: "'Space Grotesk', sans-serif" }}
-                        >
-                          {Math.round(value * 100)}%
-                        </span>
                       </div>
-                      <div
-                        className="h-1 rounded-full overflow-hidden"
-                        style={{ background: "rgba(255,255,255,0.06)" }}
-                      >
-                        <motion.div
-                          className="h-full rounded-full"
-                          style={{ background: scenario.color }}
-                          initial={{ width: 0 }}
-                          animate={{ width: `${value * 100}%` }}
-                          transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
-                        />
-                      </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
 
                 {/* Key metrics */}

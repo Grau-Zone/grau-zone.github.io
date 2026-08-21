@@ -2,10 +2,8 @@ import { motion } from "framer-motion";
 
 const threats = [
   {
-    direction: "Von Westen",
-    icon: "🇺🇸",
-    title: "Infrastruktur-Lock-in",
-    subtitle: "US-Hyperscaler",
+    title: "Cloud-Infrastruktur",
+    subtitle: "Abhängigkeit von Infrastruktur-Anbietern",
     stat: "70%",
     statLabel: "des EU-Cloud-Markts",
     color: "#4B6EFF",
@@ -14,15 +12,13 @@ const threats = [
     points: [
       "Amazon, Microsoft und Google kontrollieren ~70% des europäischen Cloud-Markts",
       "Wechselkosten: bis zu 8,5 Mio. € pro Organisation",
-      "Politische Abhängigkeit: Microsoft blockierte ICC-Mitarbeiter nach US-Sanktionen",
+      "Microsoft blockierte ICC-Mitarbeiter nach US-Sanktionen",
       "Ein AWS-Ausfall (Okt. 2025) legte 3.500 Unternehmen in 60+ Ländern lahm",
     ],
   },
   {
-    direction: "Von Osten",
-    icon: "🇨🇳",
-    title: "KI-Modell-Offensive",
-    subtitle: "Chinesische Open-Source-KI",
+    title: "KI-Modelle",
+    subtitle: "Abhängigkeit von Modellen und Modellanbietern",
     stat: "15%",
     statLabel: "globale KI-Nutzung",
     color: "#FF3D57",
@@ -36,19 +32,17 @@ const threats = [
     ],
   },
   {
-    direction: "Von Innen",
-    icon: "🇪🇺",
-    title: "Regulierung ohne Kapazität",
-    subtitle: "Europas Dilemma",
+    title: "Regulatorisches Umfeld",
+    subtitle: "Anforderungen an den Einsatz digitaler Technologien",
     stat: "93%",
-    statLabel: "dt. Firmen abhängig",
+    statLabel: "dt. Firmen digital abhängig",
     color: "#FF9F2E",
     colorBg: "rgba(255,159,46,0.07)",
     colorBorder: "rgba(255,159,46,0.2)",
     points: [
-      "Data Act, AI Act, NIS2 und DORA schaffen Nachfrage, aber kein Angebot",
-      "GAIA-X: 600 Katalog-Services, aber CEO bestätigt Anbieterengpässe",
-      "EU-Hyperscaler-Investitionen 2025: 240 Mrd. $ (US) vs. ~15 Mrd. € (EU)",
+      "Data Act, AI Act, NIS2 und DORA definieren Anforderungen an den Technologieeinsatz",
+      "GAIA-X: 600 Katalog-Services. Der CEO bestätigt Anbieterengpässe",
+      "Hyperscaler-Investitionen 2025: 240 Mrd. $ (US) gegenüber ~15 Mrd. € (EU)",
       "»Wir haben kein Erkenntnisproblem, sondern ein Umsetzungsproblem.« (SAP)",
     ],
   },
@@ -89,7 +83,7 @@ const ThreatContext = () => {
             className="text-4xl lg:text-5xl font-semibold text-white mb-4"
             style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.025em" }}
           >
-            Europa unter dreifachem Druck
+            Digitale Abhängigkeiten in Europa
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -99,8 +93,10 @@ const ThreatContext = () => {
             className="text-base leading-relaxed"
             style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Inter', sans-serif" }}
           >
-            Europas Enterprise-IT steht 2026 unter Druck aus drei Richtungen gleichzeitig.
-            Eine Analyse entlang einer einzelnen Achse erfasst die Komplexität nicht vollständig.
+            Europäische Organisationen sind bei Cloud-Infrastruktur, KI-Modellen und digitalen
+            Technologien in hohem Mass von externen Anbietern abhängig. Gleichzeitig verändern
+            regulatorische Anforderungen die Bedingungen, unter denen diese Technologien
+            eingesetzt werden.
           </motion.p>
         </div>
 
@@ -108,7 +104,7 @@ const ThreatContext = () => {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {threats.map((threat, i) => (
             <motion.div
-              key={threat.direction}
+              key={threat.title}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
@@ -119,17 +115,6 @@ const ThreatContext = () => {
                 border: `1px solid ${threat.colorBorder}`,
               }}
             >
-              {/* Direction badge */}
-              <div className="flex items-center gap-2 mb-6">
-                <span className="text-lg">{threat.icon}</span>
-                <span
-                  className="text-xs font-semibold tracking-widest uppercase"
-                  style={{ color: threat.color, fontFamily: "'Space Grotesk', sans-serif" }}
-                >
-                  {threat.direction}
-                </span>
-              </div>
-
               {/* Big stat */}
               <div className="mb-5">
                 <div
@@ -186,7 +171,7 @@ const ThreatContext = () => {
           ))}
         </div>
 
-        {/* Quote */}
+        {/* Closing statement */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -194,19 +179,13 @@ const ThreatContext = () => {
           transition={{ delay: 0.3 }}
           className="mt-16 text-center"
         >
-          <blockquote
+          <p
             className="text-xl lg:text-2xl font-medium text-white/60 max-w-3xl mx-auto leading-relaxed"
             style={{ fontFamily: "'Space Grotesk', sans-serif" }}
           >
-            »Digitale Souveränität wird nicht in Papieren entschieden,
-            sondern in konkreten Unternehmens- und KI-Projekten.«
-          </blockquote>
-          <cite
-            className="block mt-4 text-sm not-italic"
-            style={{ color: "rgba(139,164,255,0.5)", fontFamily: "'Space Grotesk', sans-serif" }}
-          >
-            Prof. Dr. Andreas Hein, IWI-HSG, Universität St. Gallen
-          </cite>
+            Digitale Souveränität zeigt sich darin, welche Handlungsoptionen Organisationen im
+            Umgang mit kritischen digitalen Abhängigkeiten tatsächlich besitzen.
+          </p>
         </motion.div>
       </div>
 

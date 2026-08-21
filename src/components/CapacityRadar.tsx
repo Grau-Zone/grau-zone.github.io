@@ -31,11 +31,9 @@ export interface Capacity {
   color: string;
   colorBg: string;
   colorBorder: string;
-  definition: string;  // "Kurz": one-line definition
-  description: string; // "Erklärung"
-  // "Woran es hängt": three fixed roles per card, bound to the model (A-/B-codes)
-  drivers: { name: string; role: "Schlüssel-Enabler" | "Voraussetzung" | "Schützt vor" }[];
-  actions: string[];   // "Empfohlene Maßnahmen" (4)
+  definition: string;  // exactly one definition per capacity
+  drivers: string[];   // "Relevante Einflussfaktoren"
+  actions: string[];   // "Beispiele organisationaler Maßnahmen" (4)
 }
 
 export const CAPACITIES: Capacity[] = [
@@ -47,13 +45,13 @@ export const CAPACITIES: Capacity[] = [
     color: "#4B6EFF",
     colorBg: "rgba(75,110,255,0.08)",
     colorBorder: "rgba(75,110,255,0.25)",
-    definition: "Einen Anbieter in akzeptabler Zeit und mit vertretbarem Risiko ersetzen.",
-    description:
-      "Switching Capacity beschreibt, wie schnell und risikoarm eine Organisation einen Anbieter durch einen anderen ersetzen kann. Sie hängt an technischer Entkopplung, Datenportabilität, vertraglicher Flexibilität und glaubhaften Alternativen am Markt.",
+    definition:
+      "Fähigkeit einer Organisation, einen bestehenden Anbieter innerhalb vertretbarer Zeit, Kosten und Risiken durch einen anderen Anbieter zu ersetzen.",
     drivers: [
-      { name: "Technische Entkopplung (B1)", role: "Schlüssel-Enabler" },
-      { name: "Datenportabilität (B2)", role: "Voraussetzung" },
-      { name: "Lock-in und Wechselkosten", role: "Schützt vor" },
+      "Technische Entkopplung",
+      "Datenportabilität",
+      "Vertragliche Flexibilität",
+      "Verfügbarkeit alternativer Anbieter",
     ],
     actions: [
       "Abstraktionsschicht einziehen statt anbieterspezifischer Bindung",
@@ -65,18 +63,18 @@ export const CAPACITIES: Capacity[] = [
   {
     key: "in",
     tag: "Internalization",
-    title: "Internalisierung",
+    title: "Internalisierungsfähigkeit",
     keyQuestion: "Können wir es selbst betreiben?",
     color: "#A855F7",
     colorBg: "rgba(168,85,247,0.08)",
     colorBorder: "rgba(168,85,247,0.25)",
-    definition: "Eine kritische Funktion intern aufbauen oder selbst betreiben.",
-    description:
-      "Internalization Capacity beschreibt, ob eine Organisation eine kritische digitale Funktion notfalls selbst aufbauen und betreiben könnte. Sie hängt an interner technischer Kompetenz, Datenkontrolle, Architekturtransparenz und verfügbaren Ressourcen.",
+    definition:
+      "Fähigkeit einer Organisation, eine extern bezogene digitale Leistung bei Bedarf intern bereitzustellen.",
     drivers: [
-      { name: "Interne technische Kompetenz (B4)", role: "Schlüssel-Enabler" },
-      { name: "Datenkontrolle (B2)", role: "Voraussetzung" },
-      { name: "Totale Anbieterabhängigkeit", role: "Schützt vor" },
+      "Interne technische Kompetenz",
+      "Kontrolle über Daten",
+      "Dokumentierte Architektur",
+      "Verfügbare Ressourcen und Budget",
     ],
     actions: [
       "Interne technische Kernkompetenz aufbauen und halten",
@@ -88,18 +86,18 @@ export const CAPACITIES: Capacity[] = [
   {
     key: "ms",
     tag: "Multi-Sourcing",
-    title: "Multi-Sourcing",
+    title: "Multi-Sourcing-Fähigkeit",
     keyQuestion: "Können wir mehrere Anbieter parallel nutzen?",
     color: "#00C4A0",
     colorBg: "rgba(0,196,160,0.08)",
     colorBorder: "rgba(0,196,160,0.25)",
-    definition: "Mehrere Anbieter parallel und kontrolliert nutzen.",
-    description:
-      "Multi-Sourcing Capacity beschreibt, ob eine Organisation mehrere Anbieter gleichzeitig und kontrolliert einsetzen und Lasten zwischen ihnen verschieben kann. Sie hängt an Modularität, Datenharmonisierung, Integrations- und Orchestrierungskompetenz und ausreichenden Ressourcen.",
+    definition:
+      "Fähigkeit einer Organisation, eine digitale Leistung auf mehrere Anbieter zu verteilen oder zwischen mehreren Anbietern zu verlagern.",
     drivers: [
-      { name: "Integrations- und Orchestrierungskompetenz (B6)", role: "Schlüssel-Enabler" },
-      { name: "Modularität und Datenharmonisierung (B1, B2)", role: "Voraussetzung" },
-      { name: "Single Point of Failure und Klumpenrisiko", role: "Schützt vor" },
+      "Modulare Architektur",
+      "Standardisierte Schnittstellen",
+      "Datenharmonisierung über Anbieter hinweg",
+      "Integrations- und Orchestrierungskompetenz",
     ],
     actions: [
       "Modular und schnittstellenstandardisiert bauen",
@@ -111,21 +109,21 @@ export const CAPACITIES: Capacity[] = [
   {
     key: "ne",
     tag: "Negotiation",
-    title: "Verhandlungsmacht",
+    title: "Verhandlungsfähigkeit",
     keyQuestion: "Können wir Konditionen beeinflussen?",
     color: "#FF9F2E",
     colorBg: "rgba(255,159,46,0.08)",
     colorBorder: "rgba(255,159,46,0.25)",
-    definition: "Preise, Vertragsbedingungen, Datenrechte und Governance aktiv beeinflussen.",
-    description:
-      "Negotiation Capacity beschreibt, wie stark eine Organisation Preise, Vertragsbedingungen, Datenrechte und Governance gegenüber Anbietern beeinflussen kann. Sie ist die relationale Capacity. Sie speist sich aus glaubhaften Outside Options, die aus Switching, Internalization und Multi-Sourcing entstehen. Hinzu kommen vertragliche Flexibilität und strategische Bedeutung für den Anbieter.",
+    definition:
+      "Fähigkeit einer Organisation, gegenüber einem Anbieter vorteilhafte Vertrags- und Leistungsbedingungen auszuhandeln.",
     drivers: [
-      { name: "Glaubhafte Outside Options (aus Cap. 01 bis 03)", role: "Schlüssel-Enabler" },
-      { name: "Vertragliche Flexibilität (B3), strategische Bedeutung (B8)", role: "Voraussetzung" },
-      { name: "Hold-up und Lock-in", role: "Schützt vor" },
+      "Verfügbarkeit alternativer Anbieter",
+      "Vertragliche Flexibilität",
+      "Strategische Bedeutung für den Anbieter",
+      "Interne Vertrags- und Beschaffungskompetenz",
     ],
     actions: [
-      "Glaubhafte Alternativen (Outside Options) aufbauen",
+      "Glaubhafte Alternativen zu bestehenden Anbietern aufbauen",
       "Audit-, Konsultations- und Widerspruchsrechte verhandeln",
       "Datenrechte und Jurisdiktion vertraglich absichern",
       "Lock-in-Klauseln und versteckte Kosten begrenzen",
@@ -157,7 +155,7 @@ export const LEVELS: Level[] = [
     colorBg: "rgba(255,61,87,0.08)",
     colorBorder: "rgba(255,61,87,0.25)",
     description:
-      "Ihre Organisation ist bei kritischen digitalen Funktionen stark von einzelnen Anbietern abhängig. Der kontrollierte Handlungsraum ist gering. Einseitige Entscheidungen des Anbieters lassen sich kaum abwehren.",
+      "Ihre Organisation ist bei kritischen digitalen Funktionen stark von einzelnen Anbietern abhängig. Der Handlungsspielraum ist gering. Einseitige Entscheidungen des Anbieters lassen sich kaum abwehren.",
   },
   {
     max: 0.7,
@@ -167,7 +165,7 @@ export const LEVELS: Level[] = [
     colorBg: "rgba(255,159,46,0.08)",
     colorBorder: "rgba(255,159,46,0.25)",
     description:
-      "Ihre Organisation hat in einzelnen Capacities Handlungsspielraum, bleibt in anderen aber verwundbar. Die Souveränität hält, solange sie nicht ernsthaft getestet wird.",
+      "Ihre Organisation hat in einzelnen Fähigkeiten Handlungsspielraum, bleibt in anderen aber verwundbar. Der Handlungsspielraum hält, solange er nicht ernsthaft getestet wird.",
   },
   {
     max: 1.01,
@@ -177,7 +175,7 @@ export const LEVELS: Level[] = [
     colorBg: "rgba(0,196,160,0.08)",
     colorBorder: "rgba(0,196,160,0.25)",
     description:
-      "Ihre Organisation behält bei kritischen Funktionen auch unter Abhängigkeit einen kontrollierten Handlungsraum. Wechsel, Eigenbetrieb, Parallelbezug und Verhandlung sind realistische Optionen.",
+      "Ihre Organisation behält bei kritischen digitalen Abhängigkeiten Handlungsspielraum. Wechsel, interne Bereitstellung, Verteilung auf mehrere Anbieter und Verhandlung sind realistische Optionen.",
   },
 ];
 

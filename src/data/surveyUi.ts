@@ -96,39 +96,16 @@ export const FUNCTIONS: { key: string; label: T; providers: T }[] = [
 export const FUNCTION_OTHER = "other";
 
 // ─── Modellspalten ───────────────────────────────────────────────────────────
-export const STEPS: { key: string; label: T; sub: T }[] = [
-  {
-    key: "1 Response Capabilities",
-    label: t("Response Capabilities", "Response Capabilities"),
-    sub: t(
-      "What your organisation can do contractually, technically and organisationally.",
-      "Was Ihre Organisation vertraglich, technisch und organisatorisch kann."
-    ),
-  },
-  {
-    key: "2 Mechanisms",
-    label: t("Mechanisms", "Mechanismen"),
-    sub: t(
-      "What those capabilities produce: real alternatives and retained control.",
-      "Was daraus entsteht: echte Alternativen und behaltene Kontrolle."
-    ),
-  },
-  {
-    key: "3 Digital Sovereignty",
-    label: t("Digital Sovereignty", "Digitale Souveränität"),
-    sub: t(
-      "The two distinct forms of discretion under provider dependence.",
-      "Die zwei Formen von Handlungsspielraum unter Anbieter-Abhängigkeit."
-    ),
-  },
-  {
-    key: "4 Outcome",
-    label: t("Outcome", "Ergebnis"),
-    sub: t(
-      "Whether the function keeps running when the provider fails or acts unilaterally.",
-      "Ob die Funktion weiterläuft, wenn der Anbieter ausfällt oder einseitig handelt."
-    ),
-  },
+// Kontextgruppen des fuenften Blocks. Neutrale Ueberschriften: die Konstruktnamen
+// des Forschungsinstruments duerfen fuer Teilnehmende nicht sichtbar sein, sonst
+// steht neben den vier Faehigkeiten ein zweites Modell im Raum.
+export const CONTEXT_GROUPS: { key: string; label: T; constructs: string[] }[] = [
+  { key: "vertrag",  label: t("Contract terms and audit rights", "Vertragliche Bedingungen und Prüfrechte"), constructs: ["C1", "C2"] },
+  { key: "anbieter", label: t("Provider responsiveness", "Reaktionsbereitschaft des Anbieters"), constructs: ["C3"] },
+  { key: "wissen",   label: t("Technical and organisational knowledge", "Technisches und organisatorisches Wissen"), constructs: ["O1", "O2", "T2"] },
+  { key: "integ",    label: t("Integration and coordination", "Integration und Koordination"), constructs: ["O3"] },
+  { key: "daten",    label: t("Data, key and recovery control", "Daten-, Schlüssel- und Wiederherstellungskontrolle"), constructs: ["T3"] },
+  { key: "kont",     label: t("Continuity under provider disruption", "Kontinuität bei Anbieterstörungen"), constructs: ["ALT", "ROC", "FTC", "CTO", "CONT"] },
 ];
 
 // ─── Likert-Skalen (Ankerbeschriftung) ───────────────────────────────────────
@@ -148,43 +125,57 @@ export const UI = {
     "Dieses Assessment gibt es auf Englisch und Deutsch."
   ),
   langEn: t("Continue in English", "Continue in English"),
-  langEnHint: t("Recommended. The instrument was written in English", "Empfohlen. Das Instrument wurde auf Englisch verfasst"),
+  
   langDe: t("Auf Deutsch fortfahren", "Auf Deutsch fortfahren"),
 
   // Intro
-  eyebrow: t("Organisation Self-Assessment", "Organisation Self-Assessment"),
-  introTitle: t("How sovereign is your organisation?", "Wie souverän ist Ihre Organisation?"),
+  eyebrow: t("Self-assessment on digital sovereignty", "Self-Assessment zur digitalen Souveränität"),
+  introTitle: t(
+    "How large is your room for manoeuvre in one critical digital dependency?",
+    "Wie gross ist Ihr Handlungsspielraum bei einer kritischen digitalen Abhängigkeit?"
+  ),
   introLead: t(
-    "This questionnaire follows the Refined Digital Sovereignty Model (v13). Response capabilities produce two mechanisms. The mechanisms produce two distinct forms of discretion. Both together carry continuity when the provider fails.",
-    "Dieser Fragebogen folgt dem Refined Digital Sovereignty Model (v13). Handlungsfähigkeiten erzeugen zwei Mechanismen. Diese erzeugen zwei getrennte Formen von Handlungsspielraum. Beide zusammen tragen die Kontinuität, wenn der Anbieter ausfällt."
+    "Digital sovereignty refers to the room for manoeuvre an organisation has in dealing with critical digital dependencies. This assessment examines that room for manoeuvre through four organisational capacities: Switching, Internalization, Multi-Sourcing and Negotiation.",
+    "Digitale Souveränität bezeichnet den Handlungsspielraum einer Organisation im Umgang mit kritischen digitalen Abhängigkeiten. Dieses Assessment betrachtet diesen Handlungsspielraum anhand von vier organisationalen Fähigkeiten: Switching, Internalization, Multi-Sourcing und Negotiation."
   ),
   introUnit: t(
-    "Answer for exactly one critical digital function at one provider. Every question refers to that pair.",
-    "Beantworten Sie alles für eine einzige kritische digitale Funktion bei einem Anbieter. Jede Frage bezieht sich auf dieses Paar."
+    "Choose one critical digital function and one specific provider. Answer every question for that combination only.",
+    "Wählen Sie eine kritische digitale Funktion und einen konkreten Anbieter. Beantworten Sie sämtliche Fragen ausschliesslich für diese Kombination."
   ),
   start: t("Start assessment", "Assessment starten"),
   toHome: t("Back to homepage", "Zur Startseite"),
   questionsCount: t("questions", "Fragen"),
+  introStage: t(
+    "The instrument is under scientific development. The results support structured self-reflection. They are not yet a validated measurement or a benchmark.",
+    "Das Instrument befindet sich in wissenschaftlicher Entwicklung. Die Ergebnisse dienen der strukturierten Selbstreflexion und stellen noch keine validierte Messung oder einen Benchmark dar."
+  ),
   minutes: t(
-    "approx. 12 minutes from knowledge · the 6 fact questions need contract and operations records",
-    "ca. 12 Minuten aus dem Kopf · für die 6 Faktenfragen brauchen Sie Vertrags- und Betriebsunterlagen"
+    "For individual context questions you may need contract or operations records.",
+    "Für einzelne Kontextfragen benötigen Sie gegebenenfalls Vertrags- oder Betriebsunterlagen."
   ),
 
   // Intake
-  intakeTitle: t("The function and the provider", "Die Funktion und der Anbieter"),
+  intakeTitle: t("The digital dependency under review", "Betrachtete digitale Abhängigkeit"),
   intakeLead: t(
-    "Name the critical digital function and the provider you are answering about. Both appear in the questions.",
-    "Benennen Sie die kritische digitale Funktion und den Anbieter, um die es geht. Beide erscheinen in den Fragen."
+    "Choose a critical digital function and name the provider concerned. All questions and results refer to that combination only.",
+    "Wählen Sie eine kritische digitale Funktion und geben Sie den zugehörigen Anbieter an. Sämtliche Fragen und Ergebnisse beziehen sich ausschliesslich auf diese Kombination."
   ),
   intakeFunction: t("Critical digital function", "Kritische digitale Funktion"),
   intakeFunctionPh: t("e.g. customer data platform", "z. B. Kundendatenplattform"),
-  intakeProvider: t("Provider", "Anbieter"),
-  intakeProviderPh: t("e.g. a hyperscaler, a SaaS vendor", "z. B. ein Hyperscaler, ein SaaS-Anbieter"),
+  intakeProvider: t("Provider or anonymised label", "Anbieter oder anonymisierte Bezeichnung"),
+  intakeProviderPh: t("e.g. Microsoft Azure or Provider A", "z. B. Microsoft Azure oder Provider A"),
+  intakeProviderNote: t(
+    "Instead of the provider name you may use a unique anonymised label. Please use that label consistently throughout the assessment.",
+    "Sie können anstelle des Anbieternamens eine eindeutige anonymisierte Bezeichnung verwenden. Bitte verwenden Sie diese Bezeichnung im gesamten Assessment konsistent."
+  ),
   intakeChoose: t("Select one function", "Eine Funktion auswählen"),
   intakeOther: t("Other, please name", "Andere, bitte benennen"),
   intakeOtherPh: t("Name the function", "Funktion benennen"),
   intakeTypical: t("typical providers", "typische Anbieter"),
-  intakeMissingFn: t("Please select a function.", "Bitte wählen Sie eine Funktion."),
+  intakeMissingFn: t(
+    "Please choose a function and enter a provider or an anonymised provider label.",
+    "Bitte wählen Sie eine Funktion und geben Sie einen Anbieter oder eine anonymisierte Anbieterbezeichnung an."
+  ),
 
   // Navigation
   back: t("Back", "Zurück"),
@@ -198,7 +189,11 @@ export const UI = {
 
   // Ergebnis
   resultEyebrow: t("Your result", "Ihr Ergebnis"),
-  resultTitle: t("Sovereignty profile", "Souveränitätsprofil"),
+  resultTitle: t("Preliminary capacity profile", "Vorläufiges Fähigkeitsprofil"),
+  resultLead: t(
+    "The overview summarises your self-assessments for the function and provider under review. It shows relative strengths and weaknesses across four organisational capacities. The results are not a validated benchmark and do not permit a conclusive statement about whether your organisation is digitally sovereign.",
+    "Die Darstellung fasst Ihre Selbsteinschätzungen für die betrachtete Funktion-Anbieter-Konstellation zusammen. Sie zeigt relative Stärken und Schwächen in vier organisationalen Fähigkeiten. Die Ergebnisse sind noch kein validierter Benchmark und erlauben keine abschliessende Aussage darüber, ob Ihre Organisation digital souverän ist."
+  ),
   resultFor: t("for", "für"),
   atProvider: t("at", "bei"),
   sovereigntyHead: t("Digital Sovereignty: the two dimensions", "Digitale Souveränität: die zwei Dimensionen"),
@@ -220,8 +215,8 @@ export const UI = {
   ),
   notAnswered: t("not answered", "nicht beantwortet"),
   weakHint: t(
-    "This instrument is not validated. The card sort has not confirmed it so far. Three constructs scored weak, among them Continuity, the model's dependent variable. The result is not a measurement. Use it as a structured entry into a discussion.",
-    "Dieses Instrument ist nicht validiert. Der Card-Sort hat es bisher nicht bestätigt. Drei Konstrukte sind schwach bewertet, darunter Kontinuität, die abhängige Variable des Modells. Das Ergebnis ist keine Messung. Nutzen Sie es als strukturierten Gesprächseinstieg."
+    "The instrument is under scientific development. The values shown summarise your self-assessments and do not constitute a validated benchmark.",
+    "Das Instrument befindet sich in wissenschaftlicher Entwicklung. Die dargestellten Werte fassen Ihre Selbsteinschätzungen zusammen und stellen keinen validierten Benchmark dar."
   ),
   // Visualisierungen
   matrixHead: t("The two dimensions, side by side", "Die zwei Dimensionen im Verhältnis"),
@@ -258,16 +253,49 @@ export const UI = {
   firmIndustry: t("Main industry category", "Branchen-Hauptkategorie"),
   firmHq: t("Company headquarters", "Hauptsitz Ihres Unternehmens"),
 
+  // ─── Bloecke und Kontext ─────────────────────────────────────────────────
+  contextTitle: t("Context and evidence", "Kontext und Nachweise"),
+  contextSub: t(
+    "Additional contractual, technical and organisational conditions of the dependency under review, and verifiable evidence.",
+    "Ergänzende vertragliche, technische und organisationale Bedingungen sowie überprüfbare Nachweise zur betrachteten Abhängigkeit."
+  ),
+  contextLead: t(
+    "The following questions record conditions of the function and provider under review. They are reported separately and are not included in the four capacity values.",
+    "Die folgenden Angaben erfassen Bedingungen der betrachteten Funktion-Anbieter-Konstellation. Sie werden separat ausgewiesen und nicht in die vier Capacity-Werte eingerechnet."
+  ),
+  contextNotScored: t(
+    "These answers are not included in the capacity values.",
+    "Diese Angaben werden nicht in die Capacity-Werte eingerechnet."
+  ),
+
+  // ─── Vollstaendigkeit ────────────────────────────────────────────────────
+  incompleteHint: t(
+    "Please answer every question, or mark it as \"do not know\".",
+    "Bitte beantworten Sie jede Frage oder markieren Sie sie mit „Weiss ich nicht“."
+  ),
+  answeredSummary: t("You answered {a} of {b} questions.", "Sie haben {a} von {b} Fragen beantwortet."),
+  notEnoughAreas: t(
+    "For {n} capacities there are not enough answers for an evaluation.",
+    "Für {n} Fähigkeiten liegen nicht genügend Angaben für eine Auswertung vor."
+  ),
+  notEnoughArea: t(
+    "For one capacity there are not enough answers for an evaluation.",
+    "Für eine Fähigkeit liegen nicht genügend Angaben für eine Auswertung vor."
+  ),
+  notEnough: t("Not sufficiently answered", "Nicht ausreichend beantwortet"),
+  selfRating: t("Average self-assessment: {v} of 7", "Durchschnittliche Selbsteinschätzung: {v} von 7"),
+  itemsScored: t("Items evaluated: {a} of {b}", "Ausgewertete Items: {a} von {b}"),
+
   // ─── Einwilligung und Uebermittlung ──────────────────────────────────────
   minutesNoStore: t("nothing is stored", "nichts wird gespeichert"),
 
   consentLabel: t(
-    "I agree that my answers are transmitted to the research team at the University of St. Gallen and used for research on digital sovereignty.",
-    "Ich bin damit einverstanden, dass meine Antworten an das Forschungsteam der Universität St. Gallen übermittelt und für die Forschung zu digitaler Souveränität verwendet werden."
+    "I agree that my answers are transmitted automatically to the research team of the University of St.Gallen after the assessment and evaluated for the research project on digital sovereignty.",
+    "Ich bin damit einverstanden, dass meine Antworten nach Abschluss des Assessments automatisch an das Forschungsteam der Universität St.Gallen übermittelt und für das Forschungsprojekt zur digitalen Souveränität ausgewertet werden."
   ),
   consentDetail: t(
-    "No name or e-mail address is collected. The company profile and the provider name are transmitted. In a small market these can narrow down an organisation. Answers are stored under a random ID.",
-    "Es werden weder Name noch E-Mail-Adresse erhoben. Übermittelt werden Firmenprofil und Anbietername. In einem kleinen Markt kann das eine Organisation eingrenzen. Die Antworten werden unter einer zufälligen Kennung gespeichert."
+    "Transmitted are the answers, the voluntary details about the organisation and the provider given, or its anonymised label. Neither name nor e-mail address is collected. Answers are stored under a random identifier. If transmission fails, they are stored temporarily in the browser and sent again on the next visit. Further information is in the privacy notice.",
+    "Übermittelt werden die Antworten, die freiwilligen Angaben zum Unternehmen sowie der angegebene Anbieter beziehungsweise dessen anonymisierte Bezeichnung. Es werden weder Name noch E-Mail-Adresse erhoben. Die Antworten werden unter einer zufälligen Kennung gespeichert. Bei einer fehlgeschlagenen Übermittlung werden sie vorübergehend lokal im Browser gespeichert und beim nächsten Aufruf erneut übertragen. Weitere Informationen finden Sie in der Datenschutzerklärung."
   ),
   consentRequired: t("Please agree before starting.", "Bitte stimmen Sie vor dem Start zu."),
 
@@ -318,23 +346,23 @@ export const UI = {
 
   // ─── Call to Action am Seitenende ─────────────────────────────────────────
   ctaEyebrow: t("Next step", "Nächster Schritt"),
-  ctaLever: t("Where to start", "Wo Sie ansetzen"),
+  ctaHead: t("Discussing the results together", "Ergebnisse gemeinsam einordnen"),
   ctaLeverNone: t("Deepen your sovereignty profile", "Ihr Souveränitätsprofil vertiefen"),
   ctaLead: t(
-    "In a deep-dive workshop and on-site audit we deepen your sovereignty profile with real company data. From that we develop a prioritised roadmap.",
-    "Im Deep-Dive-Workshop und On-Site-Audit vertiefen wir Ihr Souveränitätsprofil mit echten Unternehmensdaten. Daraus entwickeln wir eine priorisierte Roadmap."
+    "In a more detailed analysis the self-assessments can be reviewed jointly and supplemented by technical, contractual and organisational evidence. The aim is to determine relevant dependencies and possible fields of action systematically.",
+    "In einer vertiefenden Analyse können die Selbsteinschätzungen gemeinsam geprüft und durch technische, vertragliche und organisationale Nachweise ergänzt werden. Ziel ist es, relevante Abhängigkeiten und mögliche Handlungsfelder systematisch zu bestimmen."
   ),
   ctaLeverNote: t(
     "The weaker of the two sovereignty dimensions. It caps what the stronger one can deliver.",
     "Die schwächere der beiden Souveränitätsdimensionen. Sie deckelt, was die stärkere leisten kann."
   ),
   ctaItems: [
-    t("Cloud Dependency Mapping", "Cloud Dependency Mapping"),
-    t("Data Sovereignty & Governance", "Data Sovereignty & Governance"),
-    t("Regulatory Readiness (DORA, NIS2, GDPR, AI Act)", "Regulatory Readiness (DORA, NIS2, GDPR, AI Act)"),
-    t("Strategic fields of action", "Strategische Handlungsfelder"),
+    t("Analysis of critical digital dependencies", "Analyse kritischer digitaler Abhängigkeiten"),
+    t("Assessment of the four organisational capacities", "Einordnung der vier organisationalen Fähigkeiten"),
+    t("Review of relevant evidence", "Prüfung relevanter Nachweise"),
+    t("Identification of possible fields of action", "Identifikation möglicher Handlungsfelder"),
   ],
-  ctaButton: t("Request a deep dive", "Deep-Dive anfragen"),
+  ctaButton: t("Request a detailed analysis", "Vertiefende Analyse anfragen"),
   ctaMailAttach: t(
     "The full questions and answers are in the file that was just downloaded. Please attach it to this e-mail:",
     "Die vollständigen Fragen und Antworten stehen in der Datei, die soeben heruntergeladen wurde. Bitte an diese Mail anhängen:"
@@ -350,7 +378,7 @@ export const UI = {
     "Note: the full raw data did not fit into an e-mail. Please attach the file from 'Export JSON'.",
     "Hinweis: die vollständigen Rohdaten passen nicht in eine E-Mail. Bitte die Datei aus 'JSON exportieren' anhängen."
   ),
-  ctaMailSubject: t("Deep dive: digital sovereignty", "Deep-Dive: Digitale Souveränität"),
+  ctaMailSubject: t("Detailed analysis of digital sovereignty", "Vertiefende Analyse zur digitalen Souveränität"),
 
   restart: t("Start over", "Erneut durchführen"),
   downloadJson: t("Export JSON", "JSON exportieren"),

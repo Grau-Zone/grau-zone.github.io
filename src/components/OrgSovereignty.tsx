@@ -1,4 +1,4 @@
-import { useState, Fragment } from "react";
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import CapacityRadar, { CAPACITIES, BASELINE_VALUES } from "./CapacityRadar";
 
@@ -49,7 +49,7 @@ const OrgSovereignty = () => {
             className="text-4xl lg:text-5xl font-semibold text-white mb-4"
             style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.025em" }}
           >
-            Vier Capacities machen<br />Organisationen souverän.
+            Vier Fähigkeiten bestimmen den<br />organisationalen Handlungsspielraum
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -59,10 +59,10 @@ const OrgSovereignty = () => {
             className="text-base leading-relaxed"
             style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Inter', sans-serif" }}
           >
-            Souveränität auf Organisationsebene ist die Fähigkeit, bei kritischen digitalen
-            Funktionen auch unter externer Abhängigkeit einen kontrollierten Handlungsraum zu
-            behalten. Sie entsteht formativ aus vier Capacities. Alle vier zusammen bestimmen den
-            Handlungsspielraum einer Organisation.
+            Digitale Souveränität bezeichnet den Handlungsspielraum einer Organisation im Umgang
+            mit kritischen digitalen Abhängigkeiten. Wir erfassen diesen Handlungsspielraum anhand
+            von vier organisationalen Fähigkeiten: Switching, Internalization, Multi-Sourcing und
+            Negotiation.
           </motion.p>
         </div>
 
@@ -138,7 +138,7 @@ const OrgSovereignty = () => {
                     className="text-xs font-bold tracking-widest uppercase"
                     style={{ color: cap.color, fontFamily: "'Space Grotesk', sans-serif" }}
                   >
-                    Capacity 0{active + 1} · {cap.tag}
+                    Fähigkeit 0{active + 1} · {cap.tag}
                   </span>
                 </div>
                 <h3
@@ -154,7 +154,7 @@ const OrgSovereignty = () => {
                   {cap.keyQuestion}
                 </p>
                 <p
-                  className="text-sm font-medium mb-4 pl-4"
+                  className="text-sm font-medium leading-relaxed mb-7 pl-4"
                   style={{
                     color: "rgba(255,255,255,0.7)",
                     fontFamily: "'Inter', sans-serif",
@@ -163,48 +163,36 @@ const OrgSovereignty = () => {
                 >
                   {cap.definition}
                 </p>
-                <p
-                  className="text-sm leading-relaxed mb-7"
-                  style={{ color: "rgba(255,255,255,0.55)", fontFamily: "'Inter', sans-serif" }}
-                >
-                  {cap.description}
-                </p>
 
-                {/* Woran es hängt: three fixed roles, comparable across all four cards */}
+                {/* Relevante Einflussfaktoren: plain list, identical form on all four cards */}
                 <div className="rounded-xl p-5 mb-7" style={{ background: cap.colorBg, border: `1px solid ${cap.colorBorder}` }}>
                   <div
                     className="text-xs font-semibold uppercase tracking-widest mb-4"
                     style={{ color: cap.color, fontFamily: "'Space Grotesk', sans-serif" }}
                   >
-                    Woran es hängt
+                    Relevante Einflussfaktoren
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "max-content 1fr", columnGap: "12px", rowGap: "11px", alignItems: "baseline" }}>
+                  <ul className="space-y-2">
                     {cap.drivers.map((d) => (
-                      <Fragment key={d.role}>
-                        <span
-                          className="text-[11px] font-semibold uppercase tracking-wider"
-                          style={{ color: cap.color, fontFamily: "'Space Grotesk', sans-serif", whiteSpace: "nowrap" }}
-                        >
-                          {d.role}:
-                        </span>
-                        <span
-                          className="text-sm"
-                          style={{ color: "rgba(255,255,255,0.8)", fontFamily: "'Inter', sans-serif" }}
-                        >
-                          {d.name}
-                        </span>
-                      </Fragment>
+                      <li
+                        key={d}
+                        className="flex gap-3 items-start text-sm"
+                        style={{ color: "rgba(255,255,255,0.8)", fontFamily: "'Inter', sans-serif" }}
+                      >
+                        <span className="shrink-0 mt-1.5 w-1.5 h-1.5 rounded-full" style={{ background: cap.color }} />
+                        {d}
+                      </li>
                     ))}
-                  </div>
+                  </ul>
                 </div>
 
-                {/* Recommended actions */}
+                {/* Beispiele organisationaler Maßnahmen */}
                 <div>
                   <div
                     className="text-xs font-semibold uppercase tracking-widest mb-3"
                     style={{ color: cap.color, fontFamily: "'Space Grotesk', sans-serif" }}
                   >
-                    Empfohlene Maßnahmen
+                    Beispiele organisationaler Maßnahmen
                   </div>
                   <ul className="space-y-2">
                     {cap.actions.map((action, j) => (

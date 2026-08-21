@@ -17,6 +17,21 @@
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content="https://grau-zone.github.io/og-image.png" />
+    <script>
+      // Gegenstueck zu public/404.html: stellt den urspruenglich angeforderten
+      // Pfad wieder her, bevor React startet. Ohne das landet jeder Direktlink
+      // auf der Startseite statt auf der gewuenschten Route.
+      (function () {
+        var p = new URLSearchParams(window.location.search);
+        var pfad = p.get("p");
+        if (!pfad) return;
+        var q = p.get("q");
+        window.history.replaceState(
+          null, "",
+          "/" + pfad + (q ? "?" + q : "") + window.location.hash
+        );
+      })();
+    </script>
   </head>
 
   <body>
