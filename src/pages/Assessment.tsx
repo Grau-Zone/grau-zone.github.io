@@ -885,6 +885,22 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
           {fmt(tr("answeredSummary"), { a: beantwortet, b: alleIds.length })}
           {ohneWert === 1 ? " " + tr("notEnoughArea") : ohneWert > 1 ? " " + fmt(tr("notEnoughAreas"), { n: ohneWert }) : ""}
         </p>
+
+        {/* Derselbe Mailto-Link wie im Abschluss-Kasten, hier direkt unter den
+            vier Werten. Bewusst leichter gestaltet und ohne Verdikt: der Kasten
+            unten bleibt der Abschluss, und ein automatisch bestimmter Hebel
+            darf laut Vorgabe nirgends mehr stehen. */}
+        <div style={{ display: "flex", justifyContent: "center", marginTop: "26px" }}>
+          <a href={ctaMail} style={{
+            fontFamily: "Space Grotesk, sans-serif", fontSize: "17px", fontWeight: 600,
+            padding: "17px 34px", borderRadius: "11px",
+            border: "1px solid rgba(139,164,255,0.34)", background: "rgba(75,110,255,0.08)",
+            color: "#a8bcff", textDecoration: "none",
+            display: "flex", alignItems: "center", gap: "9px",
+          }}>
+            <Mail size={18} /> {tr("ctaButton")} <ArrowRight size={18} />
+          </a>
+        </div>
       </div>
 
       <div style={{ marginBottom: "34px", padding: "22px 24px", borderRadius: "12px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
