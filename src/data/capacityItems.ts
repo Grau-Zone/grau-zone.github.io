@@ -178,13 +178,15 @@ export type CapacityScore = {
 
 export function scoreCapacity(
   key: CapacityKey,
-  answers: Record<string, number>,
+  answers: Record<string, number | number[]>,
   missing: number
 ): CapacityScore {
   const items = itemsOfCapacity(key);
+  // Capacity-Items sind immer einzelne Likert-Werte. Mengen und MISSING gelten
+  // als fehlend und werden nie als Null gerechnet.
   const vals = items
     .map((i) => answers[i.id])
-    .filter((v) => v !== undefined && v !== missing) as number[];
+    .filter((v): v is number => typeof v === "number" && v !== missing);
   return {
     mean: vals.length >= MIN_VALID ? vals.reduce((a, b) => a + b, 0) / vals.length : null,
     valid: vals.length,

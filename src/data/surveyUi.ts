@@ -254,6 +254,7 @@ export const UI = {
   firmHq: t("Company headquarters", "Hauptsitz Ihres Unternehmens"),
 
   // ─── Bloecke und Kontext ─────────────────────────────────────────────────
+  multiHint: t("Several answers possible.", "Mehrere Angaben möglich."),
   contextTitle: t("Context and evidence", "Kontext und Nachweise"),
   contextSub: t(
     "Additional contractual, technical and organisational conditions of the dependency under review, and verifiable evidence.",

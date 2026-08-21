@@ -4,11 +4,12 @@
 
 export type Lang = "en" | "de";
 export const MISSING = 99; // 'weiss nicht' — nie als 0 werten
+export const INSTRUMENT_VERSION = "v14";
 
 export interface FactOption { value: number; en: string; de: string }
 export interface Item {
   id: string; construct: string; en: string; de: string; selected: boolean;
-  type: "likert" | "fact";
+  type: "likert" | "fact" | "multi";
   scale?: number; reverse?: boolean; scaleUndecided?: boolean; scaleOriginal?: number;
   options?: FactOption[]; independentFrom?: number; inverted?: boolean;
 }
@@ -112,8 +113,8 @@ export const ITEMS: Item[] = [
   {
     "id": "C1-1",
     "construct": "C1",
-    "en": "Our contract with this provider for this function enables us to renegotiate terms at short notice.",
-    "de": "Unser Vertrag mit diesem Anbieter für diese Funktion ermöglicht es uns, die Konditionen kurzfristig neu zu verhandeln.",
+    "en": "Our agreement allows service or contract terms to be adjusted within a defined procedure when requirements change.",
+    "de": "Unsere Vereinbarung ermöglicht es, Leistungs- oder Vertragsbedingungen bei veränderten Anforderungen innerhalb eines festgelegten Verfahrens anzupassen.",
     "selected": true,
     "type": "likert",
     "scale": 7
@@ -121,8 +122,8 @@ export const ITEMS: Item[] = [
   {
     "id": "C1-2",
     "construct": "C1",
-    "en": "Our contract with this provider for this function defines when and how new requirements can be implemented, and on what terms.",
-    "de": "Unser Vertrag mit diesem Anbieter für diese Funktion legt fest, wann und wie neue Anforderungen umgesetzt werden können und zu welchen Konditionen.",
+    "en": "Our agreement sets out a binding procedure for changes to the scope of service.",
+    "de": "Unsere Vereinbarung legt ein verbindliches Verfahren für Änderungen des Leistungsumfangs fest.",
     "selected": true,
     "type": "likert",
     "scale": 7
@@ -205,7 +206,7 @@ export const ITEMS: Item[] = [
     "construct": "C3",
     "en": "The procedures and routines this provider uses to deliver this function are tailored to our particular situation.",
     "de": "Die Verfahren und Abläufe, mit denen dieser Anbieter diese Funktion erbringt, sind auf unsere besondere Situation zugeschnitten.",
-    "selected": true,
+    "selected": false,
     "type": "likert",
     "scale": 7
   },
@@ -344,8 +345,8 @@ export const ITEMS: Item[] = [
   {
     "id": "O3-2",
     "construct": "O3",
-    "en": "The system this provider delivers for this function and our internal core applications, for example our ERP system, pass data to each other automatically during normal operation.",
-    "de": "Das System, das dieser Anbieter für diese Funktion liefert, und unsere internen Kernanwendungen, z. B. unser ERP-System, übergeben einander im laufenden Betrieb automatisch Daten.",
+    "en": "The interfaces and data formats of this function allow additional providers or systems to be connected.",
+    "de": "Die Schnittstellen und Datenformate dieser Funktion erlauben die Anbindung zusätzlicher Anbieter oder Systeme.",
     "selected": true,
     "type": "likert",
     "scale": 7
@@ -375,7 +376,7 @@ export const ITEMS: Item[] = [
     "construct": "ALT",
     "en": "We have a good alternative to this provider for this function.",
     "de": "Für diese Funktion haben wir eine gute Alternative zu diesem Anbieter.",
-    "selected": true,
+    "selected": false,
     "type": "likert",
     "scale": 7
   },
@@ -410,8 +411,8 @@ export const ITEMS: Item[] = [
   {
     "id": "ROC-1",
     "construct": "ROC",
-    "en": "For this function, our own staff carry out the day-to-day operational work rather than the provider's staff.",
-    "de": "Für diese Funktion erledigen unsere eigenen Leute die tägliche operative Arbeit, nicht die Leute dieses Anbieters.",
+    "en": "Our organisation can take the essential operational decisions for this function itself.",
+    "de": "Unsere Organisation kann die wesentlichen operativen Entscheidungen für diese Funktion selbst treffen.",
     "selected": true,
     "type": "likert",
     "scale": 7
@@ -419,8 +420,8 @@ export const ITEMS: Item[] = [
   {
     "id": "ROC-2",
     "construct": "ROC",
-    "en": "Security settings and access rights for this function are administered by our own staff, not by the provider's.",
-    "de": "Die Sicherheitseinstellungen und Zugriffsrechte für diese Funktion verwalten unsere eigenen Leute, nicht die Leute dieses Anbieters.",
+    "en": "Our organisation holds the administrative rights to change security settings and access rights for this function itself.",
+    "de": "Unsere Organisation verfügt über die administrativen Rechte, um Sicherheitseinstellungen und Zugriffsrechte für diese Funktion selbst zu ändern.",
     "selected": true,
     "type": "likert",
     "scale": 7
@@ -437,8 +438,8 @@ export const ITEMS: Item[] = [
   {
     "id": "ROC-5",
     "construct": "ROC",
-    "en": "When this function is developed further, our own people do that work rather than the provider's.",
-    "de": "Wenn diese Funktion weiterentwickelt wird, leisten unsere eigenen Leute diese Arbeit, nicht die Leute dieses Anbieters.",
+    "en": "Our organisation can set priorities and scope for the further development of this function in a binding way.",
+    "de": "Unsere Organisation kann Prioritäten und Umfang der Weiterentwicklung dieser Funktion verbindlich festlegen.",
     "selected": true,
     "type": "likert",
     "scale": 7
@@ -446,8 +447,8 @@ export const ITEMS: Item[] = [
   {
     "id": "FTC-1",
     "construct": "FTC",
-    "en": "For this function at this provider, we are free to change the scope and content of the arrangement whenever we need to, without having to obtain the provider's agreement.",
-    "de": "Für diese Funktion bei diesem Anbieter steht es uns frei, Umfang und Inhalt der Vereinbarung jederzeit nach Bedarf zu ändern, ohne dafür die Zustimmung dieses Anbieters einholen zu müssen.",
+    "en": "Our agreement allows us to adjust the scope or configuration of the service we obtain, within clearly defined limits.",
+    "de": "Unsere Vereinbarung erlaubt uns, Umfang oder Konfiguration der bezogenen Leistung innerhalb klar definierter Grenzen selbst anzupassen.",
     "selected": true,
     "type": "likert",
     "scale": 7
@@ -513,7 +514,7 @@ export const ITEMS: Item[] = [
     "construct": "CTO",
     "en": "This provider works according to our organisation's procedures for this function because we require it to.",
     "de": "Dieser Anbieter arbeitet bei dieser Funktion nach den Verfahren unserer Organisation, weil wir es von ihm verlangen.",
-    "selected": true,
+    "selected": false,
     "type": "likert",
     "scale": 7
   },
@@ -531,7 +532,7 @@ export const ITEMS: Item[] = [
     "construct": "CONT",
     "en": "We periodically run mock trials to test whether we could restore this function if this provider failed.",
     "de": "Wir führen regelmäßig Probeläufe durch, um zu prüfen, ob wir diese Funktion bei einem Ausfall dieses Anbieters wiederherstellen könnten.",
-    "selected": true,
+    "selected": false,
     "type": "likert",
     "scale": 7,
     "scaleUndecided": true
@@ -539,18 +540,17 @@ export const ITEMS: Item[] = [
   {
     "id": "CONT-4",
     "construct": "CONT",
-    "en": "If this provider withdrew part of what this function currently relies on, we would have to interrupt the function.",
-    "de": "Wenn dieser Anbieter uns einen Teil dessen entziehen würde, worauf diese Funktion derzeit angewiesen ist, müssten wir diese Funktion unterbrechen.",
+    "en": "If the service currently obtained from the provider failed completely, we could maintain the business-critical minimum level of this function without interruption.",
+    "de": "Bei einem vollständigen Ausfall der derzeit vom Anbieter bezogenen Leistung könnten wir die geschäftskritische Mindestleistung dieser Funktion ohne Unterbrechung aufrechterhalten.",
     "selected": true,
     "type": "likert",
-    "scale": 7,
-    "reverse": true
+    "scale": 7
   },
   {
     "id": "CONT-6",
     "construct": "CONT",
-    "en": "While this provider's service is unavailable, we can keep this function running for the cases that cannot wait.",
-    "de": "Solange die Leistung dieses Anbieters nicht verfügbar ist, können wir diese Funktion für die Fälle weiterlaufen lassen, die nicht warten können.",
+    "en": "During the intended bridging period we could maintain the business-critical minimum level of this function independently of the provider.",
+    "de": "Während der vorgesehenen Überbrückungszeit könnten wir die geschäftskritische Mindestleistung dieser Funktion unabhängig vom Anbieter aufrechterhalten.",
     "selected": true,
     "type": "likert",
     "scale": 7
@@ -559,7 +559,7 @@ export const ITEMS: Item[] = [
     "id": "ATR-1",
     "construct": "C2",
     "en": "Contractual audit right: is an audit or inspection right written into the binding documents?",
-    "de": "Vertragliches Pruefrecht: steht in den bindenden Dokumenten ein Pruef- oder Einsichtsrecht?",
+    "de": "Vertragliches Prüfrecht: steht in den bindenden Dokumenten ein Pruef- oder Einsichtsrecht?",
     "selected": true,
     "type": "fact",
     "options": [
@@ -584,7 +584,7 @@ export const ITEMS: Item[] = [
     "id": "ATR-2",
     "construct": "C2",
     "en": "Exercise: when did we last actually carry out such a check for this function at this provider?",
-    "de": "Ausuebung: wann haben wir zuletzt tatsaechlich eine solche Pruefung durchgefuehrt?",
+    "de": "Ausübung: wann haben wir zuletzt tatsächlich eine solche Prüfung durchgeführt?",
     "selected": true,
     "type": "fact",
     "options": [
@@ -608,33 +608,43 @@ export const ITEMS: Item[] = [
   {
     "id": "ATR-3",
     "construct": "C2",
-    "en": "Independent verification: on what evidence can we rely, other than the provider's own account?",
-    "de": "Unabhaengige Verifikation: auf welche Nachweise koennen wir uns stuetzen ausser der Auskunft des Anbieters?",
+    "en": "Which evidence independent of the provider is available to your organisation for this function?",
+    "de": "Welche vom Anbieter unabhängigen Nachweise stehen Ihrer Organisation für diese Funktion zur Verfügung?",
     "selected": true,
-    "type": "fact",
+    "type": "multi",
     "options": [
       {
-        "value": 0,
-        "en": "Only the provider's own account",
-        "de": "Nur Anbieterauskunft"
-      },
-      {
         "value": 1,
-        "en": "Third-party attestation",
-        "de": "Zertifikate Dritter"
+        "en": "No independent evidence",
+        "de": "Keine unabhängigen Nachweise"
       },
       {
         "value": 2,
-        "en": "Our own logs and telemetry",
-        "de": "Eigene Protokolle und Telemetrie"
+        "en": "Our own logs or telemetry",
+        "de": "Eigene Protokolle oder Telemetriedaten"
+      },
+      {
+        "value": 3,
+        "en": "Independent audit reports or certifications",
+        "de": "Unabhängige Prüfberichte oder Zertifizierungen"
+      },
+      {
+        "value": 4,
+        "en": "Our own technical tests",
+        "de": "Eigene technische Prüfungen"
+      },
+      {
+        "value": 5,
+        "en": "Contractual right to further audits",
+        "de": "Vertragliches Recht auf zusätzliche Prüfung"
       }
     ]
   },
   {
     "id": "DKC-1",
     "construct": "T3",
-    "en": "Key custody: where is the cryptographic key material for this function held today?",
-    "de": "Schluesselstufe: wo liegt das kryptografische Schluesselmaterial fuer diese Funktion heute?",
+    "en": "Who controls the cryptographic key material used for this function?",
+    "de": "Wer kontrolliert das für diese Funktion verwendete kryptografische Schlüsselmaterial?",
     "selected": true,
     "type": "fact",
     "options": [
@@ -670,7 +680,7 @@ export const ITEMS: Item[] = [
     "id": "DKC-2",
     "construct": "T3",
     "en": "Independent backup: if this provider were unavailable, where is a restorable copy?",
-    "de": "Unabhaengige Sicherung: wo liegt eine wiederherstellbare Kopie, wenn dieser Anbieter ausfaellt?",
+    "de": "Unabhängige Sicherung: wo liegt eine wiederherstellbare Kopie, wenn dieser Anbieter ausfällt?",
     "selected": true,
     "type": "fact",
     "options": [
@@ -695,25 +705,30 @@ export const ITEMS: Item[] = [
   {
     "id": "DKC-3",
     "construct": "T3",
-    "en": "Restore test: when did we last actually carry out a restore for this function?",
-    "de": "Wiederherstellung getestet: wann haben wir zuletzt tatsaechlich wiederhergestellt?",
+    "en": "When was the restore of this function last tested?",
+    "de": "Wann wurde die Wiederherstellung dieser Funktion zuletzt getestet?",
     "selected": true,
     "type": "fact",
     "options": [
       {
         "value": 1,
-        "en": "Never",
-        "de": "Nie"
+        "en": "Never tested",
+        "de": "Nie getestet"
       },
       {
         "value": 2,
-        "en": "More than 12 months ago",
-        "de": "Vor mehr als 12 Monaten"
+        "en": "Successfully tested more than 12 months ago",
+        "de": "Vor mehr als zwölf Monaten erfolgreich getestet"
       },
       {
         "value": 3,
-        "en": "Within 12 months, successful",
-        "de": "Innerhalb 12 Monaten, erfolgreich"
+        "en": "Tested within the last 12 months, not successful",
+        "de": "Innerhalb der letzten zwölf Monate getestet, aber nicht erfolgreich"
+      },
+      {
+        "value": 4,
+        "en": "Successfully tested within the last 12 months",
+        "de": "Innerhalb der letzten zwölf Monate erfolgreich getestet"
       }
     ]
   },
@@ -721,7 +736,7 @@ export const ITEMS: Item[] = [
     "id": "DKC-G",
     "construct": "T3",
     "en": "Could this provider return this function's data in plaintext without any cooperation from your organisation?",
-    "de": "Koennte dieser Anbieter die Daten dieser Funktion im Klartext herausgeben, ohne jede Mitwirkung unserer Organisation?",
+    "de": "Könnte dieser Anbieter die Daten dieser Funktion im Klartext herausgeben, ohne jede Mitwirkung unserer Organisation?",
     "selected": false,
     "type": "fact",
     "options": [
@@ -737,5 +752,14 @@ export const ITEMS: Item[] = [
       }
     ],
     "inverted": true
+  },
+  {
+    "id": "C1-2b",
+    "construct": "C1",
+    "en": "Our agreement governs the terms on which additional or changed requirements are implemented.",
+    "de": "Unsere Vereinbarung regelt, nach welchen Bedingungen zusätzliche oder veränderte Anforderungen umgesetzt werden.",
+    "selected": true,
+    "type": "likert",
+    "scale": 7
   }
 ];

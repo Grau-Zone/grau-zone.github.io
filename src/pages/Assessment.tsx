@@ -15,11 +15,13 @@ import { Link } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Home, RotateCcw, FileJson, Info, AlertTriangle, Mail, Check } from "lucide-react";
 import ConstructionStamp from "../components/ConstructionStamp"; // TEMP
 import { submitResult, flushQueue, isEnabled, newResponseId, type SubmitState } from "../data/submit";
-import { ITEMS, MISSING, type Item, type Lang } from "../data/instrument";
+import { ITEMS, MISSING, INSTRUMENT_VERSION, type Item, type Lang } from "../data/instrument";
 import { UI, CONTEXT_GROUPS, FUNCTIONS, FUNCTION_OTHER, FIRM_SIZE, INDUSTRY, HQ, labelOf, anchorsFor, YES_NO, pick } from "../data/surveyUi";
 import { CAPACITIES, CAP_ITEMS, itemsOfCapacity, scoreCapacity, pickCap, MIN_VALID, type CapacityKey } from "../data/capacityItems";
 
-type Answers = Record<string, number>;
+// Mehrfachauswahl-Items (ATR-3) speichern eine Liste von Optionswerten.
+// MISSING bleibt auch dort die einzelne Zahl 99 und wird nie als Null gewertet.
+type Answers = Record<string, number | number[]>;
 type Phase = "lang" | "intro" | "intake" | "blocks" | "result";
 
 const LS = { lang: "cds13-lang", ans: "cds13-answers", phase: "cds13-phase", block: "cds13-block", intake: "cds13-intake", rid: "cds13-rid", consent: "cds13-consent" };
@@ -103,6 +105,18 @@ export default function Assessment() {
 
   const answer = (id: string, v: number) => setAnswers((p) => ({ ...p, [id]: v }));
 
+  // Mehrfachauswahl umschalten. "Keine unabhaengigen Nachweise" (Wert 1) und
+  // "weiss nicht" schliessen die uebrigen Angaben aus.
+  const toggleMulti = (id: string, v: number, exclusive: boolean) =>
+    setAnswers((p) => {
+      const alt = p[id];
+      if (exclusive) return { ...p, [id]: [v] };
+      const liste = Array.isArray(alt) ? alt.filter((x) => x !== 1) : [];
+      const neu = liste.includes(v) ? liste.filter((x) => x !== v) : [...liste, v].sort((a, b) => a - b);
+      if (!neu.length) { const kopie = { ...p }; delete kopie[id]; return kopie; }
+      return { ...p, [id]: neu };
+    });
+
   const reset = () => {
     setAnswers({}); setBlockIndex(0); setIntake(EMPTY_INTAKE);
     setPhase("lang"); setLang(null); setConsent(false); setResponseId("");
@@ -133,7 +147,7 @@ export default function Assessment() {
       {phase === "blocks" && lang && (
         <BlockScreen
           key={`b-${blockIndex}`} lang={L} tr={tr} blockIndex={blockIndex}
-          answers={answers} onAnswer={answer} intake={intake}
+          answers={answers} onAnswer={answer} onToggle={toggleMulti} intake={intake}
           onBack={() => (blockIndex > 0 ? setBlockIndex(blockIndex - 1) : setPhase("intake"))}
           onNext={() => (blockIndex < BLOCKS.length - 1 ? setBlockIndex(blockIndex + 1) : setPhase("result"))}
         />
@@ -447,7 +461,7 @@ function Nav({ tr, onBack, onNext, nextLabel, color }: any) {
 // Items des Forschungsinstruments unter neutralen Ueberschriften. Konstruktnamen,
 // Konstruktcodes und Item-IDs bleiben unsichtbar: sie wuerden Teilnehmende primen
 // und neben den vier Faehigkeiten ein zweites Modell aufmachen.
-function BlockScreen({ lang, tr, blockIndex, answers, onAnswer, onBack, onNext, intake }: any) {
+function BlockScreen({ lang, tr, blockIndex, answers, onAnswer, onToggle, onBack, onNext, intake }: any) {
   const block = BLOCKS[blockIndex];
   const cap = block.kind === "cap" ? CAPACITIES.find((c) => c.key === block.key)! : null;
   const color = blockColor(block);
@@ -535,8 +549,9 @@ function BlockScreen({ lang, tr, blockIndex, answers, onAnswer, onBack, onNext, 
                 {items.map((it) => (
                   <QuestionCard key={it.id} lang={lang} tr={tr} color={color} fill={fill}
                     id={it.id} text={lang === "en" ? it.en : it.de} scale={it.scale || 7}
-                    options={it.type === "fact" ? it.options : undefined}
-                    value={answers[it.id]} onAnswer={onAnswer} />
+                    options={it.type === "fact" || it.type === "multi" ? it.options : undefined}
+                    multi={it.type === "multi"}
+                    value={answers[it.id]} onAnswer={onAnswer} onToggle={onToggle} />
                 ))}
               </div>
             </div>
@@ -561,13 +576,19 @@ function BlockScreen({ lang, tr, blockIndex, answers, onAnswer, onBack, onNext, 
 // Eine Frage. Ohne Item-ID und ohne Konstruktcode. Bei Faktenfragen wird nur der
 // Antworttext gezeigt: sichtbare Zahlen suggerieren eine Rangfolge und beeinflussen
 // die Antwort. Die numerischen Werte bleiben allein im Datensatz.
-function QuestionCard({ id, text, scale, options, lang, tr, color, value, onAnswer, fill }: {
+function QuestionCard({ id, text, scale, options, multi, lang, tr, color, value, onAnswer, onToggle, fill }: {
   id: string; text: string; scale: number; options?: { value: number; en: string; de: string }[];
+  multi?: boolean;
   lang: Lang; tr: (k: any) => string; color: string;
-  value: number | undefined; onAnswer: (itemId: string, v: number) => void; fill: (s: string) => string;
+  value: number | number[] | undefined;
+  onAnswer: (itemId: string, v: number) => void;
+  onToggle?: (itemId: string, v: number, exclusive: boolean) => void;
+  fill: (s: string) => string;
 }) {
   const frage = fill(text);
   const answered = value !== undefined;
+  const gewaehlt = Array.isArray(value) ? value : [];
+  const aktiv = (v: number) => (multi ? gewaehlt.includes(v) : value === v);
   const btn = (active: boolean, extra: React.CSSProperties = {}): React.CSSProperties => ({
     fontFamily: "Inter, sans-serif", fontSize: "12.5px", padding: "8px 13px", borderRadius: "8px",
     border: `1px solid ${active ? color : "rgba(255,255,255,0.09)"}`,
@@ -587,9 +608,22 @@ function QuestionCard({ id, text, scale, options, lang, tr, color, value, onAnsw
 
       {options ? (
         <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+          {multi && (
+            <div style={{ fontFamily: "Inter, sans-serif", fontSize: "11.5px", color: "rgba(255,255,255,0.5)", marginBottom: "3px" }}>
+              {tr("multiHint")}
+            </div>
+          )}
           {options.map((o) => (
-            <button key={o.value} onClick={() => onAnswer(id, o.value)}
-              style={btn(value === o.value, { textAlign: "left", fontSize: "13px", padding: "10px 14px" })}>
+            <button key={o.value}
+              onClick={() => (multi && onToggle ? onToggle(id, o.value, o.value === 1) : onAnswer(id, o.value))}
+              style={btn(aktiv(o.value), { textAlign: "left", fontSize: "13px", padding: "10px 14px", display: "flex", alignItems: "center", gap: "10px" })}>
+              {multi && (
+                <span style={{
+                  width: "14px", height: "14px", borderRadius: "3px", flexShrink: 0,
+                  border: `1px solid ${aktiv(o.value) ? color : "rgba(255,255,255,0.28)"}`,
+                  background: aktiv(o.value) ? color : "transparent",
+                }} />
+              )}
               {pick(o, lang)}
             </button>
           ))}
@@ -659,7 +693,7 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
   const buildRecord = () => ({
     responseId,
     zeitpunkt: new Date().toISOString(),
-    instrument: "capacity-v1 + v13_research",
+    instrument: "capacity-v1 + " + INSTRUMENT_VERSION + "_research",
     erhebungssprache: surveyLang,
     intake: {
       funktion: functionLabel(intake, surveyLang),
@@ -684,17 +718,26 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
       }),
       ...ACTIVE.map((i) => {
         const v = answers[i.id];
+        const mehrfach = Array.isArray(v);
         const beantw = v !== undefined && v !== MISSING;
         const werte = (i.options || []).map((o) => o.value);
-        const opt = i.type === "fact" && beantw ? i.options?.find((o) => o.value === v) : undefined;
+        const opt = i.type === "fact" && beantw && !mehrfach
+          ? i.options?.find((o) => o.value === v)
+          : undefined;
         return {
           id: i.id,
+          typ: i.type,
           publicBlock: "Context",
           researchConstruct: i.construct,
           includeInPublicScore: false,
           frage: surveyLang === "en" ? i.en : i.de,
           antwort: beantw ? v : null,
-          antworttext: opt ? pick(opt, surveyLang) : undefined,
+          antworttext: mehrfach
+            ? (v as number[])
+                .map((x) => i.options?.find((o) => o.value === x))
+                .filter(Boolean)
+                .map((o) => pick(o as any, surveyLang))
+            : opt ? pick(opt, surveyLang) : undefined,
           skala: i.type === "fact" && werte.length
             ? Math.min(...werte) + "-" + Math.max(...werte)
             : "1-" + (i.scale || 7),
@@ -764,8 +807,16 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
   const antwortText = (i: Item): string => {
     const v = answers[i.id];
     if (v === undefined) return tr("notAnswered");
+    if (Array.isArray(v)) {
+      // Mehrfachauswahl wird als Menge berichtet, nie als Mittelwert.
+      return v
+        .map((x) => i.options?.find((o) => o.value === x))
+        .filter(Boolean)
+        .map((o) => pick(o as any, lang))
+        .join(", ");
+    }
     if (v === MISSING) return tr("dontKnow");
-    if (i.type === "fact") {
+    if (i.type === "fact" || i.type === "multi") {
       const o = i.options?.find((x) => x.value === v);
       return o ? pick(o, lang) : String(v);
     }
