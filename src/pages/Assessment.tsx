@@ -1,21 +1,22 @@
-// Organisation Self-Assessment auf Basis des v13-Instruments
-// (Refined Digital Sovereignty Model: Response Capabilities → Mechanisms →
-// Digital Sovereignty → Outcome).
+// Self-Assessment zur digitalen Souveraenitaet.
 //
-// Zwei Fragetypen: Likert (5-/7-stufig, teils reverse) und Faktenfragen mit
-// festen Stufen. "Weiß nicht" ist immer MISSING (99) und wird NIE als 0 gewertet.
+// Oeffentliches Modell: vier organisationale Faehigkeiten (Switching,
+// Internalization, Multi-Sourcing, Negotiation) aus src/data/capacityItems.ts.
+// Nur deren Items bilden die angezeigten Werte.
+//
+// Die Konstrukte des v13-Forschungsinstruments werden im fuenften Block als
+// Kontext erhoben und exportiert. Sie werden weder angezeigt noch auf die vier
+// Faehigkeiten abgebildet und nicht mit ihnen verrechnet.
+//
+// "Weiss nicht" ist immer MISSING (99) und wird nie als 0 gewertet.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Home, RotateCcw, FileJson, Info, AlertTriangle, Mail, Check } from "lucide-react";
 import ConstructionStamp from "../components/ConstructionStamp"; // TEMP
-import SovereigntyModelDiagram, { type NodeScores } from "../components/SovereigntyModelDiagram";
-import { SovereigntyMatrix } from "../components/ResultVisuals";
-import { buildTranscript } from "../data/transcript";
-import { ITEM_NODE, CONSTRUCT_NODES } from "../data/nodeMapping";
 import { submitResult, flushQueue, isEnabled, newResponseId, type SubmitState } from "../data/submit";
-import { CONSTRUCTS, ITEMS, MISSING, type Item, type Lang } from "../data/instrument";
-import { UI, CONTEXT_GROUPS, CONSTRUCT_NAMES, FUNCTIONS, FUNCTION_OTHER, FIRM_SIZE, INDUSTRY, HQ, labelOf, anchorsFor, YES_NO, pick } from "../data/surveyUi";
+import { ITEMS, MISSING, type Item, type Lang } from "../data/instrument";
+import { UI, CONTEXT_GROUPS, FUNCTIONS, FUNCTION_OTHER, FIRM_SIZE, INDUSTRY, HQ, labelOf, anchorsFor, YES_NO, pick } from "../data/surveyUi";
 import { CAPACITIES, CAP_ITEMS, itemsOfCapacity, scoreCapacity, pickCap, MIN_VALID, type CapacityKey } from "../data/capacityItems";
 
 type Answers = Record<string, number>;
@@ -26,17 +27,9 @@ const load = <T,>(k: string, f: T): T => {
   try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : f; } catch { return f; }
 };
 
-// ─── Farben je Modellspalte ──────────────────────────────────────────────────
-const STEP_COLOR: Record<string, string> = {
-  "1 Response Capabilities": "#6b9bd8",
-  "2 Mechanisms": "#d9a559",
-  "3 Digital Sovereignty": "#cf87a5",
-  "4 Outcome": "#6cc2b5",
-};
 // Nur die in der Excel ausgewaehlten Items (Spalte "Auswahl 3")
 const ACTIVE = ITEMS.filter((i) => i.selected);
 const itemsOfConstruct = (c: string) => ACTIVE.filter((i) => i.construct === c);
-const constructsOfStep = (s: string) => CONSTRUCTS.filter((c) => c.step === s);
 
 // Fuenf Bloecke des Fragebogens. Die ersten vier sind das oeffentliche
 // Capacity-Modell, der fuenfte sammelt die Items des Forschungsinstruments.
@@ -60,64 +53,6 @@ const itemIdsOfBlock = (b: BlockDef): string[] =>
   b.kind === "cap"
     ? itemsOfCapacity(b.key).map((i) => i.id)
     : CONTEXT_GROUPS.flatMap((g) => ctxItemsOfGroup(g).map((i) => i.id));
-
-// ─── Auswertung ──────────────────────────────────────────────────────────────
-// Likert je Konstrukt: Mittel der beantworteten Items, reverse gedreht, auf 0..1.
-function likertScore(constructKey: string, a: Answers): { value: number | null; answered: number; total: number } {
-  const items = itemsOfConstruct(constructKey).filter((i) => i.type === "likert");
-  const vals: number[] = [];
-  items.forEach((i) => {
-    const v = a[i.id];
-    if (v === undefined || v === MISSING) return;
-    const max = i.scale || 7;
-    const corrected = i.reverse ? max + 1 - v : v;
-    vals.push((corrected - 1) / (max - 1)); // 0..1
-  });
-  return {
-    value: vals.length ? vals.reduce((x, y) => x + y, 0) / vals.length : null,
-    answered: vals.length,
-    total: items.length,
-  };
-}
-
-// Faktenitem auf 0..1: Rang innerhalb der eigenen Optionen. Das Minimum kommt
-// IMMER aus item.options, denn ATR-Items beginnen bei 0, DKC-Items bei 1. Das
-// Flag "inverted" dreht die Richtung (DKC-G: "ja" ist der schlechte Fall).
-// MISSING bleibt null und wird nie zu einer Null gerechnet.
-function factScore(i: Item, v: number | undefined): number | null {
-  if (v === undefined || v === MISSING) return null;
-  const vals = (i.options || []).map((o) => o.value).sort((a, b) => a - b);
-  const r = vals.indexOf(v);
-  if (r < 0) return null;
-  const share = vals.length > 1 ? r / (vals.length - 1) : 1;
-  return i.inverted ? 1 - share : share;
-}
-
-// Ein Item auf 0..1, unabhaengig von seinem Typ.
-function itemScore(i: Item, a: Answers): number | null {
-  const v = a[i.id];
-  if (v === undefined || v === MISSING) return null;
-  if (i.type === "fact") return factScore(i, v);
-  const max = i.scale || 7;
-  const corrected = i.reverse ? max + 1 - v : v;
-  return (corrected - 1) / (max - 1);
-}
-
-// Faktenindizes bleiben Stufen: formatives Composite, kein Mittelwert.
-function factRows(constructKey: string, a: Answers) {
-  return itemsOfConstruct(constructKey)
-    .filter((i) => i.type === "fact")
-    .map((i) => {
-      const v = a[i.id];
-      const answered = v !== undefined && v !== MISSING;
-      const opt = answered ? i.options?.find((o) => o.value === v) : undefined;
-      const maxV = Math.max(...(i.options || []).map((o) => o.value));
-      const independent = i.independentFrom !== undefined && answered ? v >= i.independentFrom : null;
-      return { item: i, value: answered ? v : null, opt, maxV, independent };
-    });
-}
-
-const clamp01 = (n: number) => Math.max(0, Math.min(1, n));
 
 // Intake: gewaehlte Funktion (Schluessel) oder Freitext unter "other"
 type Intake = { fnKey: string; fnOther: string; provider: string; size: string; industry: string; hq: string };
