@@ -160,6 +160,21 @@ export const UI = {
     "Choose a critical digital function and name the provider concerned. All questions and results refer to that combination only.",
     "Wählen Sie eine kritische digitale Funktion und geben Sie den zugehörigen Anbieter an. Sämtliche Fragen und Ergebnisse beziehen sich ausschliesslich auf diese Kombination."
   ),
+  // Ablauf-Einordnung auf der Intake-Seite. Rueckmeldung Dominik Wlcek: es war
+  // nicht erkennbar, was nach der Auswahl passiert und was man am Ende bekommt.
+  intakeHowHead: t("What happens next", "So läuft es ab"),
+  intakeStep1: t(
+    "You choose one critical digital function and the provider you obtain it from.",
+    "Sie wählen eine kritische digitale Funktion und den Anbieter, von dem Sie sie beziehen."
+  ),
+  intakeStep2: t(
+    "You then rate statements about exactly this combination on a scale from 1 to 7. You assess your own organisation. There are no right or wrong answers.",
+    "Anschliessend bewerten Sie Aussagen zu genau dieser Kombination auf einer Skala von 1 bis 7. Sie schätzen Ihre eigene Organisation ein. Es gibt keine richtigen oder falschen Antworten."
+  ),
+  intakeStep3: t(
+    "At the end you see a profile across four organisational capacities and can download your answers.",
+    "Am Ende sehen Sie ein Profil über vier organisationale Fähigkeiten und können Ihre Antworten herunterladen."
+  ),
   intakeFunction: t("Critical digital function", "Kritische digitale Funktion"),
   intakeFunctionPh: t("e.g. customer data platform", "z. B. Kundendatenplattform"),
   intakeProvider: t("Provider or anonymised label", "Anbieter oder anonymisierte Bezeichnung"),

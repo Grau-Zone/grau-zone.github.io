@@ -368,6 +368,29 @@ function Intake({ lang, tr, intake, setIntake, onBack, onNext }: any) {
         {tr("intakeLead")}
       </p>
 
+      {/* Ablauf in drei Schritten. Ohne diese Einordnung ist auf dieser Seite
+          nicht erkennbar, was nach der Auswahl passiert und was am Ende steht. */}
+      <div style={{ padding: "20px 22px", borderRadius: "12px", background: "rgba(139,164,255,0.06)", border: "1px solid rgba(139,164,255,0.22)", marginBottom: "28px" }}>
+        <div style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "12px", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(139,164,255,0.85)", marginBottom: "14px" }}>
+          {tr("intakeHowHead")}
+        </div>
+        <ol style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: "11px" }}>
+          {[tr("intakeStep1"), tr("intakeStep2"), tr("intakeStep3")].map((txt, i) => (
+            <li key={i} style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
+              <span style={{
+                flexShrink: 0, width: "22px", height: "22px", borderRadius: "50%",
+                background: "rgba(139,164,255,0.18)", border: "1px solid rgba(139,164,255,0.4)",
+                color: "#a8bcff", fontFamily: "Space Grotesk, sans-serif", fontSize: "12px",
+                display: "flex", alignItems: "center", justifyContent: "center", marginTop: "1px",
+              }}>{i + 1}</span>
+              <span style={{ fontFamily: "Inter, sans-serif", fontSize: "13.5px", lineHeight: 1.6, color: "rgba(255,255,255,0.75)" }}>
+                {txt}
+              </span>
+            </li>
+          ))}
+        </ol>
+      </div>
+
       {/* ── Firmenprofil: Stichprobenbeschreibung, bewusst nicht erzwungen ── */}
       <div style={{ padding: "20px 22px", borderRadius: "12px", background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.08)", marginBottom: "28px" }}>
         <div style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "12px", letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.6)" }}>
