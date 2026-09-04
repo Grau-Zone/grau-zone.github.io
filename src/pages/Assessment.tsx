@@ -13,7 +13,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Home, RotateCcw, FileJson, Info, AlertTriangle, Mail, Check } from "lucide-react";
-import ConstructionStamp from "../components/ConstructionStamp"; // TEMP
 import { submitResult, flushQueue, isEnabled, newResponseId, type SubmitState } from "../data/submit";
 import { ITEMS, MISSING, INSTRUMENT_VERSION, type Item, type Lang } from "../data/instrument";
 import { UI, CONTEXT_GROUPS, FUNCTIONS, FUNCTION_OTHER, FIRM_SIZE, INDUSTRY, HQ, labelOf, anchorsFor, YES_NO, pick } from "../data/surveyUi";
@@ -125,7 +124,6 @@ export default function Assessment() {
 
   return (
     <div style={{ minHeight: "100vh", paddingTop: "96px", paddingBottom: "64px" }}>
-      <ConstructionStamp />
       {/* Bewusst ohne AnimatePresence: mit Wrapper-Komponenten als Kindern meldet die
           Exit-Animation nie "fertig", und die naechste Phase wird nie montiert.
           Die Einblend-Animation steckt in den Screens selbst. */}
