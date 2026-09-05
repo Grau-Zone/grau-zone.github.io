@@ -105,7 +105,8 @@ export const CONTEXT_GROUPS: { key: string; label: T; constructs: string[] }[] =
   { key: "wissen",   label: t("Technical and organisational knowledge", "Technisches und organisatorisches Wissen"), constructs: ["O1", "O2", "T2"] },
   { key: "integ",    label: t("Integration and coordination", "Integration und Koordination"), constructs: ["O3"] },
   { key: "daten",    label: t("Data, key and recovery control", "Daten-, Schlüssel- und Wiederherstellungskontrolle"), constructs: ["T3"] },
-  { key: "kont",     label: t("Continuity under provider disruption", "Kontinuität bei Anbieterstörungen"), constructs: ["ALT", "ROC", "FTC", "CTO", "CONT"] },
+  { key: "spielraum", label: t("Room for manoeuvre and control", "Handlungsspielraum und Kontrolle"), constructs: ["ALT", "ROC", "FTC", "CTO"] },
+  { key: "kont",     label: t("Continuity under provider disruption", "Kontinuität bei Anbieterstörungen"), constructs: ["CONT"] },
 ];
 
 // ─── Likert-Skalen (Ankerbeschriftung) ───────────────────────────────────────
