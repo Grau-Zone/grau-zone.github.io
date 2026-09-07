@@ -121,35 +121,12 @@ const Hero = () => {
       {/* Particle canvas */}
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />
 
-      <div className="relative z-10 max-w-[1600px] mx-auto px-6 lg:px-10 w-full grid grid-cols-1 lg:grid-cols-2 gap-16 items-center py-28 lg:py-0 min-h-screen">
+      {/* Oben Platz fuer die fixierte Navigationsleiste (65 px). Mit lg:py-0
+          zentrierte der Container ueber die volle Viewporthoehe, sodass der
+          Inhalt auf Bildschirmen unter rund 773 px Hoehe unter die Leiste rutschte. */}
+      <div className="relative z-10 max-w-[1600px] mx-auto px-6 lg:px-10 w-full grid grid-cols-1 lg:grid-cols-2 gap-16 items-center py-28 lg:pt-24 lg:pb-16 min-h-screen">
         {/* Left: Text content */}
         <div>
-          {/* Eyebrow */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2 mb-8"
-          >
-            <span
-              className="text-xs font-semibold tracking-[0.2em] uppercase px-3 py-1.5 rounded-full"
-              style={{
-                background: "rgba(75,110,255,0.12)",
-                border: "1px solid rgba(75,110,255,0.25)",
-                color: "#8ba4ff",
-                fontFamily: "'Space Grotesk', sans-serif",
-              }}
-            >
-              Initiative 2025–2030
-            </span>
-            <span
-              className="text-xs font-medium tracking-widest uppercase"
-              style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Space Grotesk', sans-serif" }}
-            >
-              Dieter Schwarz Stiftung
-            </span>
-          </motion.div>
-
           {/* Headline */}
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
