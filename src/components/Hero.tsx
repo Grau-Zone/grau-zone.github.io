@@ -121,14 +121,11 @@ const Hero = () => {
       {/* Particle canvas */}
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />
 
-      {/* Oben Platz fuer die fixierte Navigationsleiste (65 px). Mit lg:py-0
-          zentrierte der Container ueber die volle Viewporthoehe, sodass der
-          Inhalt auf Bildschirmen unter rund 773 px Hoehe unter die Leiste rutschte.
-          Das groessere Padding unten zieht den zentrierten Inhalt nach oben:
-          Der Inhalt sitzt in der Mitte zwischen pt und pb, ein hoeheres pb
-          verschiebt diese Mitte nach oben. pt-20 haelt zugleich den Mindestabstand
-          zur Leiste, wenn der Inhalt bei kleinen Fensterhoehen nicht mehr passt. */}
-      <div className="relative z-10 max-w-[1600px] mx-auto px-6 lg:px-10 w-full grid grid-cols-1 lg:grid-cols-2 gap-16 items-center py-28 lg:pt-20 lg:pb-44 min-h-screen">
+      {/* Auf Desktop bewusst oben ausgerichtet statt vertikal zentriert.
+          Bei Zentrierung waechst der Abstand zur Navigationsleiste mit der
+          Fensterhoehe; oben ausgerichtet bleibt er konstant bei pt minus den
+          65 px der fixierten Leiste. Mobil bleibt es bei py-28. */}
+      <div className="relative z-10 max-w-[1600px] mx-auto px-6 lg:px-10 w-full grid grid-cols-1 lg:grid-cols-2 gap-16 items-center lg:items-start py-28 lg:pt-28 lg:pb-24 min-h-screen">
         {/* Left: Text content */}
         <div>
           {/* Headline */}
