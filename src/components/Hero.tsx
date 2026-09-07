@@ -123,8 +123,12 @@ const Hero = () => {
 
       {/* Oben Platz fuer die fixierte Navigationsleiste (65 px). Mit lg:py-0
           zentrierte der Container ueber die volle Viewporthoehe, sodass der
-          Inhalt auf Bildschirmen unter rund 773 px Hoehe unter die Leiste rutschte. */}
-      <div className="relative z-10 max-w-[1600px] mx-auto px-6 lg:px-10 w-full grid grid-cols-1 lg:grid-cols-2 gap-16 items-center py-28 lg:pt-24 lg:pb-16 min-h-screen">
+          Inhalt auf Bildschirmen unter rund 773 px Hoehe unter die Leiste rutschte.
+          Das groessere Padding unten zieht den zentrierten Inhalt nach oben:
+          Der Inhalt sitzt in der Mitte zwischen pt und pb, ein hoeheres pb
+          verschiebt diese Mitte nach oben. pt-20 haelt zugleich den Mindestabstand
+          zur Leiste, wenn der Inhalt bei kleinen Fensterhoehen nicht mehr passt. */}
+      <div className="relative z-10 max-w-[1600px] mx-auto px-6 lg:px-10 w-full grid grid-cols-1 lg:grid-cols-2 gap-16 items-center py-28 lg:pt-20 lg:pb-44 min-h-screen">
         {/* Left: Text content */}
         <div>
           {/* Headline */}
