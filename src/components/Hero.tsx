@@ -121,11 +121,12 @@ const Hero = () => {
       {/* Particle canvas */}
       <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" />
 
-      {/* Auf Desktop bewusst oben ausgerichtet statt vertikal zentriert.
-          Bei Zentrierung waechst der Abstand zur Navigationsleiste mit der
-          Fensterhoehe; oben ausgerichtet bleibt er konstant bei pt minus den
-          65 px der fixierten Leiste. Mobil bleibt es bei py-28. */}
-      <div className="relative z-10 max-w-[1600px] mx-auto px-6 lg:px-10 w-full grid grid-cols-1 lg:grid-cols-2 gap-16 items-center lg:items-start py-28 lg:pt-28 lg:pb-24 min-h-screen">
+      {/* Auf Desktop oben ausgerichtet statt vertikal zentriert: bei Zentrierung
+          waechst der Abstand zur Navigationsleiste mit der Fensterhoehe und der
+          Inhalt rutscht bei kleinen Fenstern darunter. pt entspricht exakt der
+          Hoehe der fixierten Leiste (65 px), der Inhalt beginnt also unmittelbar
+          darunter, ohne Puffer und ohne Ueberlappung. */}
+      <div className="relative z-10 max-w-[1600px] mx-auto px-6 lg:px-10 w-full grid grid-cols-1 lg:grid-cols-2 gap-16 items-center lg:items-start pt-[65px] pb-28 lg:pb-24 min-h-screen">
         {/* Left: Text content */}
         <div>
           {/* Headline */}
