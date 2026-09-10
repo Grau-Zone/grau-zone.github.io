@@ -171,3 +171,23 @@
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: hsl(228 45% 4%); }
 ::-webkit-scrollbar-thumb { background: hsl(228 30% 18%); border-radius: 3px; }
+
+/* Chrome faerbt automatisch ausgefuellte Felder hellblau bis weiss und setzt
+   dabei background und color mit hoher Prioritaet. Auf der durchgehend dunklen
+   Seite sticht das als weisser Kasten heraus. Die Hintergrundfarbe selbst laesst
+   sich nicht ueberschreiben, ein einfarbiger innerer Schatten deckt sie ab;
+   die Schriftfarbe braucht -webkit-text-fill-color. Die lange transition
+   verhindert das kurze Aufblitzen der Autofill-Farbe.
+   Das !important ist noetig, weil die Felder ihre Farben inline tragen und ein
+   spaeter gesetzter Inline-Wert die Abdeckung sonst wieder entfernen wuerde.
+   Der Fokusring liegt bewusst auf outline und nicht auf box-shadow, damit er
+   sich mit dieser Abdeckung nicht um dieselbe Eigenschaft streitet. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #0d1020 inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #ffffff;
+  transition: background-color 100000s ease-in-out 0s;
+}

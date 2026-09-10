@@ -32,10 +32,11 @@ const feldStil: React.CSSProperties = {
   width: "100%", padding: "13px 16px", borderRadius: "10px",
   background: "rgba(255,255,255,0.04)", border: "1px solid " + RAND_RUHE,
   color: "white", fontFamily: "'Inter', sans-serif", fontSize: "15px",
-  // outline: none braucht zwingend den Ersatz in onFocus/onBlur am Feld selbst.
-  // Ohne den sieht niemand, der mit der Tastatur bedient, wo er gerade steht:
+  // Der Fokusring wird in onFocus/onBlur am Feld selbst gesetzt, und zwar ueber
+  // outline: box-shadow gehoert der Autofill-Abdeckung in index.css. Ohne den
+  // Ring sieht niemand, der mit der Tastatur bedient, wo er gerade steht:
   // ausgerechnet in dem Feld, ueber das die Einwilligung erteilt wird.
-  outline: "none", transition: "border-color 0.15s, box-shadow 0.15s",
+  outline: "none", transition: "border-color 0.15s",
 };
 
 const karteStil: React.CSSProperties = {
@@ -231,11 +232,11 @@ const Awf = () => {
               aria-describedby="awf-einwilligung awf-meldung"
               onFocus={(e) => {
                 e.currentTarget.style.borderColor = "rgba(139,164,255,0.75)";
-                e.currentTarget.style.boxShadow = "0 0 0 3px rgba(75,110,255,0.2)";
+                e.currentTarget.style.outline = "3px solid rgba(75,110,255,0.4)";
               }}
               onBlur={(e) => {
                 e.currentTarget.style.borderColor = status === "invalid" ? RAND_FEHLER : RAND_RUHE;
-                e.currentTarget.style.boxShadow = "none";
+                e.currentTarget.style.outline = "none";
               }}
               style={{ ...feldStil, borderColor: status === "invalid" ? RAND_FEHLER : RAND_RUHE }}
             />
