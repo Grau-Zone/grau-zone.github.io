@@ -32,7 +32,10 @@
 //   INSERT  -> 201 angelegt              >200 KB -> 400 check constraint
 // Kommt hier je eine select-Policy dazu, kann jeder alle Antworten auslesen.
 const SUPABASE_KEY = "sb_publishable_znfxxZr_nEsUfL8elloRew_h31U0DJo";
-export const ENDPOINT = "https://zwhgrdaaysvdtqkpghra.supabase.co/rest/v1/responses";
+// Basis der REST-Schnittstelle. Weitere Tabellen (z. B. awf_contacts) haengen
+// ihren Namen daran; Schluessel und Header bleiben dieselben.
+export const REST_BASE = "https://zwhgrdaaysvdtqkpghra.supabase.co/rest/v1";
+export const ENDPOINT = REST_BASE + "/responses";
 export const HEADERS: Record<string, string> = {
   apikey: SUPABASE_KEY,
   Authorization: `Bearer ${SUPABASE_KEY}`,

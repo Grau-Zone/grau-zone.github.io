@@ -8,7 +8,8 @@ const mail = (
   </a>
 );
 
-const sections: { title: string; lines: React.ReactNode[] }[] = [
+// id nur dort, wo von aussen hingesprungen wird (siehe ScrollToHash in App.tsx).
+const sections: { title: string; id?: string; lines: React.ReactNode[] }[] = [
   {
     title: "Angaben zum Anbieter",
     lines: ["Adrian Bohrer", "Universität St.Gallen", "Müller-Friedberg-Strasse 8", "CH-9000 St.Gallen"],
@@ -80,6 +81,19 @@ const sections: { title: string; lines: React.ReactNode[] }[] = [
     ],
   },
   {
+    title: "Kontaktliste Anwenderforum",
+    id: "kontaktliste",
+    lines: [
+      "Auf der Seite /awf können Teilnehmende des 55. Anwenderforums des IWI-HSG ihre E-Mail-Adresse hinterlassen, damit das Institut für Wirtschaftsinformatik sie zu seinen Themen, Veranstaltungen und Forschungsergebnissen kontaktieren kann.",
+      "Gespeichert werden die E-Mail-Adresse, der Zeitpunkt und die Fassung des Einwilligungstexts. Name und IP-Adresse werden nicht erhoben.",
+      "Rechtsgrundlage ist Ihre Einwilligung, die Sie durch die Eingabe der Adresse und den Klick auf „Ja“ erteilen. Ohne Einwilligung wird nichts übermittelt.",
+      "Die Adressen liegen in einer Datenbank des Anbieters Supabase im Rechenzentrum Frankfurt am Main. Die Website kann dort ausschließlich schreiben, Zugriff hat allein das Forschungsteam.",
+      "Die Adressen bleiben gespeichert, bis Sie Ihre Einwilligung widerrufen. Eine feste Frist ist damit nicht verbunden.",
+      <>Sie können die Einwilligung jederzeit per E-Mail an {mail} widerrufen. Ihre Adresse wird dann umgehend gelöscht.</>,
+      "Ihre Entscheidung, auch ein Nein, wird nur in Ihrem Browser gespeichert, damit die Frage nicht erneut erscheint. Bei einem Nein wird nichts an uns übermittelt.",
+    ],
+  },
+  {
     title: "Hosting, Schriftarten, kein Tracking",
     lines: [
       "Diese Seite wird über GitHub Pages (GitHub Inc.) ausgeliefert. Beim Aufruf verarbeitet GitHub technisch notwendige Verbindungsdaten einschließlich Ihrer IP-Adresse. Darauf haben wir keinen Zugriff.",
@@ -91,8 +105,9 @@ const sections: { title: string; lines: React.ReactNode[] }[] = [
     title: "Ihre Rechte",
     lines: [
       "Sie haben das Recht auf Auskunft, Berichtigung und Löschung Ihrer Daten sowie das Recht, Ihre Einwilligung jederzeit zu widerrufen.",
-      "Wir erheben keine Kontaktdaten. Ihr Datensatz lässt sich deshalb nur über die Antwort-Kennung auffinden, die am Ende des Fragebogens angezeigt wird. Notieren Sie diese Kennung, wenn Sie sich diese Möglichkeit offenhalten möchten.",
-      <>Für Auskunft, Löschung oder Widerruf genügt eine E-Mail an {mail} unter Angabe der Antwort-Kennung.</>,
+      "Im Self-Assessment erheben wir keine Kontaktdaten. Ihr Datensatz lässt sich deshalb nur über die Antwort-Kennung auffinden, die am Ende des Fragebogens angezeigt wird. Notieren Sie diese Kennung, wenn Sie sich diese Möglichkeit offenhalten möchten.",
+      <>Für Auskunft, Löschung oder Widerruf genügt eine E-Mail an {mail}. Bei einem Datensatz aus dem Self-Assessment geben Sie darin bitte die Antwort-Kennung an; für die Kontaktliste des Anwenderforums genügt die E-Mail-Adresse selbst.</>,
+      "Fragen und Beanstandungen zum Datenschutz können Sie ausserdem an die Datenschutzbeauftragte der Universität St.Gallen richten.",
     ],
   },
   {
@@ -160,8 +175,14 @@ const Impressum = () => {
           {sections.map((section) => (
             <div
               key={section.title}
+              id={section.id}
               className="rounded-2xl p-6 lg:p-7"
-              style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)" }}
+              style={{
+                background: "rgba(255,255,255,0.025)",
+                border: "1px solid rgba(255,255,255,0.07)",
+                // sonst verschwindet die Ueberschrift beim Sprung hinter der fixierten Kopfzeile
+                scrollMarginTop: "96px",
+              }}
             >
               <h2
                 className="text-xs font-semibold uppercase tracking-widest mb-4"

@@ -1,14 +1,19 @@
 User-agent: Googlebot
 Allow: /
+Disallow: /anwenderforum-55-iwi-hsg-2026.pdf
 
 User-agent: Bingbot
 Allow: /
+Disallow: /anwenderforum-55-iwi-hsg-2026.pdf
 
 User-agent: Twitterbot
 Allow: /
+Disallow: /anwenderforum-55-iwi-hsg-2026.pdf
 
 User-agent: facebookexternalhit
 Allow: /
+Disallow: /anwenderforum-55-iwi-hsg-2026.pdf
 
 User-agent: *
 Allow: /
+Disallow: /anwenderforum-55-iwi-hsg-2026.pdf
