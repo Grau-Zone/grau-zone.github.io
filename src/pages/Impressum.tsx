@@ -11,9 +11,10 @@ const mail = (
   </a>
 );
 
+// Im Genitiv, weil der Link nur an einer Stelle steht: "ein Projekt des ...".
 const iwi = (
   <a href={IWI_URL} style={{ color: "#8ba4ff", textDecoration: "none" }}>
-    Institut für Wirtschaftsinformatik der Universität St.Gallen
+    Instituts für Wirtschaftsinformatik der Universität St.Gallen
   </a>
 );
 
