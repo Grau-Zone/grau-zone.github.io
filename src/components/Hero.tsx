@@ -115,7 +115,7 @@ const Hero = () => {
 
   return (
     <section
-      className="relative min-h-screen flex items-center overflow-hidden"
+      className="relative flex items-center overflow-hidden"
       style={{ background: "radial-gradient(ellipse 80% 60% at 60% 50%, rgba(30,45,120,0.35) 0%, transparent 70%)" }}
     >
       {/* Particle canvas */}
@@ -125,8 +125,14 @@ const Hero = () => {
           waechst der Abstand zur Navigationsleiste mit der Fensterhoehe und der
           Inhalt rutscht bei kleinen Fenstern darunter. pt entspricht exakt der
           Hoehe der fixierten Leiste (65 px), der Inhalt beginnt also unmittelbar
-          darunter, ohne Puffer und ohne Ueberlappung. */}
-      <div className="relative z-10 max-w-[1600px] mx-auto px-6 lg:px-10 w-full grid grid-cols-1 lg:grid-cols-2 gap-16 items-center lg:items-start pt-[65px] pb-28 lg:pb-24 min-h-screen">
+          darunter, ohne Puffer und ohne Ueberlappung.
+
+          Kein min-h-screen mehr, weder hier noch auf der Section: zusammen mit
+          items-start sammelte sich der gesamte Ueberschuss unten. Der Inhalt
+          endete immer auf derselben Hoehe, die Section wuchs aber mit dem
+          Fenster, die Luecke also eins zu eins mit. Bei 2200x1240 waren 48 % des
+          Hero leer. Jetzt bestimmt der Inhalt die Hoehe. */}
+      <div className="relative z-10 max-w-[1600px] mx-auto px-6 lg:px-10 w-full grid grid-cols-1 lg:grid-cols-2 gap-16 items-center lg:items-start pt-[65px] pb-28 lg:pb-32">
         {/* Left: Text content */}
         <div>
           {/* Headline */}
