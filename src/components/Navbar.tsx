@@ -51,7 +51,7 @@ const Navbar = () => {
                 in der Fusszeile. */}
             <span className="text-[10px] text-white/40 tracking-widest uppercase font-medium whitespace-nowrap">
               <span className="sm:hidden">IWI-HSG</span>
-              <span className="hidden sm:inline">Institut für Wirtschaftsinformatik · HSG</span>
+              <span className="hidden sm:inline">HSG - Institut für Wirtschaftsinformatik</span>
             </span>
           </div>
         </Link>
