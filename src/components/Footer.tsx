@@ -1,8 +1,10 @@
 import { motion } from "framer-motion";
 
+import SiteFooter from "./SiteFooter";
+
 const Footer = () => {
   return (
-    <footer
+    <section
       id="about"
       style={{ background: "transparent", borderTop: "1px solid rgba(139,164,255,0.08)" }}
     >
@@ -185,60 +187,10 @@ const Footer = () => {
           </div>
         </div>
 
-        {/* Bottom bar */}
-        <div
-          className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pt-8"
-          style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}
-        >
-          {/* Logo */}
-          <div className="flex items-center gap-2.5">
-            <div className="relative w-6 h-6">
-              <svg viewBox="0 0 24 24" fill="none" className="w-full h-full">
-                <circle cx="12" cy="12" r="10" stroke="rgba(75,110,255,0.3)" strokeWidth="1" />
-                <circle cx="12" cy="12" r="6" stroke="rgba(75,110,255,0.5)" strokeWidth="1" />
-                <circle cx="12" cy="12" r="2" fill="#4B6EFF" />
-                <line x1="12" y1="12" x2="12" y2="2" stroke="#4B6EFF" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
-            </div>
-            <span
-              className="text-sm font-semibold text-white/60"
-              style={{ fontFamily: "'Space Grotesk', sans-serif" }}
-            >
-              Sovereignty Radar
-            </span>
-          </div>
-
-          {/* Links */}
-          <div className="flex gap-6 flex-wrap">
-            {[
-              { label: "Kontakt", href: "mailto:adrian.bohrer@unisg.ch,andreas.hein@unisg.ch" },
-              { label: "IWI-HSG", href: "https://iwi.unisg.ch" },
-              { label: "Center for Digital Enterprise Transformation", href: "https://iwi.unisg.ch/cdet" },
-              { label: "STACKIT", href: "https://stackit.de" },
-              { label: "Impressum", href: "/impressum" },
-            ].map(({ label, href }) => (
-              <a
-                key={label}
-                href={href}
-                className="text-xs transition-colors"
-                style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Space Grotesk', sans-serif" }}
-                onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.6)")}
-                onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "rgba(255,255,255,0.5)")}
-              >
-                {label}
-              </a>
-            ))}
-          </div>
-
-          <div
-            className="text-xs"
-            style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Inter', sans-serif" }}
-          >
-            © {new Date().getFullYear()} Dieter Schwarz Stiftung · IWI-HSG
-          </div>
-        </div>
       </div>
-    </footer>
+
+      <SiteFooter breit />
+    </section>
   );
 };
 

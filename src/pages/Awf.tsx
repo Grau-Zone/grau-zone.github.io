@@ -16,6 +16,8 @@ import {
   readChoice, writeChoice, normalizeEmail, isValidEmail, submitAwfContact,
   AWF_CONSENT_VERSION, type AwfChoice,
 } from "../data/awfContacts";
+import RadarMark from "../components/RadarMark";
+import SiteFooter from "../components/SiteFooter";
 
 const PDF = import.meta.env.BASE_URL + "anwenderforum-55-iwi-hsg-2026.pdf";
 const WIDERRUF = "adrian.bohrer@unisg.ch";
@@ -150,14 +152,7 @@ const Awf = () => {
       >
         <div className="max-w-3xl mx-auto flex items-center justify-between h-16 px-6">
           <Link to="/" className="flex items-center gap-2.5" style={{ textDecoration: "none" }}>
-            <div className="relative w-7 h-7">
-              <svg viewBox="0 0 28 28" fill="none" className="w-full h-full">
-                <circle cx="14" cy="14" r="12" stroke="rgba(75,110,255,0.3)" strokeWidth="1" />
-                <circle cx="14" cy="14" r="7" stroke="rgba(75,110,255,0.5)" strokeWidth="1" />
-                <circle cx="14" cy="14" r="2.5" fill="#4B6EFF" />
-                <line x1="14" y1="14" x2="14" y2="2" stroke="#4B6EFF" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
-            </div>
+            <RadarMark size={28} />
             <span className="text-sm font-semibold text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
               Sovereignty Radar
             </span>
@@ -437,6 +432,8 @@ const Awf = () => {
           </motion.div>
         )}
       </motion.div>
+
+      <SiteFooter />
     </div>
   );
 };

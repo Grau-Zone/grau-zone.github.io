@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import RadarMark from "./RadarMark";
 
 const navItems = [
   { label: "Szenarien", href: "#scenarios" },
@@ -33,16 +35,8 @@ const Navbar = () => {
     >
       <div className="max-w-[1600px] mx-auto flex items-center justify-between h-16 px-4 sm:px-6 lg:px-10">
         {/* Logo */}
-        <a href="/" className="flex items-center gap-2.5 group">
-          {/* Radar icon mark */}
-          <div className="relative w-7 h-7">
-            <svg viewBox="0 0 28 28" fill="none" className="w-full h-full">
-              <circle cx="14" cy="14" r="12" stroke="rgba(75,110,255,0.3)" strokeWidth="1" />
-              <circle cx="14" cy="14" r="7" stroke="rgba(75,110,255,0.5)" strokeWidth="1" />
-              <circle cx="14" cy="14" r="2.5" fill="#4B6EFF" />
-              <line x1="14" y1="14" x2="14" y2="2" stroke="#4B6EFF" strokeWidth="1.5" strokeLinecap="round" />
-            </svg>
-          </div>
+        <Link to="/" className="flex items-center gap-2.5 group" style={{ textDecoration: "none" }}>
+          <RadarMark size={28} />
           <div className="flex flex-col leading-none">
             <span
               className="text-sm font-semibold tracking-tight text-white"
@@ -50,11 +44,17 @@ const Navbar = () => {
             >
               Sovereignty Radar
             </span>
-            <span className="text-[10px] text-white/40 tracking-widest uppercase font-medium">
-              Dieter Schwarz Stiftung
+            {/* Herausgeber ist das Institut, nicht die foerdernde Stiftung.
+                Ausgeschrieben ist der Name so breit, dass er bei 375 px den
+                Self-Assessment-Knopf aus der Leiste draengt; dort deshalb die
+                Kurzform. Die vollstaendige Angabe steht ohnehin auf jeder Seite
+                in der Fusszeile. */}
+            <span className="text-[10px] text-white/40 tracking-widest uppercase font-medium whitespace-nowrap">
+              <span className="sm:hidden">IWI-HSG</span>
+              <span className="hidden sm:inline">Institut für Wirtschaftsinformatik</span>
             </span>
           </div>
-        </a>
+        </Link>
 
         {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-8">

@@ -1,6 +1,9 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
+import RadarMark from "../components/RadarMark";
+import SiteFooter from "../components/SiteFooter";
+import { IWI_URL } from "../components/IwiLogo";
 
 const mail = (
   <a href="mailto:adrian.bohrer@unisg.ch" style={{ color: "#8ba4ff", textDecoration: "none" }}>
@@ -8,8 +11,21 @@ const mail = (
   </a>
 );
 
+const iwi = (
+  <a href={IWI_URL} style={{ color: "#8ba4ff", textDecoration: "none" }}>
+    Institut für Wirtschaftsinformatik der Universität St.Gallen
+  </a>
+);
+
 // id nur dort, wo von aussen hingesprungen wird (siehe ScrollToHash in App.tsx).
 const sections: { title: string; id?: string; lines: React.ReactNode[] }[] = [
+  {
+    title: "Herausgeber",
+    lines: [
+      <>Der Sovereignty Radar ist ein Projekt des {iwi}.</>,
+      <>© {new Date().getFullYear()} IWI-HSG, Universität St.Gallen. Alle Rechte vorbehalten.</>,
+    ],
+  },
   {
     title: "Angaben zum Anbieter",
     lines: ["Adrian Bohrer", "Universität St.Gallen", "Müller-Friedberg-Strasse 8", "CH-9000 St.Gallen"],
@@ -128,14 +144,7 @@ const Impressum = () => {
       >
         <div className="max-w-3xl mx-auto flex items-center justify-between h-16 px-6">
           <Link to="/" className="flex items-center gap-2.5" style={{ textDecoration: "none" }}>
-            <div className="relative w-7 h-7">
-              <svg viewBox="0 0 28 28" fill="none" className="w-full h-full">
-                <circle cx="14" cy="14" r="12" stroke="rgba(75,110,255,0.3)" strokeWidth="1" />
-                <circle cx="14" cy="14" r="7" stroke="rgba(75,110,255,0.5)" strokeWidth="1" />
-                <circle cx="14" cy="14" r="2.5" fill="#4B6EFF" />
-                <line x1="14" y1="14" x2="14" y2="2" stroke="#4B6EFF" strokeWidth="1.5" strokeLinecap="round" />
-              </svg>
-            </div>
+            <RadarMark size={28} />
             <span className="text-sm font-semibold text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
               Sovereignty Radar
             </span>
@@ -205,6 +214,8 @@ const Impressum = () => {
           ))}
         </div>
       </motion.div>
+
+      <SiteFooter />
     </div>
   );
 };

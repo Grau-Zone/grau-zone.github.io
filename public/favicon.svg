@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Das Radar-Signet der Seite, siehe src/components/RadarMark.tsx.
+       Bewusst nicht das IWI-Logo: das Favicon kennzeichnet diese Seite, und die
+       HSG-Wortmarke waere bei 16 Pixeln ohnehin nicht lesbar. Gegenueber dem
+       Signet im Seitenkopf sind die Ringe deckender, weil 0.3 Deckkraft bei
+       dieser Groesse verschwindet. Dunkles Feld darunter, damit es auf hellen
+       wie dunklen Browserleisten steht. -->
+  <rect width="32" height="32" rx="7" fill="#070A15"/>
+  <circle cx="16" cy="16" r="10.5" fill="none" stroke="#4B6EFF" stroke-opacity="0.55" stroke-width="1.5"/>
+  <circle cx="16" cy="16" r="6" fill="none" stroke="#4B6EFF" stroke-opacity="0.8" stroke-width="1.5"/>
+  <circle cx="16" cy="16" r="2.6" fill="#4B6EFF"/>
+  <line x1="16" y1="16" x2="16" y2="4.5" stroke="#4B6EFF" stroke-width="2" stroke-linecap="round"/>
+</svg>

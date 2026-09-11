@@ -10,6 +10,7 @@
 //
 // "Weiss nicht" ist immer MISSING (99) und wird nie als 0 gewertet.
 import { useEffect, useMemo, useRef, useState } from "react";
+import SiteFooter from "../components/SiteFooter";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Home, RotateCcw, FileJson, Info, AlertTriangle, Mail, Check } from "lucide-react";
@@ -123,7 +124,9 @@ export default function Assessment() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", paddingTop: "96px", paddingBottom: "64px" }}>
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+      {/* Der Inhalt traegt den Abstand, die Fusszeile schliesst darunter an. */}
+      <div style={{ flex: 1, paddingTop: "96px", paddingBottom: "64px" }}>
       {/* Bewusst ohne AnimatePresence: mit Wrapper-Komponenten als Kindern meldet die
           Exit-Animation nie "fertig", und die naechste Phase wird nie montiert.
           Die Einblend-Animation steckt in den Screens selbst. */}
@@ -153,6 +156,9 @@ export default function Assessment() {
       {phase === "result" && lang && (
         <Result key="result" lang={L} tr={tr} answers={answers} intake={intake} onRestart={reset} responseId={responseId} consent={consent} />
       )}
+      </div>
+
+      <SiteFooter />
     </div>
   );
 }
