@@ -29,6 +29,21 @@ const load = <T,>(k: string, f: T): T => {
   try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : f; } catch { return f; }
 };
 
+// Schreiben muss genauso abgesichert sein wie Lesen. In einem iframe auf einer
+// fremden Domain sperren Browser den Speicher: Safari grundsaetzlich, Chrome
+// sobald jemand Drittanbieter-Daten blockiert. Der Zugriff wirft dann einen
+// SecurityError. Ungefangen aus einem useEffect heraus reisst der die gesamte
+// Anwendung mit, die Seite bleibt weiss. Nachgestellt am 15.09.2026: nach der
+// Sprachwahl war der Seiteninhalt von 246 Zeichen auf 0 gefallen.
+//
+// Ohne Speicher geht nur der Fortschritt verloren, der Fragebogen selbst laeuft.
+const save = (k: string, v: unknown): void => {
+  try { localStorage.setItem(k, JSON.stringify(v)); } catch { /* gesperrt oder voll */ }
+};
+const drop = (k: string): void => {
+  try { localStorage.removeItem(k); } catch { /* egal */ }
+};
+
 // Nur die in der Excel ausgewaehlten Items (Spalte "Auswahl 3")
 const ACTIVE = ITEMS.filter((i) => i.selected);
 const itemsOfConstruct = (c: string) => ACTIVE.filter((i) => i.construct === c);
@@ -86,13 +101,13 @@ export default function Assessment() {
     return { ...EMPTY_INTAKE, ...raw };
   });
 
-  useEffect(() => { localStorage.setItem(LS.lang, JSON.stringify(lang)); }, [lang]);
-  useEffect(() => { localStorage.setItem(LS.phase, JSON.stringify(phase)); }, [phase]);
-  useEffect(() => { localStorage.setItem(LS.block, JSON.stringify(blockIndex)); }, [blockIndex]);
-  useEffect(() => { localStorage.setItem(LS.ans, JSON.stringify(answers)); }, [answers]);
-  useEffect(() => { localStorage.setItem(LS.intake, JSON.stringify(intake)); }, [intake]);
-  useEffect(() => { localStorage.setItem(LS.consent, JSON.stringify(consent)); }, [consent]);
-  useEffect(() => { localStorage.setItem(LS.rid, JSON.stringify(responseId)); }, [responseId]);
+  useEffect(() => { save(LS.lang, lang); }, [lang]);
+  useEffect(() => { save(LS.phase, phase); }, [phase]);
+  useEffect(() => { save(LS.block, blockIndex); }, [blockIndex]);
+  useEffect(() => { save(LS.ans, answers); }, [answers]);
+  useEffect(() => { save(LS.intake, intake); }, [intake]);
+  useEffect(() => { save(LS.consent, consent); }, [consent]);
+  useEffect(() => { save(LS.rid, responseId); }, [responseId]);
 
   // Liegengebliebene Uebermittlungen aus frueheren Durchlaeufen nachreichen.
   useEffect(() => { flushQueue(); }, []);
@@ -120,7 +135,7 @@ export default function Assessment() {
   const reset = () => {
     setAnswers({}); setBlockIndex(0); setIntake(EMPTY_INTAKE);
     setPhase("lang"); setLang(null); setConsent(false); setResponseId("");
-    Object.values(LS).forEach((k) => localStorage.removeItem(k));
+    Object.values(LS).forEach(drop);
   };
 
   return (
@@ -826,7 +841,7 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
     submitResult(payload).then((st) => {
       setSubmitState(st);
       if (st === "ok") {
-        try { localStorage.setItem("cds13-sent", JSON.stringify([...done, responseId].slice(-50))); } catch { /* voll */ }
+        save("cds13-sent", [...done, responseId].slice(-50));
       }
     });
   }, [consent, responseId]);
