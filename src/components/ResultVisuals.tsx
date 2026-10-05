@@ -4,6 +4,8 @@
 import { motion } from "framer-motion";
 import type { Lang } from "../data/instrument";
 import { UI, pick } from "../data/surveyUi";
+import type { QuadKey } from "../data/scoring";
+import type { Quant } from "../data/benchmarkCore";
 
 const AXIS = "rgba(190,210,230,0.30)";
 const LABEL = "rgba(214,230,245,0.55)";
@@ -23,6 +25,14 @@ function wrap2(label: string, maxChars = 15): string[] {
   return [words.slice(0, best).join(" "), words.slice(best).join(" ")];
 }
 
+// Quadranten der Matrix in Worten und Farben, fuer Ergebnisseite und Dashboard.
+export const QUAD_VIEW: Record<QuadKey, { name: { en: string; de: string }; desc: { en: string; de: string }; color: string }> = {
+  sovereign: { name: UI.quadSovereign, desc: UI.quadDesc.sovereign, color: "#6cc2b5" },
+  exit:      { name: UI.quadExit,      desc: UI.quadDesc.exit,      color: "#6b9bd8" },
+  settled:   { name: UI.quadSettled,   desc: UI.quadDesc.settled,   color: "#d9a559" },
+  exposed:   { name: UI.quadExposed,   desc: UI.quadDesc.exposed,   color: "#cf87a5" },
+};
+
 // Farbskala: rot → gelb → grün, für 0..1
 export function scoreColor(v: number): string {
   const hue = 4 + 128 * Math.max(0, Math.min(1, v)); // 4° rot bis 132° grün
@@ -30,23 +40,36 @@ export function scoreColor(v: number): string {
 }
 
 // ─── 1 · Souveränitäts-Matrix ────────────────────────────────────────────────
+// Vergleichsgruppe in der Matrix: Raute = Median je Achse, Rahmen = mittlere Haelfte.
+export type MatrixCompare = { ftc: Quant; cto: Quant; tag?: string };
+
 export function SovereigntyMatrix({
-  ftc, cto, cont, lang,
-}: { ftc: number | null; cto: number | null; cont: number | null; lang: Lang }) {
+  ftc, cto, cont, lang, compare = [], quadShares, emptyHint = true, ariaLabel,
+}: {
+  ftc: number | null; cto: number | null; cont: number | null; lang: Lang;
+  compare?: MatrixCompare[];
+  /** Anteile je Quadrant in Prozent (nur "Alle", ab 10 Teilnahmen); null = unter der Mindestzahl. */
+  quadShares?: Record<QuadKey, number | null>;
+  /** Ohne eigenen Punkt (Dashboard) keinen Hinweis "nicht beantwortet" zeigen. */
+  emptyHint?: boolean;
+  /** Beschreibung fuer Screenreader. */
+  ariaLabel?: string;
+}) {
   const W = 420, H = 420, P = 46;           // Plotfläche
   const x = (v: number) => P + v * (W - 2 * P);
   const y = (v: number) => H - P - v * (H - 2 * P);
   const has = ftc !== null && cto !== null;
 
-  const quads: { qx: number; qy: number; label: string; strong?: boolean }[] = [
-    { qx: 0.75, qy: 0.75, label: pick(UI.quadSovereign, lang), strong: true },
-    { qx: 0.75, qy: 0.25, label: pick(UI.quadExit, lang) },
-    { qx: 0.25, qy: 0.75, label: pick(UI.quadSettled, lang) },
-    { qx: 0.25, qy: 0.25, label: pick(UI.quadExposed, lang) },
+  const quads: { key: QuadKey; qx: number; qy: number; label: string; strong?: boolean }[] = [
+    { key: "sovereign", qx: 0.75, qy: 0.75, label: pick(UI.quadSovereign, lang), strong: true },
+    { key: "exit", qx: 0.75, qy: 0.25, label: pick(UI.quadExit, lang) },
+    { key: "settled", qx: 0.25, qy: 0.75, label: pick(UI.quadSettled, lang) },
+    { key: "exposed", qx: 0.25, qy: 0.25, label: pick(UI.quadExposed, lang) },
   ];
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto block" style={{ maxWidth: 460 }}>
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto block" style={{ maxWidth: 460 }}
+      role={ariaLabel ? "img" : undefined} aria-label={ariaLabel}>
       {/* Quadrantenfüllung: nur der "souveräne" leicht betont */}
       <rect x={x(0.5)} y={y(1)} width={(W - 2 * P) / 2} height={(H - 2 * P) / 2}
         fill="rgba(108,194,181,0.07)" />
@@ -66,7 +89,41 @@ export function SovereigntyMatrix({
             {lines.map((ln, i) => (
               <tspan key={i} x={x(q.qx)} dy={i === 0 ? 0 : 15}>{ln}</tspan>
             ))}
+            {quadShares && (
+              <tspan x={x(q.qx)} dy={20} fontFamily="'Space Grotesk', sans-serif" fontSize="15"
+                letterSpacing="0" fill="rgba(255,255,255,0.75)">
+                {quadShares[q.key] === null ? "–" : `${quadShares[q.key]} %`}
+              </tspan>
+            )}
           </text>
+        );
+      })}
+
+      {/* Vergleichsgruppen: Rahmen = mittlere Haelfte auf beiden Achsen, Raute = Median */}
+      {compare.map((c, i) => {
+        const cx = x(c.ftc.p50), cy = y(c.cto.p50), s = 7;
+        return (
+          <g key={i}>
+            <rect
+              x={x(c.ftc.p25)} y={y(c.cto.p75)}
+              width={Math.max(2, x(c.ftc.p75) - x(c.ftc.p25))} height={Math.max(2, y(c.cto.p25) - y(c.cto.p75))}
+              rx={3} fill="rgba(255,255,255,0.05)" stroke="rgba(255,255,255,0.55)" strokeWidth="1.2"
+              strokeDasharray={i === 1 ? "5 4" : undefined}
+            />
+            <polygon
+              points={`${cx},${cy - s} ${cx + s},${cy} ${cx},${cy + s} ${cx - s},${cy}`}
+              fill="#0a0d1a" stroke="#fff" strokeWidth="1.6"
+            />
+            {/* Erste Gruppe links, zweite rechts beschriften: liegen beide Rauten
+                aufeinander, bleiben so trotzdem beide Buchstaben lesbar. */}
+            {c.tag && (
+              <text x={i === 0 ? cx - s - 5 : cx + s + 5} y={cy + 4} textAnchor={i === 0 ? "end" : "start"}
+                fontFamily="'Space Grotesk', sans-serif" fontSize="12"
+                fontWeight="600" fill="#fff" stroke="#070a15" strokeWidth="4" strokeLinejoin="round" paintOrder="stroke">
+                {c.tag}
+              </text>
+            )}
+          </g>
         );
       })}
 
@@ -92,13 +149,16 @@ export function SovereigntyMatrix({
             fill={cont !== null ? scoreColor(cont) : "rgba(139,164,255,0.85)"}
             fillOpacity={0.9} stroke="#fff" strokeWidth="1.4"
           />
+          {/* Dunkler Rand um die Zahl: der Punkt kann auf einer Quadranten-
+              beschriftung landen, ohne Rand ueberlagern sich beide unleserlich. */}
           <text x={x(ftc!)} y={y(cto!) - 15} textAnchor="middle"
-            fontFamily="'Space Grotesk', sans-serif" fontSize="12.5" fontWeight="600" fill="#fff">
+            fontFamily="'Space Grotesk', sans-serif" fontSize="12.5" fontWeight="600" fill="#fff"
+            stroke="#070a15" strokeWidth="4" strokeLinejoin="round" paintOrder="stroke">
             {Math.round(ftc! * 100)}% / {Math.round(cto! * 100)}%
           </text>
         </>
       )}
-      {!has && (
+      {!has && emptyHint && (
         <text x={W / 2} y={H / 2} textAnchor="middle" fontFamily="'Geist','Inter',sans-serif"
           fontSize="13" fontStyle="italic" fill="rgba(214,230,245,0.4)">
           {pick(UI.notAnswered, lang)}

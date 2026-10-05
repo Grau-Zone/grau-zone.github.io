@@ -231,9 +231,50 @@ export const UI = {
   ),
   notAnswered: t("not answered", "nicht beantwortet"),
   weakHint: t(
-    "The instrument is under scientific development. The values shown summarise your self-assessments and do not constitute a validated benchmark.",
-    "Das Instrument befindet sich in wissenschaftlicher Entwicklung. Die dargestellten Werte fassen Ihre Selbsteinschätzungen zusammen und stellen keinen validierten Benchmark dar."
+    "The instrument is under scientific development. The values shown summarise your self-assessments and do not constitute a validated benchmark. Comparison values describe the self-assessments of other participants and are not representative.",
+    "Das Instrument befindet sich in wissenschaftlicher Entwicklung. Die dargestellten Werte fassen Ihre Selbsteinschätzungen zusammen und stellen keinen validierten Benchmark dar. Vergleichswerte beschreiben die Selbsteinschätzungen anderer Teilnehmender und sind nicht repräsentativ."
   ),
+
+  // Vergleich mit anderen Teilnehmenden (Werte aus data/benchmark.json)
+  cmpHead: t("Compared with other participants", "Im Vergleich mit anderen Teilnehmenden"),
+  cmpWith: t("Compare with", "Vergleichen mit"),
+  cmpAll: t("All participants", "Alle Teilnehmenden"),
+  cmpNone: t(
+    "Comparison values will appear here as soon as enough participations are available.",
+    "Vergleichswerte erscheinen hier, sobald genügend Teilnahmen vorliegen."
+  ),
+  cmpStand: t(
+    "As of {d} · {n} participations in total · groups of at least {k}",
+    "Stand {d} · insgesamt {n} Teilnahmen · Gruppen ab {k}"
+  ),
+  cmpOwnNotIncl: t(
+    "Participations after this date are not yet included.",
+    "Teilnahmen nach diesem Datum sind noch nicht enthalten."
+  ),
+  cmpNoValue: t("no comparison values for this capacity yet", "für diese Fähigkeit noch keine Vergleichswerte"),
+  cmpMatrixValues: t(
+    "Comparison group, median: Reconfiguration Discretion {f}, Operational Control {c}",
+    "Vergleichsgruppe, Median: Reconfiguration Discretion {f}, Operational Control {c}"
+  ),
+  cmpSmall: t(
+    "Small comparison group: the values can still shift considerably.",
+    "Kleine Vergleichsgruppe: Die Werte können sich noch stark verschieben."
+  ),
+  cmpNotYet: t("not enough participations yet", "noch zu wenige Teilnahmen"),
+  cmpLegendOwn: t("your value", "Ihr Wert"),
+  cmpLegendBand: t("middle half of the comparison group", "mittlere Hälfte der Vergleichsgruppe"),
+  cmpLegendMedian: t("median", "Median"),
+  cmpPos: {
+    low: t("in the lower quarter of the comparison group", "im unteren Viertel der Vergleichsgruppe"),
+    mid: t("in the middle half of the comparison group", "in der mittleren Hälfte der Vergleichsgruppe"),
+    high: t("in the upper quarter of the comparison group", "im oberen Viertel der Vergleichsgruppe"),
+  },
+  cmpGroupSize: t("{a} to {b} participations", "{a} bis {b} Teilnahmen"),
+  cmpMatrixMarker: t(
+    "Diamond = median of the comparison group, frame = its middle half",
+    "Raute = Median der Vergleichsgruppe, Rahmen = ihre mittlere Hälfte"
+  ),
+  cmpDashLink: t("All comparison values", "Alle Vergleichswerte"),
   // Visualisierungen
   matrixHead: t("The two dimensions, side by side", "Die zwei Dimensionen im Verhältnis"),
   matrixLead: t(
@@ -311,8 +352,8 @@ export const UI = {
     "Ich bin damit einverstanden, dass meine Antworten nach Abschluss des Assessments automatisch an das Forschungsteam der Universität St.Gallen übermittelt und für das Forschungsprojekt zur digitalen Souveränität ausgewertet werden."
   ),
   consentDetail: t(
-    "Transmitted are the answers, the voluntary details about the organisation and the provider given, or its anonymised label. Neither name nor e-mail address is collected. Answers are stored under a random identifier. If transmission fails, they are stored temporarily in the browser and sent again on the next visit. Further information is in the privacy notice.",
-    "Übermittelt werden die Antworten, die freiwilligen Angaben zum Unternehmen sowie der angegebene Anbieter beziehungsweise dessen anonymisierte Bezeichnung. Es werden weder Name noch E-Mail-Adresse erhoben. Die Antworten werden unter einer zufälligen Kennung gespeichert. Bei einer fehlgeschlagenen Übermittlung werden sie vorübergehend lokal im Browser gespeichert und beim nächsten Aufruf erneut übertragen. Weitere Informationen finden Sie in der Datenschutzerklärung."
+    "Transmitted are the answers, the voluntary details about the organisation and the provider given, or its anonymised label. Neither name nor e-mail address is collected. Answers are stored under a random identifier. If transmission fails, they are stored temporarily in the browser and sent again on the next visit. Only aggregated values of groups with at least two participations are published. Further information is in the privacy notice.",
+    "Übermittelt werden die Antworten, die freiwilligen Angaben zum Unternehmen sowie der angegebene Anbieter beziehungsweise dessen anonymisierte Bezeichnung. Es werden weder Name noch E-Mail-Adresse erhoben. Die Antworten werden unter einer zufälligen Kennung gespeichert. Bei einer fehlgeschlagenen Übermittlung werden sie vorübergehend lokal im Browser gespeichert und beim nächsten Aufruf erneut übertragen. Veröffentlicht werden ausschliesslich zusammengefasste Werte von Gruppen mit mindestens zwei Teilnahmen. Weitere Informationen finden Sie in der Datenschutzerklärung."
   ),
   consentRequired: t("Please agree before starting.", "Bitte stimmen Sie vor dem Start zu."),
 

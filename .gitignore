@@ -23,3 +23,8 @@ vite.config.ts.timestamp-*.mjs
 *.njsproj
 *.sln
 *.sw?
+
+# Rohdaten aus Supabase gehoeren nie ins Repository (siehe tools/build_benchmark.ts)
+*.csv
+/benchmark-raw/
+supabase_export*

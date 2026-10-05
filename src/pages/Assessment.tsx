@@ -2,11 +2,12 @@
 //
 // Oeffentliches Modell: vier organisationale Faehigkeiten (Switching,
 // Internalization, Multi-Sourcing, Negotiation) aus src/data/capacityItems.ts.
-// Nur deren Items bilden die angezeigten Werte.
+// Nur deren Items bilden die vier Faehigkeitswerte.
 //
 // Die Konstrukte des v13-Forschungsinstruments werden im fuenften Block als
-// Kontext erhoben und exportiert. Sie werden weder angezeigt noch auf die vier
-// Faehigkeiten abgebildet und nicht mit ihnen verrechnet.
+// Kontext erhoben und exportiert. Sie werden nicht auf die vier Faehigkeiten
+// abgebildet und nicht mit ihnen verrechnet. Auf der Ergebnisseite erscheinen
+// FTC, CTO und CONT getrennt davon in der Matrix (seit 05.10.2026 wieder).
 //
 // "Weiss nicht" ist immer MISSING (99) und wird nie als 0 gewertet.
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -15,7 +16,13 @@ import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import { ArrowLeft, ArrowRight, Home, RotateCcw, FileJson, Info, AlertTriangle, Mail, Check } from "lucide-react";
 import { submitResult, flushQueue, isEnabled, newResponseId, type SubmitState } from "../data/submit";
-import { ITEMS, MISSING, INSTRUMENT_VERSION, type Item, type Lang } from "../data/instrument";
+import { MISSING, INSTRUMENT_VERSION, type Item, type Lang } from "../data/instrument";
+import { ACTIVE, constructScores, quadrantKey, type QuadKey } from "../data/scoring";
+import { SovereigntyMatrix, QUAD_VIEW } from "../components/ResultVisuals";
+import ComparisonBand from "../components/ComparisonBand";
+import { BENCHMARK, hasBenchmark, fmtAsOf, fmtNum, fmtPct, isSmall } from "../data/benchmark";
+import { positionOf, capStepOf } from "../data/benchmarkCore";
+import { ALL, DIMENSIONS, groupDef, groupId, groupsOf } from "../data/benchmarkGroups";
 import { UI, CONTEXT_GROUPS, FUNCTIONS, FUNCTION_OTHER, FIRM_SIZE, INDUSTRY, HQ, labelOf, anchorsFor, YES_NO, pick } from "../data/surveyUi";
 import { CAPACITIES, CAP_ITEMS, itemsOfCapacity, scoreCapacity, pickCap, MIN_VALID, type CapacityKey } from "../data/capacityItems";
 
@@ -44,9 +51,13 @@ const drop = (k: string): void => {
   try { localStorage.removeItem(k); } catch { /* egal */ }
 };
 
-// Nur die in der Excel ausgewaehlten Items (Spalte "Auswahl 3")
-const ACTIVE = ITEMS.filter((i) => i.selected);
-const itemsOfConstruct = (c: string) => ACTIVE.filter((i) => i.construct === c);
+// ACTIVE und die Konstruktwerte kommen aus data/scoring.ts,
+// damit Ergebnisseite und Vergleichs-Skript identisch rechnen.
+//
+// Matrix: wiederhergestellt aus der Ergebnisseite vor dem Umbau auf das
+// Capacity-Modell (Commit 65749cb), Berechnung unveraendert. Wertet die
+// Forschungsitems des Kontextblocks aus und laeuft neben den vier oeffentlichen
+// Werten her. Die Wirkkette von damals bleibt bewusst weg (Entscheid 05.10.2026).
 
 // Fuenf Bloecke des Fragebogens. Die ersten vier sind das oeffentliche
 // Capacity-Modell, der fuenfte sammelt die Items des Forschungsinstruments.
@@ -501,8 +512,8 @@ function Nav({ tr, onBack, onNext, nextLabel, color }: any) {
 // ─── Fragenblock ─────────────────────────────────────────────────────────────
 // Bloecke 1 bis 4 erheben je eine der vier Faehigkeiten. Block 5 sammelt die
 // Items des Forschungsinstruments unter neutralen Ueberschriften. Konstruktnamen,
-// Konstruktcodes und Item-IDs bleiben unsichtbar: sie wuerden Teilnehmende primen
-// und neben den vier Faehigkeiten ein zweites Modell aufmachen.
+// Konstruktcodes und Item-IDs bleiben unsichtbar: sie wuerden Teilnehmende beim
+// Antworten primen.
 function BlockScreen({ lang, tr, blockIndex, answers, onAnswer, onToggle, onBack, onNext, intake }: any) {
   const block = BLOCKS[blockIndex];
   const cap = block.kind === "cap" ? CAPACITIES.find((c) => c.key === block.key)! : null;
@@ -712,10 +723,11 @@ function QuestionCard({ id, text, scale, options, multi, lang, tr, color, value,
 }
 
 // ─── Ergebnis ────────────────────────────────────────────────────────────────
-// Zeigt ausschliesslich die vier Faehigkeiten des oeffentlichen Modells. Die
-// Konstrukte des Forschungsinstruments werden erhoben und exportiert, aber weder
-// angezeigt noch auf die Faehigkeiten abgebildet. Keine Prozentwerte: die
+// Zuerst die vier Faehigkeiten des oeffentlichen Modells, ohne Prozentwerte: die
 // siebenstufige Selbsteinschaetzung wird so berichtet, wie gefragt wurde.
+// Darunter die Matrix aus den Forschungskonstrukten FTC, CTO und CONT des
+// Kontextblocks, auf 0 bis 100 % der Skala normiert. Beide Teile werden getrennt
+// berechnet.
 function Result({ lang: surveyLang, answers, intake, onRestart, responseId, consent }: any) {
   const lang: Lang = surveyLang;
   const tr = (k: string) => pick((UI as any)[k], lang);
@@ -727,6 +739,38 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
     [answers]
   );
   const ohneWert = caps.filter((c) => c.score.mean === null).length;
+
+  const scores = useMemo(() => constructScores(answers), [answers]);
+
+  // Quadrant der Matrix in Worten; Schwelle und Rundung in data/scoring.ts.
+  const quadrant = useMemo(() => {
+    const k: QuadKey | null = quadrantKey(scores["FTC"], scores["CTO"]);
+    return k ? QUAD_VIEW[k] : null;
+  }, [scores]);
+
+  // ─── Vergleich mit anderen Teilnehmenden ───────────────────────────────────
+  // Werte aus data/benchmark.json (Schnappschuss, nur Zusammenfassungen). Zur
+  // Wahl stehen "Alle" und die eigenen Gruppen; nur veroeffentlichte sind
+  // anklickbar. Standard ist die eigene Funktionsgruppe, weil der Vergleich
+  // ueber Funktionen hinweg hinkt.
+  const myGroups = useMemo(
+    () => groupsOf({ size: intake.size || "", industry: intake.industry || "", hq: intake.hq || "", fn: intake.fnKey || "" }),
+    [intake]
+  );
+  const cmpOptions = [ALL, ...DIMENSIONS.filter((d) => myGroups[d.key]).map((d) => groupId(d.key, myGroups[d.key]!))];
+  const showCmp = hasBenchmark();
+  const fnGroup = myGroups.funktion ? groupId("funktion", myGroups.funktion) : null;
+  const [cmpId, setCmpId] = useState<string>(fnGroup && BENCHMARK.groups[fnGroup] ? fnGroup : ALL);
+  const cmp = showCmp ? BENCHMARK.groups[cmpId] ?? BENCHMARK.groups[ALL] : null;
+  const cmpLabel = (id: string) => (id === ALL ? tr("cmpAll") : pick(groupDef(id)!.group.label, lang));
+  const bis = lang === "de" ? "bis" : "to";
+
+  const section = (title: string, sub?: string) => (
+    <div style={{ marginBottom: "14px" }}>
+      <h3 style={{ fontFamily: "Space Grotesk, sans-serif", fontWeight: 500, fontSize: "16px", color: "white", marginBottom: sub ? "3px" : 0 }}>{title}</h3>
+      {sub && <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.45)" }}>{sub}</p>}
+    </div>
+  );
   const alleIds = [...CAP_ITEMS.map((i) => i.id), ...ACTIVE.map((i) => i.id)];
   const beantwortet = alleIds.filter((id) => answers[id] !== undefined).length;
 
@@ -895,7 +939,67 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
       </div>
 
       <div style={{ marginBottom: "34px" }}>
-        {caps.map(({ cap, score }) => (
+        {showCmp ? (
+          <div style={{ marginBottom: "24px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "10px" }}>
+              <span style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.55)" }}>
+                {tr("cmpWith")}:
+              </span>
+              {cmpOptions.map((id) => {
+                const ok = !!BENCHMARK.groups[id];
+                const active = ok && id === cmpId;
+                return (
+                  <button
+                    key={id} type="button" disabled={!ok} aria-pressed={active}
+                    onClick={() => setCmpId(id)}
+                    style={{
+                      fontFamily: "Inter, sans-serif", fontSize: "12.5px", padding: "5px 12px", borderRadius: "999px",
+                      border: `1px solid ${active ? "rgba(139,164,255,0.7)" : "rgba(255,255,255,0.14)"}`,
+                      background: active ? "rgba(75,110,255,0.16)" : "transparent",
+                      color: ok ? (active ? "#fff" : "rgba(255,255,255,0.75)") : "rgba(255,255,255,0.32)",
+                      cursor: ok ? "pointer" : "not-allowed",
+                    }}
+                  >
+                    {cmpLabel(id)}{ok ? "" : ` · ${tr("cmpNotYet")}`}
+                  </button>
+                );
+              })}
+            </div>
+            {cmpId !== ALL && cmp?.nBand && (
+              <p style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.75)", margin: "0 0 4px" }}>
+                {cmpLabel(cmpId)}: {fmt(tr("cmpGroupSize"), { a: cmp.nBand[0], b: cmp.nBand[1] })}
+              </p>
+            )}
+            <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", lineHeight: 1.6, color: "rgba(255,255,255,0.55)", margin: 0 }}>
+              {fmt(tr("cmpStand"), { d: fmtAsOf(BENCHMARK.asOf, lang), n: BENCHMARK.nTotal ?? 0, k: BENCHMARK.kMin })}.{" "}
+              {tr("cmpOwnNotIncl")}{cmp && isSmall(cmp) ? " " + tr("cmpSmall") : ""}{" "}
+              <Link to="/dashboard" style={{ color: "#8ba4ff", textDecoration: "none", whiteSpace: "nowrap" }}>
+                {tr("cmpDashLink")} →
+              </Link>
+            </p>
+            {/* Legende einmal fuer alle vier Baender, in neutraler Farbe */}
+            <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginTop: "10px", fontFamily: "Inter, sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.6)" }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "rgba(255,255,255,0.85)" }} />{tr("cmpLegendOwn")}
+              </span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                <span style={{ width: "22px", height: "10px", borderRadius: "4px", background: "rgba(255,255,255,0.25)" }} />{tr("cmpLegendBand")}
+              </span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                <span style={{ width: "2px", height: "14px", borderRadius: "1px", background: "rgba(255,255,255,0.85)" }} />{tr("cmpLegendMedian")}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.5)", margin: "0 0 20px" }}>
+            {tr("cmpNone")}
+          </p>
+        )}
+
+        {caps.map(({ cap, score }) => {
+          const q = cmp?.cap[cap.key] ?? null;
+          const pos = cmp ? positionOf(score.mean, q, capStepOf(cmp)) : null;
+          return (
           <div key={cap.key} style={{ marginBottom: "22px" }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: "10px", flexWrap: "wrap", marginBottom: "7px" }}>
               <span style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "16px", color: "rgba(255,255,255,0.9)" }}>
@@ -909,19 +1013,44 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
               </span>
             </div>
 
-            <div style={{ height: "10px", borderRadius: "5px", background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
-              {score.mean !== null && (
-                <div style={{ height: "100%", width: (score.mean / 7) * 100 + "%", borderRadius: "5px", background: cap.color }} />
-              )}
-            </div>
+            {showCmp && !q ? (
+              // Vergleich laeuft, aber fuer diese Faehigkeit gibt es keine Werte:
+              // trotzdem Punkt auf der Skala, damit die Legende darueber stimmt.
+              <ComparisonBand
+                min={1} max={7} ticks={[1, 2, 3, 4, 5, 6, 7]} q={null} own={score.mean} color={cap.color}
+                scale={["1", "7"]} label={pickCap(cap.label, lang)}
+                describe={[`${tr("cmpLegendOwn")}: ${score.mean !== null ? fmtNum(score.mean, lang, 1) : tr("notEnough")}`, tr("cmpNoValue")]}
+              />
+            ) : q ? (
+              <ComparisonBand
+                min={1} max={7} ticks={[1, 2, 3, 4, 5, 6, 7]} q={q} own={score.mean} color={cap.color}
+                scale={["1", "7"]}
+                label={pickCap(cap.label, lang)}
+                describe={[
+                  cmpLabel(cmpId),
+                  `${tr("cmpLegendOwn")}: ${score.mean !== null ? fmtNum(score.mean, lang, 1) : tr("notEnough")}`,
+                  `${tr("cmpLegendMedian")}: ${fmtNum(q.p50, lang)}`,
+                  `${tr("cmpLegendBand")}: ${fmtNum(q.p25, lang)} ${bis} ${fmtNum(q.p75, lang)}`,
+                ]}
+              />
+            ) : (
+              <div style={{ height: "10px", borderRadius: "5px", background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+                {score.mean !== null && (
+                  <div style={{ height: "100%", width: (score.mean / 7) * 100 + "%", borderRadius: "5px", background: cap.color }} />
+                )}
+              </div>
+            )}
 
             <div style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", color: score.mean === null ? "#d9a559" : "rgba(255,255,255,0.7)", marginTop: "6px" }}>
               {score.mean === null
                 ? tr("notEnough")
                 : fmt(tr("selfRating"), { v: score.mean.toFixed(1).replace(".", lang === "de" ? "," : ".") })}
+              {pos && <span style={{ color: "rgba(255,255,255,0.6)" }}> · {pick(UI.cmpPos[pos], lang)}</span>}
+              {showCmp && !q && <span style={{ color: "rgba(255,255,255,0.6)" }}> · {tr("cmpNoValue")}</span>}
             </div>
           </div>
-        ))}
+          );
+        })}
 
         <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.5)", marginTop: "16px" }}>
           {fmt(tr("answeredSummary"), { a: beantwortet, b: alleIds.length })}
@@ -931,7 +1060,7 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
         {/* Derselbe Mailto-Link wie im Abschluss-Kasten, hier direkt unter den
             vier Werten. Bewusst leichter gestaltet und ohne Verdikt: der Kasten
             unten bleibt der Abschluss, und ein automatisch bestimmter Hebel
-            darf laut Vorgabe nirgends mehr stehen. */}
+            darf laut Vorgabe nirgends stehen. */}
         <div style={{ display: "flex", justifyContent: "center", marginTop: "26px" }}>
           <a href={ctaMail} style={{
             fontFamily: "Space Grotesk, sans-serif", fontSize: "17px", fontWeight: 600,
@@ -942,6 +1071,58 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
           }}>
             <Mail size={18} /> {tr("ctaButton")} <ArrowRight size={18} />
           </a>
+        </div>
+      </div>
+
+      {/* Matrix: Freedom to Change gegen Control to Operate, Punktfarbe = Kontinuitaet */}
+      <div style={{ marginBottom: "34px" }}>
+        {section(tr("matrixHead"), tr("matrixLead"))}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8" style={{ alignItems: "center" }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <SovereigntyMatrix
+              ftc={scores["FTC"]} cto={scores["CTO"]} cont={scores["CONT"]} lang={lang}
+              compare={cmp?.ftc && cmp?.cto ? [{ ftc: cmp.ftc, cto: cmp.cto }] : []}
+              ariaLabel={[
+                tr("matrixHead"),
+                scores["FTC"] !== null && scores["CTO"] !== null
+                  ? `${tr("cmpLegendOwn")}: Reconfiguration Discretion ${fmtPct(scores["FTC"])}, Operational Control ${fmtPct(scores["CTO"])}`
+                  : tr("notAnswered"),
+                cmp?.ftc && cmp?.cto ? fmt(tr("cmpMatrixValues"), { f: fmtPct(cmp.ftc.p50), c: fmtPct(cmp.cto.p50) }) : "",
+              ].filter(Boolean).join(". ")}
+            />
+            {/* Legende und Zahlen direkt unter der Grafik, auch mobil */}
+            {cmp?.ftc && cmp?.cto && (
+              <div style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", lineHeight: 1.55, color: "rgba(255,255,255,0.6)", marginTop: "8px", maxWidth: 460, textAlign: "center" }}>
+                {tr("cmpMatrixMarker")} ({cmpLabel(cmpId)})
+                <br />
+                {fmt(tr("cmpMatrixValues"), { f: fmtPct(cmp.ftc.p50), c: fmtPct(cmp.cto.p50) })}
+              </div>
+            )}
+          </div>
+          <div>
+            {quadrant ? (
+              <>
+                <div style={{ fontFamily: "Share Tech Mono, monospace", fontSize: "11px", letterSpacing: "0.16em", color: "rgba(255,255,255,0.5)", textTransform: "uppercase", marginBottom: "9px" }}>
+                  {tr("quadHead")}
+                </div>
+                <div style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "clamp(19px,2.2vw,25px)", fontWeight: 400, color: quadrant.color, letterSpacing: "-0.015em", marginBottom: "12px" }}>
+                  {pick(quadrant.name, lang)}
+                </div>
+                <p style={{ fontFamily: "Inter, sans-serif", fontSize: "14.5px", lineHeight: 1.65, color: "rgba(255,255,255,0.68)", maxWidth: "46ch", margin: 0 }}>
+                  {pick(quadrant.desc, lang)}
+                </p>
+              </>
+            ) : (
+              <p style={{ fontFamily: "Inter, sans-serif", fontSize: "14px", color: "rgba(255,255,255,0.5)", fontStyle: "italic", margin: 0 }}>
+                {tr("notAnswered")}
+              </p>
+            )}
+            {quadrant && (
+              <div style={{ fontFamily: "Inter, sans-serif", fontSize: "11.5px", color: "rgba(255,255,255,0.5)", marginTop: "16px" }}>
+                {pick(UI.outcomeDot, lang)}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

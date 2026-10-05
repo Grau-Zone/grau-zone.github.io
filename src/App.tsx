@@ -9,6 +9,7 @@ import Index from "./pages/Index.tsx";
 import Assessment from "./pages/Assessment.tsx";
 import Impressum from "./pages/Impressum.tsx";
 import Awf from "./pages/Awf.tsx";
+import Dashboard from "./pages/Dashboard.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -50,6 +51,7 @@ const App = () => (
           <Route path="/assessment" element={<Assessment />} />
           <Route path="/impressum" element={<Impressum />} />
           <Route path="/awf" element={<Awf />} />
+          <Route path="/dashboard" element={<Dashboard />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
