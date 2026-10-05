@@ -3,7 +3,7 @@
 // Liest ausschliesslich data/benchmark.json (Schnappschuss, nur Quartile). Die
 // Seite kann die Datenbank nicht lesen. Keine Unterteilung nach Gruppen; die
 // Regeln stehen in data/benchmarkCore.ts.
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
@@ -13,8 +13,10 @@ import ComparisonBand from "../components/ComparisonBand";
 import { SovereigntyMatrix } from "../components/ResultVisuals";
 import { CAPACITIES } from "../data/capacityItems";
 import { BENCHMARK, ALL_SUMMARY, fmtAsOf, fmtNum, fmtPct, isSmall } from "../data/benchmark";
-import type { Quant } from "../data/benchmarkCore";
+import { positionOf, capStepOf, type Quant, type Position } from "../data/benchmarkCore";
 import type { Lang } from "../data/instrument";
+import { scoreRespondent, type Answers, type RespondentScores } from "../data/scoring";
+import { LS, readLS } from "../data/storageKeys";
 
 type T = { en: string; de: string };
 const t = (en: string, de: string): T => ({ en, de });
@@ -84,17 +86,38 @@ const TXT = {
     ),
   ],
   privacy: t("More on data protection", "Mehr zum Datenschutz"),
+  own: t("Your value", "Ihr Wert"),
+  ownShow: t("Show your values", "Ihre Werte anzeigen"),
+  ownNote: t(
+    "From your self-assessment in this browser. Calculated and shown only here, nothing is transmitted.",
+    "Aus Ihrem Self-Assessment in diesem Browser. Nur hier berechnet und angezeigt, nichts wird übertragen."
+  ),
+  ownMissing: t(
+    "If you complete the self-assessment in this browser, your own values will be marked here.",
+    "Wenn Sie das Self-Assessment in diesem Browser ausfüllen, werden hier Ihre eigenen Werte markiert."
+  ),
+  ownLegend: t("Dot = your value.", "Punkt = Ihr Wert."),
+  ownMatrix: t("Coloured dot = your position, colour = your continuity.", "Farbiger Punkt = Ihre Position, Farbe = Ihre Kontinuität."),
+  pos: {
+    low: t("your value: lower quarter", "Ihr Wert: unteres Viertel"),
+    mid: t("your value: middle half", "Ihr Wert: mittlere Hälfte"),
+    high: t("your value: upper quarter", "Ihr Wert: oberes Viertel"),
+  } as Record<Position, T>,
 };
 
 const CONT_COLOR = "#6cc2b5";
 
 function initialLang(): Lang {
-  try {
-    const v = JSON.parse(localStorage.getItem("cds13-lang") || "null");
-    return v === "en" ? "en" : "de";
-  } catch {
-    return "de";
-  }
+  return readLS<string | null>(LS.lang, null) === "en" ? "en" : "de";
+}
+
+// Eigene Werte aus dem abgeschlossenen Self-Assessment in diesem Browser.
+// Wird nur lokal gelesen und gerechnet, nichts verlaesst den Browser.
+function loadOwn(): RespondentScores | null {
+  if (readLS<string | null>(LS.phase, null) !== "result") return null;
+  const answers = readLS<Answers | null>(LS.ans, null);
+  if (!answers || typeof answers !== "object") return null;
+  return scoreRespondent(answers);
 }
 
 const Dashboard = () => {
@@ -104,9 +127,21 @@ const Dashboard = () => {
     Object.entries(vals).reduce((acc, [k, v]) => acc.replace("{" + k + "}", String(v)), s);
   const bis = lang === "de" ? "bis" : "to";
   const s = ALL_SUMMARY;
+  const ownScores = useMemo(loadOwn, []);
+  const [showOwn, setShowOwn] = useState(true);
+  const own = showOwn ? ownScores : null;
 
-  const describe = (q: Quant | null, f: (v: number) => string) =>
-    q ? [p(TXT.all), `${p(TXT.median)}: ${f(q.p50)}`, `${p(TXT.band)}: ${f(q.p25)} ${bis} ${f(q.p75)}`] : [p(TXT.all)];
+  const describe = (q: Quant | null, f: (v: number) => string, mine: number | null = null) => [
+    ...(mine !== null ? [`${p(TXT.own)}: ${f(mine)}`] : []),
+    p(TXT.all),
+    ...(q ? [`${p(TXT.median)}: ${f(q.p50)}`, `${p(TXT.band)}: ${f(q.p25)} ${bis} ${f(q.p75)}`] : []),
+  ];
+  const posLine = (pos: Position | null) =>
+    pos ? (
+      <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.65)", margin: "2px 0 0" }}>
+        {p(TXT.pos[pos])}
+      </p>
+    ) : null;
 
   const card: React.CSSProperties = {
     background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "16px", padding: "22px 24px",
@@ -167,9 +202,35 @@ const Dashboard = () => {
           {p(TXT.lead)}
         </p>
         {s && (
-          <p style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.55)", margin: "0 0 28px" }}>
+          <p style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.55)", margin: "0 0 14px" }}>
             {fill(p(TXT.stand), { d: fmtAsOf(BENCHMARK.asOf, lang), n: s.n })}{isSmall(s) ? ". " + p(TXT.small) : ""}
           </p>
+        )}
+
+        {/* Eigene Werte: nur aus diesem Browser, nichts wird uebertragen */}
+        {s && (
+          <div style={{ display: "flex", alignItems: "center", gap: "10px 14px", flexWrap: "wrap", margin: "0 0 28px", fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.6)" }}>
+            {ownScores ? (
+              <>
+                <button type="button" onClick={() => setShowOwn((v) => !v)} aria-pressed={showOwn}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: "8px", padding: "6px 13px", borderRadius: "999px", cursor: "pointer",
+                    border: `1px solid ${showOwn ? "rgba(139,164,255,0.7)" : "rgba(255,255,255,0.18)"}`,
+                    background: showOwn ? "rgba(75,110,255,0.16)" : "transparent",
+                    color: showOwn ? "#fff" : "rgba(255,255,255,0.75)", fontFamily: "Inter, sans-serif", fontSize: "13px",
+                  }}>
+                  <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: showOwn ? "#fff" : "transparent", border: "1.5px solid #fff" }} />
+                  {p(TXT.ownShow)}
+                </button>
+                <span>{p(TXT.ownNote)}</span>
+              </>
+            ) : (
+              <span>
+                {p(TXT.ownMissing)}{" "}
+                <Link to="/assessment" style={{ color: "#8ba4ff", textDecoration: "none", whiteSpace: "nowrap" }}>{p(TXT.toAssessment)} →</Link>
+              </span>
+            )}
+          </div>
         )}
 
         {!s ? (
@@ -189,10 +250,11 @@ const Dashboard = () => {
             {/* Vier Faehigkeiten */}
             <div style={{ ...card, marginBottom: "20px" }}>
               <h2 style={h2}>{p(TXT.capHead)}</h2>
-              <p style={lead}>{p(TXT.capLead)}</p>
+              <p style={lead}>{p(TXT.capLead)}{own ? " " + p(TXT.ownLegend) : ""}</p>
               <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: "22px 36px" }}>
                 {CAPACITIES.map((c) => {
                   const q = s.cap[c.key];
+                  const mine = own ? own.cap[c.key] : null;
                   const name = lang === "en" ? c.label.en : c.label.de;
                   return (
                     <div key={c.key}>
@@ -201,8 +263,11 @@ const Dashboard = () => {
                         <span style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "15px", color: "rgba(255,255,255,0.9)" }}>{name}</span>
                       </div>
                       {q ? (
-                        <ComparisonBand min={1} max={7} ticks={[1, 2, 3, 4, 5, 6, 7]} q={q} color={c.color}
-                          scale={["1", "7"]} label={name} describe={describe(q, (v) => fmtNum(v, lang))} />
+                        <>
+                          <ComparisonBand min={1} max={7} ticks={[1, 2, 3, 4, 5, 6, 7]} q={q} own={mine} color={c.color}
+                            scale={["1", "7"]} label={name} describe={describe(q, (v) => fmtNum(v, lang), mine)} />
+                          {posLine(positionOf(mine, q, capStepOf(s)))}
+                        </>
                       ) : noValue}
                     </div>
                   );
@@ -216,7 +281,8 @@ const Dashboard = () => {
               <p style={lead}>{p(TXT.matrixLead)}{s.quad ? " " + p(TXT.shares) : ""}</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8" style={{ alignItems: "center" }}>
                 <div style={{ display: "flex", justifyContent: "center" }}>
-                  <SovereigntyMatrix ftc={null} cto={null} cont={null} lang={lang} emptyHint={false}
+                  <SovereigntyMatrix
+                    ftc={own?.ftc ?? null} cto={own?.cto ?? null} cont={own?.cont ?? null} lang={lang} emptyHint={false}
                     quadShares={s.quad}
                     compare={s.ftc && s.cto ? [{ ftc: s.ftc, cto: s.cto }] : []}
                     ariaLabel={[
@@ -225,6 +291,12 @@ const Dashboard = () => {
                     ].join(". ")} />
                 </div>
                 <p style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", lineHeight: 1.7, color: "rgba(255,255,255,0.7)", margin: 0 }}>
+                  {own?.ftc != null && own?.cto != null && (
+                    <>
+                      {p(TXT.own)}: Reconfiguration Discretion {fmtPct(own.ftc)}, Operational Control {fmtPct(own.cto)}<br />
+                      <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.55)" }}>{p(TXT.ownMatrix)}</span><br /><br />
+                    </>
+                  )}
                   {s.ftc && s.cto ? (
                     <>
                       {p(TXT.median)}:<br />
@@ -242,8 +314,11 @@ const Dashboard = () => {
               <p style={lead}>{p(TXT.contLead)}</p>
               <div style={{ maxWidth: "640px" }}>
                 {s.cont ? (
-                  <ComparisonBand min={0} max={1} ticks={[0, 0.25, 0.5, 0.75, 1]} q={s.cont} color={CONT_COLOR}
-                    scale={["0 %", "100 %"]} label={p(TXT.contHead)} describe={describe(s.cont, fmtPct)} />
+                  <>
+                    <ComparisonBand min={0} max={1} ticks={[0, 0.25, 0.5, 0.75, 1]} q={s.cont} own={own?.cont ?? null} color={CONT_COLOR}
+                      scale={["0 %", "100 %"]} label={p(TXT.contHead)} describe={describe(s.cont, fmtPct, own?.cont ?? null)} />
+                    {posLine(positionOf(own?.cont ?? null, s.cont, 0.05))}
+                  </>
                 ) : noValue}
               </div>
             </div>
@@ -257,20 +332,25 @@ const Dashboard = () => {
                 <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.75)" }}>
                   <thead>
                     <tr>
-                      {[p(TXT.measure), "p25", p(TXT.median), "p75"].map((h) => (
+                      {[p(TXT.measure), ...(own ? [p(TXT.own)] : []), "p25", p(TXT.median), "p75"].map((h) => (
                         <th key={h} style={{ textAlign: "left", padding: "6px 10px", borderBottom: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.55)", fontWeight: 500 }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {[
-                      ...CAPACITIES.map((c) => ({ name: lang === "en" ? c.label.en : c.label.de, q: s.cap[c.key], f: (v: number) => fmtNum(v, lang) })),
-                      { name: "Reconfiguration Discretion", q: s.ftc, f: fmtPct },
-                      { name: "Operational Control", q: s.cto, f: fmtPct },
-                      { name: p(TXT.contHead), q: s.cont, f: fmtPct },
-                    ].map(({ name, q, f }) => (
+                      ...CAPACITIES.map((c) => ({ name: lang === "en" ? c.label.en : c.label.de, q: s.cap[c.key], mine: own?.cap[c.key] ?? null, f: (v: number) => fmtNum(v, lang) })),
+                      { name: "Reconfiguration Discretion", q: s.ftc, mine: own?.ftc ?? null, f: fmtPct },
+                      { name: "Operational Control", q: s.cto, mine: own?.cto ?? null, f: fmtPct },
+                      { name: p(TXT.contHead), q: s.cont, mine: own?.cont ?? null, f: fmtPct },
+                    ].map(({ name, q, mine, f }) => (
                       <tr key={name}>
                         <td style={{ padding: "5px 10px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>{name}</td>
+                        {own && (
+                          <td style={{ padding: "5px 10px", borderBottom: "1px solid rgba(255,255,255,0.05)", color: "#fff" }}>
+                            {mine === null ? "–" : f(mine)}
+                          </td>
+                        )}
                         {(q ? [q.p25, q.p50, q.p75] : [null, null, null]).map((v, i) => (
                           <td key={i} style={{ padding: "5px 10px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>{v === null ? "–" : f(v)}</td>
                         ))}

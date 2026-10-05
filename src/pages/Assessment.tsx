@@ -18,6 +18,7 @@ import { ArrowLeft, ArrowRight, Home, RotateCcw, FileJson, Info, AlertTriangle, 
 import { submitResult, flushQueue, isEnabled, newResponseId, type SubmitState } from "../data/submit";
 import { MISSING, INSTRUMENT_VERSION, type Item, type Lang } from "../data/instrument";
 import { ACTIVE, constructScores, quadrantKey, type QuadKey } from "../data/scoring";
+import { LS, readLS } from "../data/storageKeys";
 import { SovereigntyMatrix, QUAD_VIEW } from "../components/ResultVisuals";
 import ComparisonBand from "../components/ComparisonBand";
 import { BENCHMARK, ALL_SUMMARY, fmtAsOf, fmtNum, fmtPct, isSmall } from "../data/benchmark";
@@ -30,10 +31,7 @@ import { CAPACITIES, CAP_ITEMS, itemsOfCapacity, scoreCapacity, pickCap, MIN_VAL
 type Answers = Record<string, number | number[]>;
 type Phase = "lang" | "intro" | "intake" | "blocks" | "result";
 
-const LS = { lang: "cds13-lang", ans: "cds13-answers", phase: "cds13-phase", block: "cds13-block", intake: "cds13-intake", rid: "cds13-rid", consent: "cds13-consent" };
-const load = <T,>(k: string, f: T): T => {
-  try { const r = localStorage.getItem(k); return r ? JSON.parse(r) : f; } catch { return f; }
-};
+const load = readLS;
 
 // Schreiben muss genauso abgesichert sein wie Lesen. In einem iframe auf einer
 // fremden Domain sperren Browser den Speicher: Safari grundsaetzlich, Chrome
