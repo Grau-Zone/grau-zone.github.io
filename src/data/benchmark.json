@@ -1,8 +1,7 @@
 {
-  "schema": 1,
+  "schema": 2,
   "asOf": null,
   "instrument": "capacity-v1 + v14_research",
   "kMin": 2,
-  "nTotal": null,
-  "groups": {}
+  "all": null
 }

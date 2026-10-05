@@ -1,44 +1,33 @@
 // Vergleichswerte: Kennzahlen und Schutzregeln.
 //
+// Verglichen wird nur mit ALLEN Teilnehmenden, ohne Unterteilung nach Branche,
+// Groesse, Funktion oder Sitz (Entscheid Adrian, 05.10.2026). Damit lassen sich
+// veroeffentlichte Werte keiner Merkmalskombination zuordnen.
+//
 // Das Ergebnis (benchmark.json) ist oeffentlich: alles, was darin steht, kann
 // jeder lesen, auch wenn die Oberflaeche es nicht anzeigt. Deshalb stehen hier
 // nur zusammengefasste Werte, und die Regeln sind Konstanten, keine Optionen.
 //
-//  1. Mindestens K_MIN Teilnahmen je Gruppe und je Kennzahl.
-//  2. Ein Merkmal erscheint nur, wenn beide Gruppen K_MIN erreichen und der Rest
-//     (keine Angabe, andere Funktion) 0 oder >= K_MIN ist, und zwar je Kennzahl:
-//     auch die gueltigen Werte einer Kennzahl muessen in A, B und Rest 0 oder
-//     >= K_MIN sein. Sonst liesse sich "Alle minus Gruppe" auf Einzelne
-//     zurueckrechnen.
-//  3. Nur gerundete Quartile (p25, p50, p75). Kein Mittelwert, kein Minimum,
+//  1. Mindestens K_MIN Teilnahmen insgesamt und je Kennzahl.
+//  2. Nur gerundete Quartile (p25, p50, p75). Kein Mittelwert, kein Minimum,
 //     kein Maximum, keine weiteren Perzentile.
-//  4. Gruppengroesse nur als Spanne; nur die Gesamtzahl ist exakt.
-//  5. Quadranten-Anteile nur fuer "Alle", erst ab QUAD_FROM, und Quadranten mit
-//     weniger als K_MIN Teilnahmen ohne Anteil.
-//  6. Ein neuer Stand nur, wenn sich die Gesamtzahl um mindestens K_MIN
-//     veraendert hat. Hat sich eine Gruppe nur um 1 veraendert, bleibt ihr
-//     Merkmal auf dem bisherigen Stand stehen. Die exakten Zahlen dafuer liegen
-//     in einer privaten Zustandsdatei ausserhalb des Repositorys.
-//  7. Unterdrueckte Gruppen fehlen ganz, ohne Zahl.
-//  8. Kleine Gruppen (unter SMALL_GROUP) duerfen in hoechstens MAX_SMALL_DIMS
-//     Merkmalen gleichzeitig stehen. Sonst lassen sich die Werte ueber die
-//     Schnittmengen mehrerer Merkmale einer vollstaendigen Kombination aus
-//     Branche, Groesse, Funktion und Sitz zuordnen.
+//  3. Quadranten-Anteile erst ab QUAD_FROM, und Quadranten mit weniger als
+//     K_MIN Teilnahmen ohne Anteil.
+//  4. Ein neuer Stand nur, wenn sich die Gesamtzahl um mindestens K_MIN
+//     veraendert hat. Hat sich die Zahl gueltiger Werte einer Kennzahl nur um 1
+//     veraendert, bleibt diese Kennzahl auf dem bisherigen Stand. Die exakten
+//     Zahlen dafuer liegen in einer privaten Zustandsdatei ausserhalb des Repos.
 //
-// K_MIN = 2 ist ein bewusster Entscheid (Adrian, 05.10.2026). Bei Gruppen aus
-// zwei oder drei Teilnahmen lassen sich die Einzelwerte aus den Quartilen
-// ableiten; Regel 8 verhindert, dass sie einer Organisation zuordenbar werden
-// (ebenfalls bestaetigt am 05.10.2026). Einbezogen werden alle Antworten des
-// Instruments, auch solche vor dem Hinweis in der Einwilligung (Entscheid
-// 05.10.2026); --since im Skript bleibt fuer einen Stichtag verfuegbar.
+// K_MIN = 2 ist ein bewusster Entscheid (Adrian, 05.10.2026). Bei zwei oder drei
+// Teilnahmen lassen sich die Einzelwerte aus den Quartilen ableiten, aber
+// keiner Organisation zuordnen. Einbezogen werden alle Antworten des
+// Instruments (Entscheid 05.10.2026); --since im Skript bleibt fuer einen
+// Stichtag verfuegbar.
 import type { CapacityKey } from "./capacityItems";
 import type { QuadKey, RespondentScores } from "./scoring";
-import { DIMENSIONS, ALL, groupId, type DimKey } from "./benchmarkGroups";
 import { INSTRUMENT_VERSION } from "./instrument";
 
 export const K_MIN = 2;
-export const SMALL_GROUP = 5;
-export const MAX_SMALL_DIMS = 1;
 export const FINE_FROM = 10;
 export const QUAD_FROM = 10;
 export const CAP_STEP = { coarse: 0.5, fine: 0.25 };   // Skala 1..7
@@ -49,39 +38,34 @@ export const INSTRUMENT_ID = "capacity-v1 + " + INSTRUMENT_VERSION + "_research"
 
 export type Quant = { p25: number; p50: number; p75: number };
 export type MetricKey = CapacityKey | "ftc" | "cto" | "cont";
-export type GroupBlock = {
-  n?: number;                          // nur bei "all"
-  nBand?: [number, number];            // nur bei Gruppen
+export type Summary = {
+  n: number;
   cap: Record<CapacityKey, Quant | null>;
   ftc: Quant | null;
   cto: Quant | null;
   cont: Quant | null;
-  quad?: Record<QuadKey, number | null>;   // Prozent, nur bei "all"; null = unter K_MIN
+  quad?: Record<QuadKey, number | null>;   // Prozent; null = unter K_MIN
 };
 export type BenchmarkFile = {
-  schema: 1;
+  schema: 2;
   asOf: string | null;
   instrument: string;
   kMin: number;
-  nTotal: number | null;
-  groups: Record<string, GroupBlock>;
+  all: Summary | null;
 };
 
 // Private Zustandsdatei: exakte Zahlen des zuletzt veroeffentlichten Stands.
 // Liegt AUSSERHALB des Repositorys und wird nie veroeffentlicht.
-export type GroupCounts = { n: number; valid: Record<MetricKey, number> };
-export type BenchmarkState = { asOf: string; nTotal: number; groups: Record<string, GroupCounts> };
-
-export type ScoredRow = { groups: Partial<Record<DimKey, string>>; scores: RespondentScores };
+export type BenchmarkState = { asOf: string; n: number; valid: Record<MetricKey, number> };
 
 export const emptyBenchmark = (): BenchmarkFile => ({
-  schema: 1, asOf: null, instrument: INSTRUMENT_ID, kMin: K_MIN, nTotal: null, groups: {},
+  schema: 2, asOf: null, instrument: INSTRUMENT_ID, kMin: K_MIN, all: null,
 });
 
 const CAP_KEYS: CapacityKey[] = ["SW", "IN", "MS", "NE"];
 const METRICS: MetricKey[] = [...CAP_KEYS, "ftc", "cto", "cont"];
-const metricOf = (r: ScoredRow, m: MetricKey): number | null =>
-  m === "ftc" || m === "cto" || m === "cont" ? r.scores[m] : r.scores.cap[m];
+const metricOf = (s: RespondentScores, m: MetricKey): number | null =>
+  m === "ftc" || m === "cto" || m === "cont" ? s[m] : s.cap[m];
 
 // Quantil nach Hyndman-Fan Typ 7 (Standard in R und numpy), Werte aufsteigend sortiert.
 export function quantile7(sorted: number[], p: number): number {
@@ -98,10 +82,9 @@ export function roundStep(v: number, step: number): number {
   return Math.round(k * step * 1e6) / 1e6;
 }
 
-// Rundungsstufe einer Faehigkeit in einem Block, damit der eigene Wert genauso
-// gerundet verglichen werden kann.
-export const capStepOf = (b: GroupBlock) =>
-  (b.n ?? b.nBand?.[0] ?? 0) >= FINE_FROM ? CAP_STEP.fine : CAP_STEP.coarse;
+// Rundungsstufe der Faehigkeiten, damit der eigene Wert genauso gerundet
+// verglichen werden kann.
+export const capStepOf = (s: Summary) => (s.n >= FINE_FROM ? CAP_STEP.fine : CAP_STEP.coarse);
 
 function quant(values: (number | null)[], step: number): Quant | null {
   const v = values.filter((x): x is number => x !== null).sort((a, b) => a - b);
@@ -113,68 +96,22 @@ function quant(values: (number | null)[], step: number): Quant | null {
   };
 }
 
-export function nBand(n: number): [number, number] {
-  if (n < 5) return [K_MIN, 4];
-  const lo = Math.floor(n / 5) * 5;
-  return [lo, lo + 4];
-}
-
-const countValid = (rows: ScoredRow[]) => {
-  const valid = {} as Record<MetricKey, number>;
-  METRICS.forEach((m) => { valid[m] = rows.filter((r) => metricOf(r, m) !== null).length; });
-  return { n: rows.length, valid };
-};
-
-// Kennzahlen, die nach Regel 2 je Kennzahl in einem Merkmal unterdrueckt werden.
-function blockedMetrics(a: ScoredRow[], b: ScoredRow[], rest: ScoredRow[]): Set<MetricKey> {
-  const bad = (x: number) => x > 0 && x < K_MIN;
-  const out = new Set<MetricKey>();
-  METRICS.forEach((m) => {
-    const c = (rows: ScoredRow[]) => rows.filter((r) => metricOf(r, m) !== null).length;
-    if (bad(c(a)) || bad(c(b)) || bad(c(rest))) out.add(m);
-  });
-  return out;
-}
-
-function block(rows: ScoredRow[], isAll: boolean, blocked: Set<MetricKey> = new Set()): GroupBlock {
-  const fine = rows.length >= FINE_FROM;
-  const pick = (m: MetricKey, step: number) => (blocked.has(m) ? null : quant(rows.map((r) => metricOf(r, m)), step));
-  const cap = {} as Record<CapacityKey, Quant | null>;
-  CAP_KEYS.forEach((k) => { cap[k] = pick(k, fine ? CAP_STEP.fine : CAP_STEP.coarse); });
-  const b: GroupBlock = { cap, ftc: pick("ftc", CTX_STEP), cto: pick("cto", CTX_STEP), cont: pick("cont", CTX_STEP) };
-  if (isAll) {
-    b.n = rows.length;
-    const withQuad = rows.filter((r) => r.scores.quad !== null);
-    if (withQuad.length >= QUAD_FROM) {
-      const share = (k: QuadKey) => {
-        const c = withQuad.filter((r) => r.scores.quad === k).length;
-        if (c > 0 && c < K_MIN) return null;
-        return Math.round((c / withQuad.length) * 20) * 5;
-      };
-      b.quad = { sovereign: share("sovereign"), exit: share("exit"), settled: share("settled"), exposed: share("exposed") };
-    }
-  } else {
-    b.nBand = nBand(rows.length);
-  }
-  return b;
-}
-
 export type BuildResult = { file: BenchmarkFile; state: BenchmarkState | null; report: string[] };
 
-// Baut den oeffentlichen Stand und den privaten Zustand. Wirft, wenn Regel 6
+// Baut den oeffentlichen Stand und den privaten Zustand. Wirft, wenn Regel 4
 // fuer die Gesamtzahl verletzt waere.
 export function buildBenchmark(
-  rows: ScoredRow[],
+  rows: RespondentScores[],
   asOf: string,
   prev: BenchmarkFile | null,
   prevState: BenchmarkState | null,
 ): BuildResult {
   const report: string[] = [];
   const N = rows.length;
-  if (prev && prev.nTotal !== null) {
-    if (!prevState) throw new Error("Regel 6: Es gibt schon einen Stand, aber keine Zustandsdatei (--state).");
-    if (Math.abs(N - prevState.nTotal) < K_MIN) {
-      throw new Error(`Regel 6: Gesamtzahl ${N}, bisheriger Stand ${prevState.nTotal}. Ein neuer Stand braucht mindestens ${K_MIN} Antworten Unterschied.`);
+  if (prev?.all) {
+    if (!prevState) throw new Error("Regel 4: Es gibt schon einen Stand, aber keine Zustandsdatei (--state).");
+    if (Math.abs(N - prevState.n) < K_MIN) {
+      throw new Error(`Regel 4: Gesamtzahl ${N}, bisheriger Stand ${prevState.n}. Ein neuer Stand braucht mindestens ${K_MIN} Antworten Unterschied.`);
     }
   }
   const file = emptyBenchmark();
@@ -184,68 +121,50 @@ export function buildBenchmark(
     report.push(`Unter ${K_MIN}: es wird nichts veroeffentlicht.`);
     return { file, state: null, report };
   }
-  file.nTotal = N;
-  file.groups[ALL] = block(rows, true);
-  const state: BenchmarkState = { asOf, nTotal: N, groups: { [ALL]: countValid(rows) } };
 
-  // Kandidaten je Merkmal (Regeln 1 und 2).
-  type Cand = { d: DimKey; ids: [string, string]; rows: [ScoredRow[], ScoredRow[]]; blocked: Set<MetricKey>; minN: number };
-  const cands: Cand[] = [];
-  DIMENSIONS.forEach((d) => {
-    const [a, b] = d.groups;
-    const ra = rows.filter((r) => r.groups[d.key] === a.key);
-    const rb = rows.filter((r) => r.groups[d.key] === b.key);
-    const rest = rows.filter((r) => r.groups[d.key] !== a.key && r.groups[d.key] !== b.key);
-    const ok = ra.length >= K_MIN && rb.length >= K_MIN && (rest.length === 0 || rest.length >= K_MIN);
-    report.push(`${d.key}: ${a.key} ${ra.length}, ${b.key} ${rb.length}, Rest ${rest.length}${ok ? "" : " -> unterdrueckt (Regel 1/2)"}`);
-    if (ok) {
-      cands.push({
-        d: d.key, ids: [groupId(d.key, a.key), groupId(d.key, b.key)], rows: [ra, rb],
-        blocked: blockedMetrics(ra, rb, rest), minN: Math.min(ra.length, rb.length),
-      });
-    }
-  });
+  const valid = {} as Record<MetricKey, number>;
+  METRICS.forEach((m) => { valid[m] = rows.filter((r) => metricOf(r, m) !== null).length; });
 
-  // Regel 8: hoechstens MAX_SMALL_DIMS Merkmale mit kleinen Gruppen. Bevorzugt
-  // das schon bisher veroeffentlichte Merkmal (stabile Anzeige), sonst das mit
-  // der groessten kleinsten Gruppe, sonst die Reihenfolge in DIMENSIONS.
-  const wasPublished = (c: Cand) => !!prev?.groups[c.ids[0]];
-  const small = cands.filter((c) => c.minN < SMALL_GROUP)
-    .sort((x, y) => Number(wasPublished(y)) - Number(wasPublished(x)) || y.minN - x.minN);
-  const dropped = new Set(small.slice(MAX_SMALL_DIMS).map((c) => c.d));
-  dropped.forEach((d) => report.push(`${d}: kleine Gruppen, -> zurueckgestellt (Regel 8)`));
-
-  cands.filter((c) => !dropped.has(c.d)).forEach((c) => {
-    const counts = c.rows.map(countValid);
-    // Regel 6 je Gruppe: Veraenderung um genau 1 -> bisherigen Stand behalten.
-    const changedByOne = prevState && c.ids.some((id, i) => {
-      const before = prevState.groups[id];
-      if (!before) return false;
-      const deltas = [counts[i].n - before.n, ...METRICS.map((m) => counts[i].valid[m] - before.valid[m])];
-      return deltas.some((x) => Math.abs(x) > 0 && Math.abs(x) < K_MIN);
+  // Regel 4 je Kennzahl: Veraenderung der gueltigen Werte um genau 1 ->
+  // bisherige Werte dieser Kennzahl behalten, samt bisheriger Zahl im Zustand.
+  const carried = new Set<MetricKey>();
+  if (prev?.all && prevState) {
+    METRICS.forEach((m) => {
+      const d = Math.abs(valid[m] - prevState.valid[m]);
+      if (d > 0 && d < K_MIN) { carried.add(m); valid[m] = prevState.valid[m]; }
     });
-    if (changedByOne) {
-      const kept = c.ids.every((id) => prev?.groups[id] && prevState?.groups[id]);
-      if (kept) {
-        c.ids.forEach((id) => { file.groups[id] = prev!.groups[id]; state.groups[id] = prevState!.groups[id]; });
-        report.push(`${c.d}: eine Gruppe hat sich nur um 1 veraendert -> bisheriger Stand bleibt (Regel 6)`);
-      } else {
-        report.push(`${c.d}: eine Gruppe hat sich nur um 1 veraendert -> zurueckgestellt (Regel 6)`);
-      }
-      return;
+  }
+  const pick = (m: MetricKey, step: number): Quant | null => {
+    if (carried.has(m)) {
+      const p = prev!.all!;
+      return m === "ftc" || m === "cto" || m === "cont" ? p[m] : p.cap[m];
     }
-    c.ids.forEach((id, i) => {
-      file.groups[id] = block(c.rows[i], false, c.blocked);
-      state.groups[id] = counts[i];
-    });
-    report.push(`${c.d}: veroeffentlicht${c.blocked.size ? ` (ohne ${[...c.blocked].join(", ")}, Regel 2 je Kennzahl)` : ""}`);
-  });
-  return { file, state, report };
+    return quant(rows.map((r) => metricOf(r, m)), step);
+  };
+
+  const capStep = N >= FINE_FROM ? CAP_STEP.fine : CAP_STEP.coarse;
+  const cap = {} as Record<CapacityKey, Quant | null>;
+  CAP_KEYS.forEach((k) => { cap[k] = pick(k, capStep); });
+  const all: Summary = { n: N, cap, ftc: pick("ftc", CTX_STEP), cto: pick("cto", CTX_STEP), cont: pick("cont", CTX_STEP) };
+
+  const withQuad = rows.filter((r) => r.quad !== null);
+  if (withQuad.length >= QUAD_FROM) {
+    const share = (k: QuadKey) => {
+      const c = withQuad.filter((r) => r.quad === k).length;
+      if (c > 0 && c < K_MIN) return null;
+      return Math.round((c / withQuad.length) * 20) * 5;
+    };
+    all.quad = { sovereign: share("sovereign"), exit: share("exit"), settled: share("settled"), exposed: share("exposed") };
+  }
+  file.all = all;
+  if (carried.size) report.push(`Bisheriger Stand behalten fuer: ${[...carried].join(", ")} (Regel 4 je Kennzahl)`);
+  report.push("veroeffentlicht: alle Teilnehmenden");
+  return { file, state: { asOf, n: N, valid }, report };
 }
 
 export type Position = "low" | "mid" | "high";
 
-// Lage des eigenen Werts gegenueber der Vergleichsgruppe, bewusst grob. Der
+// Lage des eigenen Werts gegenueber allen Teilnehmenden, bewusst grob. Der
 // eigene Wert wird so gerundet wie die Quartile, sonst landet ein Wert genau
 // auf dem Quartil wegen der Rundung im falschen Viertel.
 export function positionOf(own: number | null, q: Quant | null, step = 0): Position | null {

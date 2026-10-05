@@ -1,8 +1,8 @@
 // Oeffentliches Dashboard: zusammengefasste Vergleichswerte aller Teilnahmen.
 //
-// Liest ausschliesslich data/benchmark.json (Schnappschuss, nur Quartile und
-// Spannen). Die Seite kann die Datenbank nicht lesen. Gefiltert wird nach genau
-// einem Merkmal mit je zwei Gruppen; die Regeln stehen in data/benchmarkCore.ts.
+// Liest ausschliesslich data/benchmark.json (Schnappschuss, nur Quartile). Die
+// Seite kann die Datenbank nicht lesen. Keine Unterteilung nach Gruppen; die
+// Regeln stehen in data/benchmarkCore.ts.
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowLeft, ArrowRight } from "lucide-react";
@@ -12,9 +12,8 @@ import SiteFooter from "../components/SiteFooter";
 import ComparisonBand from "../components/ComparisonBand";
 import { SovereigntyMatrix } from "../components/ResultVisuals";
 import { CAPACITIES } from "../data/capacityItems";
-import { BENCHMARK, hasBenchmark, fmtAsOf, fmtNum, fmtPct, isSmall } from "../data/benchmark";
-import { ALL, DIMENSIONS, LABEL_LISTS, groupId, type DimKey } from "../data/benchmarkGroups";
-import type { GroupBlock, Quant } from "../data/benchmarkCore";
+import { BENCHMARK, ALL_SUMMARY, fmtAsOf, fmtNum, fmtPct, isSmall } from "../data/benchmark";
+import type { Quant } from "../data/benchmarkCore";
 import type { Lang } from "../data/instrument";
 
 type T = { en: string; de: string };
@@ -25,29 +24,26 @@ const TXT = {
   eyebrow: t("Sovereignty Radar", "Sovereignty Radar"),
   title: t("Comparison values", "Vergleichswerte"),
   lead: t(
-    "How do organisations assess their room for manoeuvre towards important digital providers? Interim results from the self-assessment: self-assessments, not representative.",
-    "Wie schätzen Organisationen ihren Handlungsspielraum gegenüber wichtigen digitalen Anbietern ein? Zwischenstand aus dem Self-Assessment: Selbsteinschätzungen, nicht repräsentativ."
+    "How do organisations assess their room for manoeuvre towards important digital providers? Interim results from the self-assessment across all participants: self-assessments, not representative.",
+    "Wie schätzen Organisationen ihren Handlungsspielraum gegenüber wichtigen digitalen Anbietern ein? Zwischenstand aus dem Self-Assessment über alle Teilnehmenden: Selbsteinschätzungen, nicht repräsentativ."
   ),
-  stand: t("As of {d} · {n} participations · groups of at least {k}", "Stand {d} · {n} Teilnahmen · Gruppen ab {k}"),
+  stand: t("As of {d} · {n} participations", "Stand {d} · {n} Teilnahmen"),
+  small: t("Still few participations: the values can shift considerably.", "Noch wenige Teilnahmen: Die Werte können sich stark verschieben."),
   emptyTitle: t("No comparison values yet", "Noch keine Vergleichswerte"),
   emptyText: t(
     "They will appear here as soon as enough participations are available. Every participation helps.",
     "Sie erscheinen hier, sobald genügend Teilnahmen vorliegen. Jede Teilnahme hilft."
   ),
   toAssessment: t("Go to the self-assessment", "Zum Self-Assessment"),
-  filter: t("Compare by", "Vergleichen nach"),
-  all: t("All participants", "Alle Teilnehmenden"),
-  allTab: t("All", "Alle"),
-  notYet: t("not enough participations yet", "noch zu wenige Teilnahmen"),
   capHead: t("Four capacities", "Vier Fähigkeiten"),
   capLead: t(
-    "Self-assessment on a scale from 1 to 7. Band = middle half of the group, line = median.",
-    "Selbsteinschätzung auf einer Skala von 1 bis 7. Band = mittlere Hälfte der Gruppe, Strich = Median."
+    "Self-assessment on a scale from 1 to 7. Band = middle half of all participants, line = median.",
+    "Selbsteinschätzung auf einer Skala von 1 bis 7. Band = mittlere Hälfte aller Teilnehmenden, Strich = Median."
   ),
   matrixHead: t("The two dimensions of sovereignty", "Die zwei Dimensionen der Souveränität"),
   matrixLead: t(
-    "Reconfiguration Discretion: how freely the provider could be changed. Operational Control: how much control remains while depending on it. Diamond = median of the group, frame = its middle half (A solid, B dashed).",
-    "Reconfiguration Discretion: wie frei sich der Anbieter wechseln liesse. Operational Control: wie viel Kontrolle bleibt, während man von ihm abhängt. Raute = Median der Gruppe, Rahmen = ihre mittlere Hälfte (A durchgezogen, B gestrichelt)."
+    "Reconfiguration Discretion: how freely the provider could be changed. Operational Control: how much control remains while depending on it. Diamond = median of all participants, frame = their middle half.",
+    "Reconfiguration Discretion: wie frei sich der Anbieter wechseln liesse. Operational Control: wie viel Kontrolle bleibt, während man von ihm abhängt. Raute = Median aller Teilnehmenden, Rahmen = ihre mittlere Hälfte."
   ),
   shares: t(
     "Percentages = share of all participations per quadrant; a dash means fewer than two participations.",
@@ -60,12 +56,9 @@ const TXT = {
   ),
   median: t("Median", "Median"),
   band: t("middle half", "mittlere Hälfte"),
-  size: t("{a} to {b} participations", "{a} bis {b} Teilnahmen"),
-  sizeAll: t("{n} participations", "{n} Teilnahmen"),
-  small: t("small group, values can still shift", "kleine Gruppe, Werte können sich noch verschieben"),
-  noValue: t("not enough valid answers", "zu wenige gültige Antworten"),
+  all: t("All participants", "Alle Teilnehmenden"),
+  noValue: t("not enough valid answers yet", "noch zu wenige gültige Antworten"),
   table: t("Show as table", "Als Tabelle anzeigen"),
-  group: t("Group", "Gruppe"),
   measure: t("Measure", "Kennzahl"),
   methodHead: t("How the values are produced", "So entstehen die Werte"),
   method: [
@@ -74,27 +67,25 @@ const TXT = {
       "Alle Werte sind Selbsteinschätzungen der teilnehmenden Organisationen für eine Funktion und einen Anbieter. Sie sind nicht repräsentativ."
     ),
     t(
-      "Published are rounded quartiles (median and middle half), the total number of participations, group sizes as ranges and, from ten participations, the share per quadrant. No means, no minima or maxima.",
-      "Veröffentlicht werden gerundete Quartile (Median und mittlere Hälfte), die Gesamtzahl der Teilnahmen, Gruppengrössen als Spanne und ab zehn Teilnahmen der Anteil je Quadrant. Keine Mittelwerte, keine Minima oder Maxima."
+      "Compared is always with all participants, without breakdown by industry, size, function, headquarters or provider.",
+      "Verglichen wird immer mit allen Teilnehmenden, ohne Unterteilung nach Branche, Grösse, Funktion, Hauptsitz oder Anbieter."
     ),
     t(
-      "A group appears from two participations. Grouping is coarse, by one characteristic at a time, never by provider. Small groups appear in only one characteristic at a time.",
-      "Eine Gruppe erscheint ab zwei Teilnahmen. Gruppiert wird grob, nach jeweils einem Merkmal, nie nach Anbieter. Kleine Gruppen erscheinen nur in einem Merkmal gleichzeitig."
+      "Published are rounded quartiles (median and middle half), the number of participations and, from ten participations, the share per quadrant. No means, no minima or maxima.",
+      "Veröffentlicht werden gerundete Quartile (Median und mittlere Hälfte), die Zahl der Teilnahmen und ab zehn Teilnahmen der Anteil je Quadrant. Keine Mittelwerte, keine Minima oder Maxima."
     ),
     t(
-      "In groups of two or three participations, individual values can be derived from the quartiles. Which organisation they belong to is not apparent.",
-      "In Gruppen aus zwei oder drei Teilnahmen lassen sich aus den Quartilen Einzelwerte ableiten. Welcher Organisation sie gehören, ist daraus nicht ersichtlich."
+      "Values appear from two participations. With two or three participations, individual values can be derived from the quartiles, but not assigned to any organisation.",
+      "Werte erscheinen ab zwei Teilnahmen. Bei zwei oder drei Teilnahmen lassen sich aus den Quartilen Einzelwerte ableiten, aber keiner Organisation zuordnen."
     ),
     t(
       "The values are calculated by hand from an export of the database and published with a date. This page cannot read the database.",
       "Die Werte werden von Hand aus einem Export der Datenbank berechnet und mit Datum veröffentlicht. Diese Seite kann die Datenbank nicht lesen."
     ),
   ],
-  groupsHead: t("Which categories belong to which group", "Welche Kategorien zu welcher Gruppe gehören"),
   privacy: t("More on data protection", "Mehr zum Datenschutz"),
 };
 
-const SOURCE: Record<DimKey, keyof typeof LABEL_LISTS> = { branche: "industry", groesse: "size", funktion: "fn", sitz: "hq" };
 const CONT_COLOR = "#6cc2b5";
 
 function initialLang(): Lang {
@@ -108,65 +99,25 @@ function initialLang(): Lang {
 
 const Dashboard = () => {
   const [lang, setLang] = useState<Lang>(initialLang);
-  const [dim, setDim] = useState<DimKey | "all">("all");
   const p = (v: T) => (lang === "en" ? v.en : v.de);
   const fill = (s: string, vals: Record<string, string | number>) =>
     Object.entries(vals).reduce((acc, [k, v]) => acc.replace("{" + k + "}", String(v)), s);
   const bis = lang === "de" ? "bis" : "to";
+  const s = ALL_SUMMARY;
 
-  const ready = hasBenchmark();
-  const dimPublished = (d: DimKey) => {
-    const def = DIMENSIONS.find((x) => x.key === d)!;
-    return def.groups.every((g) => !!BENCHMARK.groups[groupId(d, g.key)]);
-  };
-
-  // Zeilen fuer die gewaehlte Ansicht: "Alle" oder die zwei Gruppen eines Merkmals.
-  const rows: { id: string; label: string; tag?: string; block: GroupBlock }[] = (() => {
-    if (!ready) return [];
-    if (dim === "all" || !dimPublished(dim)) return [{ id: ALL, label: p(TXT.all), block: BENCHMARK.groups[ALL] }];
-    const def = DIMENSIONS.find((x) => x.key === dim)!;
-    return def.groups.map((g, i) => ({
-      id: groupId(dim, g.key), label: p(g.label), tag: i === 0 ? "A" : "B", block: BENCHMARK.groups[groupId(dim, g.key)],
-    }));
-  })();
-
-  const sizeText = (b: GroupBlock) =>
-    b.n !== undefined ? fill(p(TXT.sizeAll), { n: b.n }) : b.nBand ? fill(p(TXT.size), { a: b.nBand[0], b: b.nBand[1] }) : "";
-
-  const bandDescribe = (label: string, q: Quant | null, f: (v: number) => string) =>
-    q ? [label, `${p(TXT.median)}: ${f(q.p50)}`, `${p(TXT.band)}: ${f(q.p25)} ${bis} ${f(q.p75)}`] : [label];
-
-  const rowHead = (r: (typeof rows)[number]) => (
-    <div style={{ display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap", marginBottom: "2px" }}>
-      {r.tag && (
-        <span style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "11px", fontWeight: 600, color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.25)", borderRadius: "4px", padding: "0 5px" }}>
-          {r.tag}
-        </span>
-      )}
-      <span style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.8)" }}>{r.label}</span>
-    </div>
-  );
-
-  // Gruppen der aktuellen Ansicht mit Groesse, einmal oben statt in jeder Zeile.
-  const groupLegend = (
-    <div style={{ display: "flex", gap: "8px 22px", flexWrap: "wrap", alignItems: "baseline", margin: "-8px 0 22px", fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.55)" }}>
-      {rows.map((r) => (
-        <span key={r.id}>
-          {r.tag ? <strong style={{ fontWeight: 600, color: "rgba(255,255,255,0.75)" }}>{r.tag} </strong> : null}
-          {r.label}: {sizeText(r.block)}
-        </span>
-      ))}
-      {rows.some((r) => isSmall(r.block)) && <span style={{ color: "rgba(255,255,255,0.55)" }}>{p(TXT.small)}</span>}
-    </div>
-  );
+  const describe = (q: Quant | null, f: (v: number) => string) =>
+    q ? [p(TXT.all), `${p(TXT.median)}: ${f(q.p50)}`, `${p(TXT.band)}: ${f(q.p25)} ${bis} ${f(q.p75)}`] : [p(TXT.all)];
 
   const card: React.CSSProperties = {
     background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "16px", padding: "22px 24px",
   };
   const h2: React.CSSProperties = { fontFamily: "'Space Grotesk', sans-serif", fontWeight: 500, fontSize: "18px", color: "white", margin: "0 0 4px" };
-  const lead: React.CSSProperties = { fontFamily: "Inter, sans-serif", fontSize: "13px", lineHeight: 1.6, color: "rgba(255,255,255,0.5)", margin: "0 0 18px" };
-
-  const quadShares = dim === "all" || !rows[0]?.tag ? BENCHMARK.groups[ALL]?.quad : undefined;
+  const lead: React.CSSProperties = { fontFamily: "Inter, sans-serif", fontSize: "13px", lineHeight: 1.6, color: "rgba(255,255,255,0.55)", margin: "0 0 18px" };
+  const noValue = (
+    <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.55)", margin: "4px 0 6px", fontStyle: "italic" }}>
+      {p(TXT.noValue)}
+    </p>
+  );
 
   return (
     <div style={{ minHeight: "100vh", background: "hsl(228 45% 4%)" }}>
@@ -215,13 +166,13 @@ const Dashboard = () => {
         <p style={{ fontFamily: "Inter, sans-serif", fontSize: "15px", lineHeight: 1.7, color: "rgba(255,255,255,0.65)", maxWidth: "70ch", margin: "0 0 10px" }}>
           {p(TXT.lead)}
         </p>
-        {ready && (
-          <p style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.5)", margin: "0 0 28px" }}>
-            {fill(p(TXT.stand), { d: fmtAsOf(BENCHMARK.asOf, lang), n: BENCHMARK.nTotal ?? 0, k: BENCHMARK.kMin })}
+        {s && (
+          <p style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.55)", margin: "0 0 28px" }}>
+            {fill(p(TXT.stand), { d: fmtAsOf(BENCHMARK.asOf, lang), n: s.n })}{isSmall(s) ? ". " + p(TXT.small) : ""}
           </p>
         )}
 
-        {!ready ? (
+        {!s ? (
           <div style={{ ...card, textAlign: "center", padding: "48px 24px", marginTop: "24px" }}>
             <h2 style={h2}>{p(TXT.emptyTitle)}</h2>
             <p style={{ ...lead, margin: "6px auto 22px", maxWidth: "52ch" }}>{p(TXT.emptyText)}</p>
@@ -235,88 +186,53 @@ const Dashboard = () => {
           </div>
         ) : (
           <>
-            {/* Filter: genau ein Merkmal */}
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "22px" }}>
-              <span style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.55)" }}>{p(TXT.filter)}:</span>
-              {(["all", ...DIMENSIONS.map((d) => d.key)] as (DimKey | "all")[]).map((k) => {
-                const ok = k === "all" || dimPublished(k);
-                const active = ok && dim === k;
-                const label = k === "all" ? p(TXT.allTab) : p(DIMENSIONS.find((d) => d.key === k)!.label);
-                return (
-                  <button key={k} type="button" disabled={!ok} aria-pressed={active} onClick={() => setDim(k)}
-                    title={ok ? undefined : p(TXT.notYet)}
-                    style={{
-                      fontFamily: "Inter, sans-serif", fontSize: "13px", padding: "6px 13px", borderRadius: "999px",
-                      border: `1px solid ${active ? "rgba(139,164,255,0.7)" : "rgba(255,255,255,0.14)"}`,
-                      background: active ? "rgba(75,110,255,0.16)" : "transparent",
-                      color: ok ? (active ? "#fff" : "rgba(255,255,255,0.75)") : "rgba(255,255,255,0.32)",
-                      cursor: ok ? "pointer" : "not-allowed",
-                    }}>
-                    {label}{ok ? "" : ` · ${p(TXT.notYet)}`}
-                  </button>
-                );
-              })}
-            </div>
-            {groupLegend}
-
             {/* Vier Faehigkeiten */}
             <div style={{ ...card, marginBottom: "20px" }}>
               <h2 style={h2}>{p(TXT.capHead)}</h2>
               <p style={lead}>{p(TXT.capLead)}</p>
-              <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: "26px 36px" }}>
-                {CAPACITIES.map((c) => (
-                  <div key={c.key}>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: "10px", flexWrap: "wrap", marginBottom: "8px" }}>
-                      <span style={{ display: "inline-block", width: "9px", height: "9px", borderRadius: "50%", background: c.color }} />
-                      <span style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "15px", color: "rgba(255,255,255,0.9)" }}>
-                        {lang === "en" ? c.label.en : c.label.de}
-                      </span>
+              <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: "22px 36px" }}>
+                {CAPACITIES.map((c) => {
+                  const q = s.cap[c.key];
+                  const name = lang === "en" ? c.label.en : c.label.de;
+                  return (
+                    <div key={c.key}>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: "10px", marginBottom: "6px" }}>
+                        <span style={{ display: "inline-block", width: "9px", height: "9px", borderRadius: "50%", background: c.color }} />
+                        <span style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "15px", color: "rgba(255,255,255,0.9)" }}>{name}</span>
+                      </div>
+                      {q ? (
+                        <ComparisonBand min={1} max={7} ticks={[1, 2, 3, 4, 5, 6, 7]} q={q} color={c.color}
+                          scale={["1", "7"]} label={name} describe={describe(q, (v) => fmtNum(v, lang))} />
+                      ) : noValue}
                     </div>
-                    {rows.map((r, i) => {
-                      const q = r.block.cap[c.key];
-                      return (
-                        <div key={r.id} style={{ marginBottom: "8px" }}>
-                          {rowHead(r)}
-                          {q ? (
-                            <ComparisonBand min={1} max={7} ticks={[1, 2, 3, 4, 5, 6, 7]} q={q} color={c.color}
-                              scale={i === rows.length - 1 ? ["1", "7"] : undefined}
-                              label={lang === "en" ? c.label.en : c.label.de}
-                              describe={bandDescribe(r.label, q, (v) => fmtNum(v, lang))} />
-                          ) : (
-                            <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.55)", margin: "4px 0 6px", fontStyle: "italic" }}>
-                              {p(TXT.noValue)}
-                            </p>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
             {/* Matrix */}
             <div style={{ ...card, marginBottom: "20px" }}>
               <h2 style={h2}>{p(TXT.matrixHead)}</h2>
-              <p style={lead}>{p(TXT.matrixLead)}{quadShares ? " " + p(TXT.shares) : ""}</p>
+              <p style={lead}>{p(TXT.matrixLead)}{s.quad ? " " + p(TXT.shares) : ""}</p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8" style={{ alignItems: "center" }}>
                 <div style={{ display: "flex", justifyContent: "center" }}>
                   <SovereigntyMatrix ftc={null} cto={null} cont={null} lang={lang} emptyHint={false}
-                    quadShares={quadShares}
-                    compare={rows.filter((r) => r.block.ftc && r.block.cto).map((r) => ({ ftc: r.block.ftc!, cto: r.block.cto!, tag: r.tag }))} />
+                    quadShares={s.quad}
+                    compare={s.ftc && s.cto ? [{ ftc: s.ftc, cto: s.cto }] : []}
+                    ariaLabel={[
+                      p(TXT.matrixHead),
+                      s.ftc && s.cto ? `${p(TXT.median)}: Reconfiguration Discretion ${fmtPct(s.ftc.p50)}, Operational Control ${fmtPct(s.cto.p50)}` : p(TXT.noValue),
+                    ].join(". ")} />
                 </div>
-                <div>
-                  {rows.map((r) => (
-                    <div key={r.id} style={{ marginBottom: "12px" }}>
-                      {rowHead(r)}
-                      <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.6)", margin: 0 }}>
-                        {r.block.ftc && r.block.cto
-                          ? `Reconfiguration Discretion ${fmtPct(r.block.ftc.p50)} · Operational Control ${fmtPct(r.block.cto.p50)} (${p(TXT.median)})`
-                          : p(TXT.noValue)}
-                      </p>
-                    </div>
-                  ))}
-                </div>
+                <p style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", lineHeight: 1.7, color: "rgba(255,255,255,0.7)", margin: 0 }}>
+                  {s.ftc && s.cto ? (
+                    <>
+                      {p(TXT.median)}:<br />
+                      Reconfiguration Discretion {fmtPct(s.ftc.p50)} ({p(TXT.band)} {fmtPct(s.ftc.p25)} {bis} {fmtPct(s.ftc.p75)})<br />
+                      Operational Control {fmtPct(s.cto.p50)} ({p(TXT.band)} {fmtPct(s.cto.p25)} {bis} {fmtPct(s.cto.p75)})
+                    </>
+                  ) : p(TXT.noValue)}
+                </p>
               </div>
             </div>
 
@@ -324,21 +240,12 @@ const Dashboard = () => {
             <div style={{ ...card, marginBottom: "20px" }}>
               <h2 style={h2}>{p(TXT.contHead)}</h2>
               <p style={lead}>{p(TXT.contLead)}</p>
-              {rows.map((r, i) => (
-                <div key={r.id} style={{ marginBottom: "10px", maxWidth: "640px" }}>
-                  {rowHead(r)}
-                  {r.block.cont ? (
-                    <ComparisonBand min={0} max={1} ticks={[0, 0.25, 0.5, 0.75, 1]} q={r.block.cont} color={CONT_COLOR}
-                      scale={i === rows.length - 1 ? ["0 %", "100 %"] : undefined}
-                      label={p(TXT.contHead)}
-                      describe={bandDescribe(r.label, r.block.cont, fmtPct)} />
-                  ) : (
-                    <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.55)", margin: "4px 0 6px", fontStyle: "italic" }}>
-                      {p(TXT.noValue)}
-                    </p>
-                  )}
-                </div>
-              ))}
+              <div style={{ maxWidth: "640px" }}>
+                {s.cont ? (
+                  <ComparisonBand min={0} max={1} ticks={[0, 0.25, 0.5, 0.75, 1]} q={s.cont} color={CONT_COLOR}
+                    scale={["0 %", "100 %"]} label={p(TXT.contHead)} describe={describe(s.cont, fmtPct)} />
+                ) : noValue}
+              </div>
             </div>
 
             {/* Tabelle fuer Screenreader und zum Nachlesen */}
@@ -350,20 +257,19 @@ const Dashboard = () => {
                 <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.75)" }}>
                   <thead>
                     <tr>
-                      {[p(TXT.group), p(TXT.measure), "p25", p(TXT.median), "p75"].map((h) => (
+                      {[p(TXT.measure), "p25", p(TXT.median), "p75"].map((h) => (
                         <th key={h} style={{ textAlign: "left", padding: "6px 10px", borderBottom: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.55)", fontWeight: 500 }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.flatMap((r) => [
-                      ...CAPACITIES.map((c) => ({ r, name: lang === "en" ? c.label.en : c.label.de, q: r.block.cap[c.key], f: (v: number) => fmtNum(v, lang) })),
-                      { r, name: "Reconfiguration Discretion", q: r.block.ftc, f: fmtPct },
-                      { r, name: "Operational Control", q: r.block.cto, f: fmtPct },
-                      { r, name: p(TXT.contHead), q: r.block.cont, f: fmtPct },
-                    ]).map(({ r, name, q, f }) => (
-                      <tr key={r.id + name}>
-                        <td style={{ padding: "5px 10px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>{r.label}</td>
+                    {[
+                      ...CAPACITIES.map((c) => ({ name: lang === "en" ? c.label.en : c.label.de, q: s.cap[c.key], f: (v: number) => fmtNum(v, lang) })),
+                      { name: "Reconfiguration Discretion", q: s.ftc, f: fmtPct },
+                      { name: "Operational Control", q: s.cto, f: fmtPct },
+                      { name: p(TXT.contHead), q: s.cont, f: fmtPct },
+                    ].map(({ name, q, f }) => (
+                      <tr key={name}>
                         <td style={{ padding: "5px 10px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>{name}</td>
                         {(q ? [q.p25, q.p50, q.p75] : [null, null, null]).map((v, i) => (
                           <td key={i} style={{ padding: "5px 10px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>{v === null ? "–" : f(v)}</td>
@@ -377,31 +283,13 @@ const Dashboard = () => {
           </>
         )}
 
-        {/* Methode und Gruppen */}
+        {/* Methode */}
         <div style={{ ...card, marginTop: "20px" }}>
           <h2 style={h2}>{p(TXT.methodHead)}</h2>
-          <ul style={{ margin: "10px 0 18px", paddingLeft: "18px", fontFamily: "Inter, sans-serif", fontSize: "13px", lineHeight: 1.7, color: "rgba(255,255,255,0.65)" }}>
+          <ul style={{ margin: "10px 0 14px", paddingLeft: "18px", fontFamily: "Inter, sans-serif", fontSize: "13px", lineHeight: 1.7, color: "rgba(255,255,255,0.65)" }}>
             {TXT.method.map((m) => <li key={m.de}>{p(m)}</li>)}
           </ul>
-          <h3 style={{ ...h2, fontSize: "15px", margin: "0 0 10px" }}>{p(TXT.groupsHead)}</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: "14px 32px" }}>
-            {DIMENSIONS.map((d) => (
-              <div key={d.key} style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", lineHeight: 1.6, color: "rgba(255,255,255,0.6)" }}>
-                <div style={{ color: "rgba(255,255,255,0.85)", marginBottom: "2px" }}>{p(d.label)}</div>
-                {d.groups.map((g) => (
-                  <div key={g.key}>
-                    <strong style={{ fontWeight: 500, color: "rgba(255,255,255,0.75)" }}>{p(g.label)}:</strong>{" "}
-                    {g.members
-                      .map((k) => LABEL_LISTS[SOURCE[d.key]].find((x) => x.key === k))
-                      .filter(Boolean)
-                      .map((x) => p(x!.label))
-                      .join(", ")}
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-          <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", margin: "16px 0 0" }}>
+          <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", margin: 0 }}>
             <Link to="/impressum#vergleichswerte" style={{ color: "#8ba4ff", textDecoration: "none" }}>{p(TXT.privacy)} →</Link>
           </p>
         </div>
