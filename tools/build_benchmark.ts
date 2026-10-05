@@ -5,17 +5,20 @@
 //     [--since JJJJ-MM-TT] [--exclude <ids.json>] [--dry-run]
 //
 //   --state   private Zustandsdatei mit den exakten Zahlen des letzten Stands
-//             (Regel 4). Wird gelesen und nach dem Schreiben aktualisiert. Liegt
+//             (Regel 6). Wird gelesen und nach dem Schreiben aktualisiert. Liegt
 //             wie der Export AUSSERHALB von v2/ und wird nie veroeffentlicht.
-//   --since   nur Antworten ab diesem Tag (created_at), falls ein Stichtag gelten soll.
+//   --since   nur Antworten ab diesem Tag (created_at), z. B. ab dem Tag, an dem
+//             der Hinweis zur Veroeffentlichung in der Einwilligung steht.
 //
-// Verglichen wird nur mit allen Teilnehmenden. Der Export braucht deshalb
-// keine Angaben zu Funktion, Anbieter, Branche, Groesse oder Sitz. Im
-// Supabase-SQL-Editor ausfuehren, Ergebnis als JSON herunterladen und AUSSERHALB
-// von v2/ ablegen; nach dem Lauf loeschen:
+// Export im Supabase-SQL-Editor (ohne Anbieter und ohne Fragetexte). Bei
+// "andere Funktion" steht der Freitext der Funktion im Export; er gelangt nicht
+// in benchmark.json, die Exportdatei nach dem Lauf trotzdem loeschen. Ergebnis
+// als JSON herunterladen und AUSSERHALB von v2/ ablegen:
 //
 //   select response_id, created_at,
 //     payload->>'instrument' instrument,
+//     payload->'intake'->>'funktion' funktion, payload->'intake'->>'mitarbeiterzahl' groesse,
+//     payload->'intake'->>'branche' branche, payload->'intake'->>'hauptsitz' hauptsitz,
 //     (select jsonb_object_agg(a->>'id', a->'antwort')
 //        from jsonb_array_elements(payload->'antworten') a) antworten
 //   from responses order by created_at;
@@ -24,10 +27,12 @@
 // src/data/benchmarkCore.ts und lassen sich hier nicht abschalten.
 import fs from "node:fs";
 import path from "node:path";
-import { scoreRespondent, type Answers, type RespondentScores } from "../src/data/scoring";
+import { scoreRespondent, type Answers } from "../src/data/scoring";
+import { groupsOf, keyFromLabel, LABEL_LISTS, type IntakeKeys } from "../src/data/benchmarkGroups";
 import {
-  buildBenchmark, emptyBenchmark, INSTRUMENT_ID, type BenchmarkFile, type BenchmarkState,
+  buildBenchmark, emptyBenchmark, INSTRUMENT_ID, type BenchmarkFile, type BenchmarkState, type ScoredRow,
 } from "../src/data/benchmarkCore";
+import { FUNCTION_OTHER } from "../src/data/surveyUi";
 
 const REPO = path.resolve(__dirname, "..");
 const OUT = path.join(REPO, "src", "data", "benchmark.json");
@@ -74,7 +79,11 @@ if (exclPath && inside(exclPath)) fail("Die Ausschlussliste liegt im Repository.
 const maybeJson = (v: unknown) =>
   typeof v === "string" && /^\s*[[{]/.test(v) ? JSON.parse(v) : v;
 
-type Row = { response_id: string; instrument: string; created_at: string | null; antworten: Record<string, unknown> };
+type Row = {
+  response_id: string; instrument: string; created_at: string | null;
+  funktion: string | null; groesse: string | null; branche: string | null; hauptsitz: string | null;
+  antworten: Record<string, unknown>;
+};
 
 function normaliseRow(r: any): Row {
   // Auch ganze Tabellenzeilen {response_id, payload} annehmen.
@@ -82,9 +91,14 @@ function normaliseRow(r: any): Row {
     const p = maybeJson(r.payload);
     const ant: Record<string, unknown> = {};
     (p.antworten || []).forEach((a: any) => { ant[a.id] = a.antwort; });
-    return { response_id: r.response_id, instrument: p.instrument, created_at: r.created_at ?? null, antworten: ant };
+    return {
+      response_id: r.response_id, instrument: p.instrument, created_at: r.created_at ?? null,
+      funktion: p.intake?.funktion ?? null, groesse: p.intake?.mitarbeiterzahl ?? null,
+      branche: p.intake?.branche ?? null, hauptsitz: p.intake?.hauptsitz ?? null,
+      antworten: ant,
+    };
   }
-  return { response_id: r.response_id, instrument: r.instrument, created_at: r.created_at ?? null, antworten: maybeJson(r.antworten) || {} };
+  return { ...r, antworten: maybeJson(r.antworten) || {} };
 }
 
 const raw = JSON.parse(fs.readFileSync(inPath, "utf8").replace(/^﻿/, ""));
@@ -98,7 +112,9 @@ const excluded = new Set<string>(
 const lines: string[] = [];
 const seen = new Set<string>();
 const vectors = new Set<string>();
-const scored: RespondentScores[] = [];
+const unknown: string[] = [];
+const freeTexts = new Set<string>();
+const scored: ScoredRow[] = [];
 let dropInstrument = 0, dropExcluded = 0, dropDuplicate = 0, dropSameVector = 0, dropSince = 0;
 
 for (const r of rows) {
@@ -108,27 +124,42 @@ for (const r of rows) {
   if (seen.has(r.response_id)) { dropDuplicate++; continue; }
   seen.add(r.response_id);
 
+  const keys: IntakeKeys = { size: "", industry: "", hq: "", fn: "" };
+  const map = (field: keyof IntakeKeys, label: string | null) => {
+    if (!label || !label.trim()) return;
+    const k = keyFromLabel(LABEL_LISTS[field], label);
+    if (k) keys[field] = k;
+    else if (field === "fn") { keys.fn = FUNCTION_OTHER; freeTexts.add(label); }
+    else unknown.push(`${field}: "${label}"`);
+  };
+  map("size", r.groesse); map("industry", r.branche); map("hq", r.hauptsitz); map("fn", r.funktion);
+
   const answers: Answers = {};
   Object.entries(r.antworten).forEach(([id, v]) => {
     if (typeof v === "number" || Array.isArray(v)) answers[id] = v as number | number[];
   });
 
   // Mehrfach abgeschickte identische Durchgaenge nur einmal zaehlen.
-  const vec = JSON.stringify(Object.keys(answers).sort().map((k) => [k, answers[k]]));
+  const vec = JSON.stringify([keys, Object.keys(answers).sort().map((k) => [k, answers[k]])]);
   if (vectors.has(vec)) { dropSameVector++; continue; }
   vectors.add(vec);
 
-  scored.push(scoreRespondent(answers));
+  scored.push({ groups: groupsOf(keys), scores: scoreRespondent(answers) });
 }
+
+if (unknown.length) fail("Unbekannte Bezeichnungen, bitte surveyUi.ts pruefen:\n  " + unknown.join("\n  "));
 
 lines.push(`Zeilen im Export: ${rows.length}`);
 lines.push(`  anderes Instrument: ${dropInstrument}, vor --since: ${dropSince}, ausgeschlossen: ${dropExcluded}, doppelte ID: ${dropDuplicate}, identischer Durchgang: ${dropSameVector}`);
 
 let prev: BenchmarkFile | null = null;
 try { prev = JSON.parse(fs.readFileSync(OUT, "utf8")); } catch { prev = emptyBenchmark(); }
-if (prev && (prev as any).schema !== 2) prev = emptyBenchmark();
 let prevState: BenchmarkState | null = null;
 if (fs.existsSync(statePath)) prevState = JSON.parse(fs.readFileSync(statePath, "utf8"));
+// Stand und Zustand aus der Fassung ohne Gruppen (schema 2, 05.10.2026) passen
+// nicht zu dieser Fassung mit Gruppen. Dann wie beim ersten Lauf beginnen.
+if (prev && (prev as any).schema !== 1) prev = emptyBenchmark();
+if (prevState && !(prevState as any).groups) prevState = null;
 
 let result;
 try {
@@ -142,6 +173,7 @@ lines.push(...result.report);
 const out = JSON.stringify(result.file, null, 2) + "\n";
 const leaks: string[] = [];
 seen.forEach((id) => { if (id && out.includes(id)) leaks.push("response_id " + id); });
+freeTexts.forEach((s) => { if (s.length > 2 && out.includes(s)) leaks.push("Freitext"); });
 ["\"mean\"", "\"min\"", "\"max\"", "\"p10\"", "\"p90\""].forEach((k) => { if (out.includes(k)) leaks.push(k); });
 if (leaks.length) fail("Selbstpruefung: " + leaks.join(", "));
 

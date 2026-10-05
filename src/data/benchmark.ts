@@ -1,13 +1,21 @@
 // Aktueller Stand der Vergleichswerte. benchmark.json wird von
 // tools/build_benchmark.ts erzeugt und nie von Hand bearbeitet.
 import raw from "./benchmark.json";
-import type { BenchmarkFile, Summary } from "./benchmarkCore";
+import type { BenchmarkFile, GroupBlock } from "./benchmarkCore";
 import type { Lang } from "./instrument";
 
-export const BENCHMARK = raw as unknown as BenchmarkFile;
+// Unerwartetes Format (z. B. ein Stand aus einer anderen Fassung): wie "noch
+// kein Stand" behandeln, damit keine Seite an einem fehlenden Feld abstuerzt.
+const parsed = raw as unknown as BenchmarkFile;
+export const BENCHMARK: BenchmarkFile =
+  parsed?.schema === 1 && parsed.groups && typeof parsed.groups === "object"
+    ? parsed
+    : { schema: 1, asOf: null, instrument: "", kMin: 2, nTotal: null, groups: {} };
 
-// Vergleichswerte aller Teilnehmenden, oder null, solange es keinen Stand gibt.
-export const ALL_SUMMARY: Summary | null = BENCHMARK.all ?? null;
+// Gibt es ueberhaupt einen veroeffentlichten Stand?
+// Robust gegen ein unerwartetes Format: dann lieber "noch keine Werte" als eine leere Seite.
+export const hasBenchmark = (b: BenchmarkFile = BENCHMARK) =>
+  b?.schema === 1 && b.nTotal !== null && !!b.groups?.all;
 
 export function fmtAsOf(asOf: string | null, lang: Lang): string {
   if (!asOf) return "";
@@ -26,4 +34,4 @@ export function fmtNum(v: number, lang: Lang, digits = 2): string {
 export const fmtPct = (v: number) => `${Math.round(v * 100)} %`;
 
 // Unter 20 Teilnahmen sind Quartile noch wacklig.
-export const isSmall = (s: Summary) => s.n < 20;
+export const isSmall = (g: GroupBlock) => (g.n ?? g.nBand?.[1] ?? 0) < 20;

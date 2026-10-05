@@ -21,8 +21,9 @@ import { ACTIVE, constructScores, quadrantKey, type QuadKey } from "../data/scor
 import { LS, readLS } from "../data/storageKeys";
 import { SovereigntyMatrix, QUAD_VIEW } from "../components/ResultVisuals";
 import ComparisonBand from "../components/ComparisonBand";
-import { BENCHMARK, ALL_SUMMARY, fmtAsOf, fmtNum, fmtPct, isSmall } from "../data/benchmark";
+import { BENCHMARK, hasBenchmark, fmtAsOf, fmtNum, fmtPct, isSmall } from "../data/benchmark";
 import { positionOf, capStepOf } from "../data/benchmarkCore";
+import { ALL, DIMENSIONS, groupDef, groupId, groupsOf } from "../data/benchmarkGroups";
 import { UI, CONTEXT_GROUPS, FUNCTIONS, FUNCTION_OTHER, FIRM_SIZE, INDUSTRY, HQ, labelOf, anchorsFor, YES_NO, pick } from "../data/surveyUi";
 import { CAPACITIES, CAP_ITEMS, itemsOfCapacity, scoreCapacity, pickCap, MIN_VALID, type CapacityKey } from "../data/capacityItems";
 
@@ -745,11 +746,21 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
     return k ? QUAD_VIEW[k] : null;
   }, [scores]);
 
-  // ─── Vergleich mit allen Teilnehmenden ─────────────────────────────────────
-  // Werte aus data/benchmark.json (Schnappschuss, nur Zusammenfassungen), ohne
-  // Unterteilung nach Branche, Groesse, Funktion oder Sitz.
-  const cmp = ALL_SUMMARY;
-  const showCmp = cmp !== null;
+  // ─── Vergleich mit anderen Teilnehmenden ───────────────────────────────────
+  // Werte aus data/benchmark.json (Schnappschuss, nur Zusammenfassungen). Zur
+  // Wahl stehen "Alle" und die eigenen Gruppen; nur veroeffentlichte sind
+  // anklickbar. Standard ist die eigene Funktionsgruppe, weil der Vergleich
+  // ueber Funktionen hinweg hinkt.
+  const myGroups = useMemo(
+    () => groupsOf({ size: intake.size || "", industry: intake.industry || "", hq: intake.hq || "", fn: intake.fnKey || "" }),
+    [intake]
+  );
+  const cmpOptions = [ALL, ...DIMENSIONS.filter((d) => myGroups[d.key]).map((d) => groupId(d.key, myGroups[d.key]!))];
+  const showCmp = hasBenchmark();
+  const fnGroup = myGroups.funktion ? groupId("funktion", myGroups.funktion) : null;
+  const [cmpId, setCmpId] = useState<string>(fnGroup && BENCHMARK.groups[fnGroup] ? fnGroup : ALL);
+  const cmp = showCmp ? BENCHMARK.groups[cmpId] ?? BENCHMARK.groups[ALL] : null;
+  const cmpLabel = (id: string) => (id === ALL ? tr("cmpAll") : pick(groupDef(id)!.group.label, lang));
   const bis = lang === "de" ? "bis" : "to";
 
   const section = (title: string, sub?: string) => (
@@ -926,13 +937,34 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
       </div>
 
       <div style={{ marginBottom: "34px" }}>
-        {cmp ? (
+        {showCmp ? (
           <div style={{ marginBottom: "24px" }}>
-            <h3 style={{ fontFamily: "Space Grotesk, sans-serif", fontWeight: 500, fontSize: "16px", color: "white", margin: "0 0 4px" }}>
-              {tr("cmpHead")}
-            </h3>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "10px" }}>
+              <span style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.55)" }}>
+                {tr("cmpWith")}:
+              </span>
+              {cmpOptions.map((id) => {
+                const ok = !!BENCHMARK.groups[id];
+                const active = ok && id === cmpId;
+                return (
+                  <button
+                    key={id} type="button" disabled={!ok} aria-pressed={active}
+                    onClick={() => setCmpId(id)}
+                    style={{
+                      fontFamily: "Inter, sans-serif", fontSize: "12.5px", padding: "5px 12px", borderRadius: "999px",
+                      border: `1px solid ${active ? "rgba(139,164,255,0.7)" : "rgba(255,255,255,0.14)"}`,
+                      background: active ? "rgba(75,110,255,0.16)" : "transparent",
+                      color: ok ? (active ? "#fff" : "rgba(255,255,255,0.75)") : "rgba(255,255,255,0.32)",
+                      cursor: ok ? "pointer" : "not-allowed",
+                    }}
+                  >
+                    {cmpLabel(id)}{ok ? "" : ` · ${tr("cmpNotYet")}`}
+                  </button>
+                );
+              })}
+            </div>
             <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", lineHeight: 1.6, color: "rgba(255,255,255,0.55)", margin: 0 }}>
-              {fmt(tr("cmpStand"), { d: fmtAsOf(BENCHMARK.asOf, lang), n: cmp.n })}.{" "}
+              {fmt(tr("cmpStand"), { d: fmtAsOf(BENCHMARK.asOf, lang) })}.{" "}
               {tr("cmpOwnNotIncl")}{cmp && isSmall(cmp) ? " " + tr("cmpSmall") : ""}{" "}
               <Link to="/dashboard" style={{ color: "#8ba4ff", textDecoration: "none", whiteSpace: "nowrap" }}>
                 {tr("cmpDashLink")} →
@@ -988,7 +1020,7 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
                 scale={["1", "7"]}
                 label={pickCap(cap.label, lang)}
                 describe={[
-                  tr("cmpAll"),
+                  cmpLabel(cmpId),
                   `${tr("cmpLegendOwn")}: ${score.mean !== null ? fmtNum(score.mean, lang, 1) : tr("notEnough")}`,
                   `${tr("cmpLegendMedian")}: ${fmtNum(q.p50, lang)}`,
                   `${tr("cmpLegendBand")}: ${fmtNum(q.p25, lang)} ${bis} ${fmtNum(q.p75, lang)}`,
@@ -1054,7 +1086,7 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
             {/* Legende und Zahlen direkt unter der Grafik, auch mobil */}
             {cmp?.ftc && cmp?.cto && (
               <div style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", lineHeight: 1.55, color: "rgba(255,255,255,0.6)", marginTop: "8px", maxWidth: 460, textAlign: "center" }}>
-                {tr("cmpMatrixMarker")}
+                {tr("cmpMatrixMarker")} ({cmpLabel(cmpId)})
                 <br />
                 {fmt(tr("cmpMatrixValues"), { f: fmtPct(cmp.ftc.p50), c: fmtPct(cmp.cto.p50) })}
               </div>

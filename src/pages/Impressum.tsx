@@ -94,9 +94,9 @@ const sections: { title: string; id?: string; lines: React.ReactNode[] }[] = [
     title: "Veröffentlichung zusammengefasster Ergebnisse",
     id: "vergleichswerte",
     lines: [
-      "Auf der Ergebnisseite und unter /dashboard zeigen wir, wie sich die bisherigen Teilnahmen verteilen. Verglichen wird immer mit allen Teilnehmenden, ohne Unterteilung nach Branche, Grösse, Funktion, Hauptsitz oder Anbieter.",
-      "Veröffentlicht werden gerundete Quartile (Median und mittlere Hälfte), die Zahl der Teilnahmen und ab zehn Teilnahmen der gerundete Anteil je Quadrant der Matrix. Mittelwerte, Minima und Maxima werden nicht veröffentlicht. Freitextangaben und Anbieternamen fliessen nicht ein.",
-      "Werte erscheinen ab zwei Teilnahmen. Bei zwei oder drei Teilnahmen lassen sich aus den Quartilen die einzelnen Werte ableiten. Welcher Organisation sie gehören, ist daraus nicht ersichtlich. Wer selbst teilgenommen hat, kann bei so wenigen Teilnahmen aus den eigenen Angaben auf die Werte der anderen schliessen.",
+      "Auf der Ergebnisseite und unter /dashboard zeigen wir, wie sich die bisherigen Teilnahmen verteilen. Veröffentlicht werden gerundete Quartile (Median und mittlere Hälfte), die Gesamtzahl der Teilnahmen, Gruppengrössen als Spanne und ab zehn Teilnahmen der gerundete Anteil je Quadrant der Matrix. Mittelwerte, Minima und Maxima werden nicht veröffentlicht.",
+      "Eine Gruppe erscheint erst ab zwei Teilnahmen. Gruppiert wird grob, je Merkmal in genau zwei Gruppen (Branche, Grösse, Funktion, Hauptsitz) und jeweils nur nach einem Merkmal, nie nach Anbieter und nie nach Freitextangaben. Gruppen mit weniger als fünf Teilnahmen erscheinen nur in einem Merkmal gleichzeitig, damit sich Werte nicht über mehrere Merkmale hinweg einer bestimmten Kombination zuordnen lassen.",
+      "In Gruppen aus zwei oder drei Teilnahmen lassen sich aus den Quartilen die einzelnen Werte ableiten. Welcher Organisation sie gehören, ist daraus nicht ersichtlich. Wer selbst zu einer solchen Gruppe gehört, kann aus den eigenen Angaben auf die Werte der anderen schliessen.",
       "Die Werte werden von Hand aus einem Export der Datenbank berechnet und mit einem Stand-Datum veröffentlicht. Ein neuer Stand erscheint erst, wenn mindestens zwei neue Teilnahmen hinzugekommen sind. Die Website kann die Datenbank weiterhin nicht lesen. Ihre eigenen Antworten fliessen frühestens in den nächsten Stand ein.",
       "Bereits veröffentlichte Stände bleiben unverändert, auch wenn ein Datensatz später gelöscht wird.",
     ],
