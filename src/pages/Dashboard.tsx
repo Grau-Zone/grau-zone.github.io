@@ -3,8 +3,8 @@
 // Liest ausschliesslich data/benchmark.json (Schnappschuss, nur Quartile und
 // Spannen). Die Seite kann die Datenbank nicht lesen. Gefiltert wird nach genau
 // einem Merkmal mit je zwei Gruppen; die Regeln stehen in data/benchmarkCore.ts.
-import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import RadarMark from "../components/RadarMark";
@@ -18,6 +18,7 @@ import { positionOf, capStepOf, CTX_STEP, type GroupBlock, type Quant, type Posi
 import type { Lang } from "../data/instrument";
 import { scoreRespondent, type Answers, type RespondentScores } from "../data/scoring";
 import { LS, readLS } from "../data/storageKeys";
+import { decodeResult, formatCode } from "../data/resultCode";
 
 type T = { en: string; de: string };
 const t = (en: string, de: string): T => ({ en, de });
@@ -102,6 +103,24 @@ const TXT = {
     "If you complete the self-assessment in this browser, your own values will be marked here.",
     "Wenn Sie das Self-Assessment in diesem Browser ausfüllen, werden hier Ihre eigenen Werte markiert."
   ),
+  ownNoteCode: t(
+    "Your values from your result code are marked as a dot. The code is read only in this browser, nothing is transmitted.",
+    "Ihre Werte aus Ihrem Ergebnis-Code sind als Punkt markiert. Der Code wird nur in diesem Browser gelesen, nichts wird übertragen."
+  ),
+  codeLabel: t("Sign in with your result code", "Mit Ihrem Ergebnis-Code anmelden"),
+  codeHint: t(
+    "You will find the result code at the end of the self-assessment. With it, your values appear here on any device.",
+    "Den Ergebnis-Code finden Sie am Ende des Self-Assessments. Damit erscheinen Ihre Werte hier auf jedem Gerät."
+  ),
+  codeOpen: t("Sign in with a result code", "Mit einem Ergebnis-Code anmelden"),
+  codeButton: t("Sign in", "Anmelden"),
+  codeError: t("This code is not valid. Please check your entry.", "Dieser Code ist ungültig. Bitte prüfen Sie die Eingabe."),
+  codeRid: t(
+    "This is your response ID, not the result code. The result code has 16 characters (XXXX-XXXX-XXXX-XXXX) and is shown at the end of the self-assessment. For an earlier participation, you can request it by e-mail to adrian.bohrer@unisg.ch.",
+    "Das ist Ihre Antwort-Kennung, nicht der Ergebnis-Code. Der Ergebnis-Code hat 16 Zeichen (XXXX-XXXX-XXXX-XXXX) und steht am Ende des Self-Assessments. Für eine frühere Teilnahme erhalten Sie ihn auf Anfrage per E-Mail an adrian.bohrer@unisg.ch."
+  ),
+  codeActive: t("Signed in with result code {c}.", "Angemeldet mit Ergebnis-Code {c}."),
+  codeLogout: t("Sign out", "Abmelden"),
   ownLegend: t("Dot = your value.", "Punkt = Ihr Wert."),
   ownMatrix: t("Coloured dot = your position, colour = your continuity.", "Farbiger Punkt = Ihre Position, Farbe = Ihre Kontinuität."),
   pos: {
@@ -121,15 +140,37 @@ function initialLang(): Lang {
 // Eigene Werte und eigene Gruppen aus dem abgeschlossenen Self-Assessment in
 // diesem Browser. Wird nur lokal gelesen und gerechnet, nichts verlaesst den Browser.
 type Own = { scores: RespondentScores; groups: Partial<Record<DimKey, string>> };
-function loadOwn(): Own | null {
-  if (readLS<string | null>(LS.phase, null) !== "result") return null;
-  const answers = readLS<Answers | null>(LS.ans, null);
-  if (!answers || typeof answers !== "object") return null;
-  const i = readLS<{ size?: string; industry?: string; hq?: string; fnKey?: string } | null>(LS.intake, null) || {};
+type OwnIntake = { size?: string; industry?: string; hq?: string; fnKey?: string };
+function ownFrom(answers: Answers, i: OwnIntake): Own {
   return {
     scores: scoreRespondent(answers),
     groups: groupsOf({ size: i.size || "", industry: i.industry || "", hq: i.hq || "", fn: i.fnKey || "" }),
   };
+}
+function loadOwn(): Own | null {
+  if (readLS<string | null>(LS.phase, null) !== "result") return null;
+  const answers = readLS<Answers | null>(LS.ans, null);
+  if (!answers || typeof answers !== "object") return null;
+  return ownFrom(answers, readLS<OwnIntake | null>(LS.intake, null) || {});
+}
+
+// Eigene Werte aus einem Ergebnis-Code (data/resultCode.ts). Der Code enthaelt die
+// Werte selbst, die Seite liest dafuer nichts aus der Datenbank.
+function ownFromCode(code: string | null): Own | null {
+  const d = code ? decodeResult(code) : null;
+  if (!d) return null;
+  const i = d.intake;
+  return { scores: d.scores, groups: groupsOf({ size: i.size, industry: i.industry, hq: i.hq, fn: i.fnKey }) };
+}
+function loadCode(): string | null {
+  const c = readLS<string | null>(LS.code, null);
+  return typeof c === "string" && decodeResult(c) ? formatCode(c) : null;
+}
+function saveCode(c: string | null) {
+  try {
+    if (c) localStorage.setItem(LS.code, JSON.stringify(c));
+    else localStorage.removeItem(LS.code);
+  } catch { /* gesperrter Speicher: Anmeldung gilt dann nur bis zum Neuladen */ }
 }
 
 const Dashboard = () => {
@@ -146,7 +187,66 @@ const Dashboard = () => {
     return def.groups.every((g) => !!BENCHMARK.groups[groupId(d, g.key)]);
   };
 
-  const own = useMemo(loadOwn, []);
+  // Nur lokal: /dashboard?sim zeigt eine echte Teilnahme als eigene Werte. Die Daten
+  // kommen vom Dev-Server aus ~/Vergleichswerte/simulation.json (siehe vite.config.ts);
+  // auf der veroeffentlichten Seite gibt es diesen Weg nicht.
+  const { search } = useLocation();
+  const sim = import.meta.env.DEV && new URLSearchParams(search).has("sim");
+  const [simOwn, setSimOwn] = useState<Own | null>(null);
+  const [simLabel, setSimLabel] = useState<string | null>(null);
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    if (!sim) { setSimOwn(null); setSimLabel(null); return; }
+    let alive = true;
+    const fail = () => { if (alive) { setSimOwn(null); setSimLabel("Simulation: keine Datei gefunden"); } };
+    fetch("/__simulation.json", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((s) => {
+        if (!s?.answers || typeof s.answers !== "object") return fail();
+        if (!alive) return;
+        setSimOwn(ownFrom(s.answers, s.intake || {}));
+        setSimLabel("Simulation: " + (s.label || "ohne Bezeichnung"));
+      })
+      .catch(fail);
+    return () => { alive = false; };
+  }, [sim]);
+
+  // Eigene Werte: Simulation (nur lokal) vor Ergebnis-Code vor dem Self-Assessment
+  // in diesem Browser.
+  const browserOwn = useMemo(loadOwn, []);
+  const [code, setCode] = useState<string | null>(loadCode);
+  const codeOwn = useMemo(() => ownFromCode(code), [code]);
+  const own = sim ? simOwn : codeOwn ?? browserOwn;
+  const ownFromCodeActive = !sim && !!codeOwn;
+  const [codeOpen, setCodeOpen] = useState(false);
+  const [codeInput, setCodeInput] = useState("");
+  const [codeErr, setCodeErr] = useState<"invalid" | "rid" | null>(null);
+  // Nach An- und Abmelden verschwindet das bediente Element; der Fokus geht dann an
+  // die neue Statuszeile bzw. an das Eingabefeld statt ins Leere.
+  const activeRef = useRef<HTMLParagraphElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const openRef = useRef<HTMLButtonElement>(null);
+  const focusNext = useRef<"active" | "form" | null>(null);
+  useEffect(() => {
+    const f = focusNext.current;
+    focusNext.current = null;
+    if (f === "active") activeRef.current?.focus();
+    else if (f === "form") (inputRef.current ?? openRef.current)?.focus();
+  }, [code, codeOpen]);
+  const login = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!decodeResult(codeInput)) {
+      // Haeufige Verwechslung: die Antwort-Kennung (UUID) statt des Ergebnis-Codes.
+      setCodeErr(/^\s*([0-9a-f]{8}-[0-9a-f]{4}-|r-[a-z0-9]{6,})/i.test(codeInput) ? "rid" : "invalid");
+      return;
+    }
+    const c = formatCode(codeInput);
+    focusNext.current = "active";
+    setCode(c); saveCode(c);
+    setCodeInput(""); setCodeErr(null); setCodeOpen(false);
+  };
+  const logout = () => { focusNext.current = "form"; setCode(null); saveCode(null); };
+  const openForm = () => { focusNext.current = "form"; setCodeOpen(true); };
   const mine = own?.scores ?? null;
 
   // Zeilen fuer die gewaehlte Ansicht: "Alle" oder die zwei Gruppen eines Merkmals.
@@ -206,6 +306,9 @@ const Dashboard = () => {
     background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "16px", padding: "22px 24px",
   };
   const h2: React.CSSProperties = { fontFamily: "'Space Grotesk', sans-serif", fontWeight: 500, fontSize: "18px", color: "white", margin: "0 0 4px" };
+  const codeLinkBtn: React.CSSProperties = {
+    fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "#8ba4ff", background: "none", border: "none", padding: 0, cursor: "pointer",
+  };
   const lead: React.CSSProperties = { fontFamily: "Inter, sans-serif", fontSize: "13px", lineHeight: 1.6, color: "rgba(255,255,255,0.5)", margin: "0 0 18px" };
 
   const quadShares = dim === "all" || !rows[0]?.tag ? BENCHMARK.groups[ALL]?.quad : undefined;
@@ -262,21 +365,69 @@ const Dashboard = () => {
             {fill(p(TXT.stand), { d: fmtAsOf(BENCHMARK.asOf, lang) })}{isSmall(BENCHMARK.groups[ALL]) ? ". " + p(TXT.small) : ""}
           </p>
         )}
+        {import.meta.env.DEV && simLabel && (
+          <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", fontWeight: 600, letterSpacing: "0.04em", color: "#1a1a1a", background: "#f2b94b", borderRadius: "6px", padding: "6px 10px", margin: "0 0 10px", display: "inline-block" }}>
+            {simLabel} (nur lokal)
+          </p>
+        )}
         {/* Eigene Werte: immer angezeigt, nur aus diesem Browser, nichts wird uebertragen */}
         {ready && (
-          <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", lineHeight: 1.6, color: "rgba(255,255,255,0.6)", margin: "0 0 28px", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-            {mine ? (
-              <>
-                <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#fff", flexShrink: 0 }} />
-                {p(TXT.ownNote)}
-              </>
-            ) : (
-              <span>
-                {p(TXT.ownMissing)}{" "}
-                <Link to="/assessment" style={{ color: "#8ba4ff", textDecoration: "none", whiteSpace: "nowrap" }}>{p(TXT.toAssessment)} →</Link>
-              </span>
-            )}
-          </p>
+          <div style={{ margin: "0 0 28px", fontFamily: "Inter, sans-serif", fontSize: "12.5px", lineHeight: 1.6, color: "rgba(255,255,255,0.6)" }}>
+            <p style={{ margin: 0, display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+              {mine ? (
+                <>
+                  <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#fff", flexShrink: 0 }} />
+                  {p(ownFromCodeActive ? TXT.ownNoteCode : TXT.ownNote)}
+                </>
+              ) : (
+                <span>
+                  {p(TXT.ownMissing)}{" "}
+                  <Link to="/assessment" style={{ color: "#8ba4ff", textDecoration: "none", whiteSpace: "nowrap" }}>{p(TXT.toAssessment)} →</Link>
+                </span>
+              )}
+            </p>
+            {/* Anmeldung mit Ergebnis-Code: wird nur hier im Browser dekodiert */}
+            {ownFromCodeActive ? (
+              <p ref={activeRef} tabIndex={-1} style={{ margin: "6px 0 0", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", outline: "none" }}>
+                <span>{fill(p(TXT.codeActive), { c: code! })}</span>
+                <button type="button" onClick={logout} style={codeLinkBtn}>{p(TXT.codeLogout)}</button>
+              </p>
+            ) : !sim && mine && !codeOpen ? (
+              <p style={{ margin: "6px 0 0" }}>
+                <button ref={openRef} type="button" onClick={openForm} style={codeLinkBtn}>{p(TXT.codeOpen)} →</button>
+              </p>
+            ) : !sim ? (
+              <form onSubmit={login} style={{ marginTop: "12px" }}>
+                <label htmlFor="result-code" style={{ display: "block", color: "rgba(255,255,255,0.75)", marginBottom: "6px" }}>
+                  {p(TXT.codeLabel)}
+                </label>
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+                  <input
+                    ref={inputRef} id="result-code" value={codeInput} placeholder="XXXX-XXXX-XXXX-XXXX"
+                    onChange={(e) => { setCodeInput(e.target.value); setCodeErr(null); }}
+                    autoComplete="off" autoCapitalize="characters" spellCheck={false} maxLength={44}
+                    aria-invalid={!!codeErr} aria-describedby="result-code-hint"
+                    style={{
+                      fontFamily: "'Share Tech Mono', monospace", fontSize: "15px", letterSpacing: "0.08em",
+                      padding: "8px 12px", borderRadius: "8px", width: "230px", maxWidth: "100%",
+                      background: "rgba(255,255,255,0.05)", color: "#fff",
+                      border: `1px solid ${codeErr ? "#d9a559" : "rgba(255,255,255,0.18)"}`,
+                    }}
+                  />
+                  <button type="submit" style={{
+                    fontFamily: "Inter, sans-serif", fontSize: "13px", padding: "8px 16px", borderRadius: "8px", cursor: "pointer",
+                    border: "1px solid rgba(139,164,255,0.55)", background: "rgba(75,110,255,0.18)", color: "#c3d0ff",
+                  }}>
+                    {p(TXT.codeButton)}
+                  </button>
+                </div>
+                <p id="result-code-hint" role={codeErr ? "alert" : undefined}
+                  style={{ margin: "6px 0 0", color: codeErr ? "#d9a559" : "rgba(255,255,255,0.5)" }}>
+                  {p(codeErr === "rid" ? TXT.codeRid : codeErr ? TXT.codeError : TXT.codeHint)}
+                </p>
+              </form>
+            ) : null}
+          </div>
         )}
 
         {!ready ? (

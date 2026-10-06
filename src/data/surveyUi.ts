@@ -361,6 +361,16 @@ export const UI = {
   submitPending: t("Transmitting …", "Wird übermittelt …"),
   responseIdLabel: t("Response ID", "Antwort-Kennung"),
 
+  // ─── Ergebnis-Code (data/resultCode.ts) ──────────────────────────────────
+  codeTitle: t("Your result code", "Ihr Ergebnis-Code"),
+  codeText: t(
+    "Write down this code. With it, you can view your values later on any device on the comparison page. The code contains your values and your details on industry, size, headquarters and function in short form, not encrypted: anyone who knows it can see these values. It is not transmitted. Only if you sign in with it on the comparison page does your browser remember it, until you sign out.",
+    "Notieren Sie diesen Code. Damit sehen Sie Ihre Werte später auf jedem Gerät auf der Seite mit den Vergleichswerten. Der Code enthält Ihre Werte und Ihre Angaben zu Branche, Grösse, Hauptsitz und Funktion in Kurzform, nicht verschlüsselt: Wer ihn kennt, sieht diese Werte. Er wird nicht übermittelt. Nur wenn Sie sich damit auf der Seite mit den Vergleichswerten anmelden, merkt sich Ihr Browser ihn, bis Sie sich abmelden."
+  ),
+  codeCopy: t("Copy", "Kopieren"),
+  codeCopied: t("Copied", "Kopiert"),
+  codeDashLink: t("To the comparison values", "Zu den Vergleichswerten"),
+
   // ─── Verdikt: welche der beiden Dimensionen begrenzt heute? ───────────────
   verdictHead: t("Your position", "Ihre Position"),
   verdictBinding: t("binding today", "begrenzt heute"),

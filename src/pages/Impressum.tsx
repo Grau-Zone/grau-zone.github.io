@@ -102,6 +102,15 @@ const sections: { title: string; id?: string; lines: React.ReactNode[] }[] = [
     ],
   },
   {
+    title: "Ergebnis-Code",
+    id: "ergebnis-code",
+    lines: [
+      "Am Ende des Fragebogens zeigt die Ergebnisseite einen Ergebnis-Code aus 16 Zeichen. Er wird in Ihrem Browser aus Ihren Antworten berechnet und enthält Ihre vier Fähigkeitswerte, die drei Werte der Matrix und Ihre Angaben zu Branche, Grösse, Hauptsitz und Funktion in Kurzform. Einzelne Antworten, der Anbieter und Freitext sind nicht enthalten.",
+      "Mit dem Code können Sie sich unter /dashboard anmelden. Ihre Werte erscheinen dann auch auf einem anderen Gerät. Der Code wird dabei nur in Ihrem Browser ausgewertet und nicht an uns übermittelt. Er verweist nicht auf Ihren Datensatz in der Datenbank, die Website kann die Datenbank auch damit nicht lesen.",
+      "Der Code ist nicht verschlüsselt, sondern nur kurz geschrieben: Wer ihn kennt, kann die darin enthaltenen Werte sehen. Geben Sie ihn deshalb nur weiter, wenn Sie das möchten. Nach der Anmeldung merkt sich Ihr Browser den Code, bis Sie sich abmelden.",
+    ],
+  },
+  {
     title: "Fortschritt in Ihrem Browser",
     lines: [
       "Der Fragebogen speichert Ihren Fortschritt lokal in Ihrem Browser, damit Sie unterbrechen können. Diese Daten bleiben auf Ihrem Gerät, bis Sie den Fragebogen abschließen und absenden.",

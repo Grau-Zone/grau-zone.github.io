@@ -14,10 +14,11 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import SiteFooter from "../components/SiteFooter";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Home, RotateCcw, FileJson, Info, AlertTriangle, Mail, Check } from "lucide-react";
+import { ArrowLeft, ArrowRight, Home, RotateCcw, FileJson, Info, AlertTriangle, Mail, Check, Copy } from "lucide-react";
 import { submitResult, flushQueue, isEnabled, newResponseId, type SubmitState } from "../data/submit";
 import { MISSING, INSTRUMENT_VERSION, type Item, type Lang } from "../data/instrument";
-import { ACTIVE, constructScores, quadrantKey, type QuadKey } from "../data/scoring";
+import { ACTIVE, constructScores, quadrantKey, scoreRespondent, type QuadKey } from "../data/scoring";
+import { encodeResult } from "../data/resultCode";
 import { LS, readLS } from "../data/storageKeys";
 import { SovereigntyMatrix, QUAD_VIEW } from "../components/ResultVisuals";
 import ComparisonBand from "../components/ComparisonBand";
@@ -174,7 +175,13 @@ export default function Assessment() {
           key={`b-${blockIndex}`} lang={L} tr={tr} blockIndex={blockIndex}
           answers={answers} onAnswer={answer} onToggle={toggleMulti} intake={intake}
           onBack={() => (blockIndex > 0 ? setBlockIndex(blockIndex - 1) : setPhase("intake"))}
-          onNext={() => (blockIndex < BLOCKS.length - 1 ? setBlockIndex(blockIndex + 1) : setPhase("result"))}
+          onNext={() => {
+            if (blockIndex < BLOCKS.length - 1) { setBlockIndex(blockIndex + 1); return; }
+            // Ein frisch abgeschlossenes Assessment ersetzt eine Anmeldung mit Ergebnis-Code
+            // auf /dashboard, sonst zeigte das Dashboard weiter die alten Werte.
+            drop(LS.code);
+            setPhase("result");
+          }}
         />
       )}
       {phase === "result" && lang && (
@@ -866,6 +873,29 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
       + "&body=" + encodeURIComponent(lines.join("\n"));
   })();
 
+  // Ergebnis-Code (data/resultCode.ts): enthaelt die eigenen Werte, damit sie sich auf
+  // /dashboard auch auf einem anderen Geraet anzeigen lassen. Wird nur hier berechnet.
+  const resultCode = useMemo(() => encodeResult(scoreRespondent(answers), intake), [answers, intake]);
+  const codeRef = useRef<HTMLSpanElement>(null);
+  const [copied, setCopied] = useState(false);
+  const copyCode = () => {
+    // Ohne Zwischenablage (z. B. in fremden iframes) den Code wenigstens markieren.
+    const select = () => {
+      const el = codeRef.current, sel = window.getSelection();
+      if (!el || !sel) return;
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    };
+    try {
+      navigator.clipboard.writeText(resultCode).then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      }, select);
+    } catch { select(); }
+  };
+
   // Uebermittlung, einmal je abgeschlossenem Durchlauf.
   const [submitState, setSubmitState] = useState<SubmitState>(isEnabled() ? "pending" : "off");
   const sentRef = useRef(false);
@@ -1187,6 +1217,33 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
             <Mail size={18} /> {tr("ctaButton")} <ArrowRight size={18} />
           </a>
         </div>
+      </div>
+
+      {/* Ergebnis-Code: die eigenen Werte zum Mitnehmen auf ein anderes Geraet */}
+      <div style={{
+        maxWidth: "580px", margin: "0 auto 22px", padding: "18px 20px", borderRadius: "12px", textAlign: "center",
+        border: "1px solid rgba(139,164,255,0.28)", background: "rgba(75,110,255,0.07)",
+      }}>
+        <div style={{ fontFamily: "Share Tech Mono, monospace", fontSize: "11px", letterSpacing: "0.16em", color: "rgba(139,164,255,0.8)", textTransform: "uppercase", marginBottom: "8px" }}>
+          {tr("codeTitle")}
+        </div>
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
+          <span ref={codeRef} style={{ fontFamily: "Share Tech Mono, monospace", fontSize: "22px", letterSpacing: "0.1em", color: "#fff", userSelect: "all", overflowWrap: "anywhere" }}>
+            {resultCode}
+          </span>
+          <button type="button" onClick={copyCode} style={{
+            fontFamily: "Inter, sans-serif", fontSize: "12.5px", padding: "6px 12px", borderRadius: "8px", cursor: "pointer",
+            border: "1px solid rgba(139,164,255,0.45)", background: "rgba(75,110,255,0.14)", color: "#c3d0ff",
+            display: "inline-flex", alignItems: "center", gap: "6px",
+          }}>
+            {copied ? <Check size={14} /> : <Copy size={14} />}
+            <span aria-live="polite">{copied ? tr("codeCopied") : tr("codeCopy")}</span>
+          </button>
+        </div>
+        <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", lineHeight: 1.6, color: "rgba(255,255,255,0.55)", margin: "10px 0 0" }}>
+          {tr("codeText")}{" "}
+          <Link to="/dashboard" style={{ color: "#8ba4ff", textDecoration: "none", whiteSpace: "nowrap" }}>{tr("codeDashLink")} →</Link>
+        </p>
       </div>
 
       {submitState !== "off" && (

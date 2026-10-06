@@ -9,6 +9,7 @@ export const LS = {
   intake: "cds13-intake",
   rid: "cds13-rid",
   consent: "cds13-consent",
+  code: "cds13-code",      // Ergebnis-Code, mit dem sich jemand auf /dashboard angemeldet hat
 } as const;
 
 // Lesen darf nie werfen: in fremden iframes oder bei gesperrtem Speicher wirft
