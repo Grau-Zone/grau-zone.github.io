@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { encodeResult, decodeResult, normaliseCode, CODE_KEYS } from "./resultCode";
-import { scoreRespondent, ACTIVE, type Answers } from "./scoring";
+import { scoreRespondent, capacityAverage, transparencyQuadrant, ACTIVE, type Answers } from "./scoring";
 import { CAP_ITEMS } from "./capacityItems";
 import { MISSING } from "./instrument";
 import { FIRM_SIZE, INDUSTRY, HQ, FUNCTIONS, FUNCTION_OTHER } from "./surveyUi";
@@ -48,6 +48,9 @@ describe("Ergebnis-Code", () => {
         else expect(d.scores[k]!).toBeCloseTo(s[k]!, 12);
       });
       expect(d.scores.quad).toBe(s.quad);
+      // Durchschnitt der Faehigkeiten und Feld der Transparenz-Matrix exakt gleich
+      expect(capacityAverage(d.scores.cap)).toBe(capacityAverage(s.cap));
+      expect(transparencyQuadrant(d.scores.tra, capacityAverage(d.scores.cap))).toBe(transparencyQuadrant(s.tra, capacityAverage(s.cap)));
       // Transparenz in ganzen Prozent: gleiche Anzeige, gleiche Lage in Fuenferschritten.
       if (s.tra === null) expect(d.scores.tra).toBeNull();
       else {

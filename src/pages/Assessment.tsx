@@ -985,32 +985,33 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
     </div>
   );
 
-  // Zusammenfassung der beantworteten Fragen und der erste Anfrage-Knopf, direkt unter
-  // den vier Faehigkeiten.
+  // Zusammenfassung der beantworteten Fragen, direkt unter den vier Faehigkeiten.
+  const answeredNote = !fc && (
+    <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.5)", marginTop: "16px" }}>
+      {fmt(tr("answeredSummary"), { a: beantwortet, b: alleIds.length })}
+      {ohneWert === 1 ? " " + tr("notEnoughArea") : ohneWert > 1 ? " " + fmt(tr("notEnoughAreas"), { n: ohneWert }) : ""}
+    </p>
+  );
+
+  // Derselbe Mailto-Link wie im Abschluss-Kasten. Bewusst leichter gestaltet und ohne
+  // Verdikt: der Kasten unten bleibt der Abschluss, und ein automatisch bestimmter
+  // Hebel darf laut Vorgabe nirgends stehen. Mit Vergleich steht er ueber den Filtern
+  // (Entscheid Adrian 06.10.2026), sonst unter den vier Werten.
+  const ctaButton = (
+    <a href={ctaMail} style={{
+      fontFamily: "Space Grotesk, sans-serif", fontSize: "17px", fontWeight: 600,
+      padding: "17px 34px", borderRadius: "11px",
+      border: "1px solid rgba(139,164,255,0.34)", background: "rgba(75,110,255,0.08)",
+      color: "#a8bcff", textDecoration: "none",
+      display: "flex", alignItems: "center", gap: "9px",
+    }}>
+      <Mail size={18} /> {tr("ctaButton")} <ArrowRight size={18} />
+    </a>
+  );
   const afterValues = (
     <>
-      {!fc && (
-        <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.5)", marginTop: "16px" }}>
-          {fmt(tr("answeredSummary"), { a: beantwortet, b: alleIds.length })}
-          {ohneWert === 1 ? " " + tr("notEnoughArea") : ohneWert > 1 ? " " + fmt(tr("notEnoughAreas"), { n: ohneWert }) : ""}
-        </p>
-      )}
-
-      {/* Derselbe Mailto-Link wie im Abschluss-Kasten, hier direkt unter den
-          vier Werten. Bewusst leichter gestaltet und ohne Verdikt: der Kasten
-          unten bleibt der Abschluss, und ein automatisch bestimmter Hebel
-          darf laut Vorgabe nirgends stehen. */}
-      <div style={{ display: "flex", justifyContent: "center", marginTop: "26px" }}>
-        <a href={ctaMail} style={{
-          fontFamily: "Space Grotesk, sans-serif", fontSize: "17px", fontWeight: 600,
-          padding: "17px 34px", borderRadius: "11px",
-          border: "1px solid rgba(139,164,255,0.34)", background: "rgba(75,110,255,0.08)",
-          color: "#a8bcff", textDecoration: "none",
-          display: "flex", alignItems: "center", gap: "9px",
-        }}>
-          <Mail size={18} /> {tr("ctaButton")} <ArrowRight size={18} />
-        </a>
-      </div>
+      {answeredNote}
+      <div style={{ display: "flex", justifyContent: "center", marginTop: "26px" }}>{ctaButton}</div>
     </>
   );
 
@@ -1060,6 +1061,7 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
       <div style={{ marginBottom: "34px" }}>
         {showCmp ? (
           <>
+            <div style={{ display: "flex", justifyContent: "center", margin: "0 0 26px" }}>{ctaButton}</div>
             <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", lineHeight: 1.6, color: "rgba(255,255,255,0.55)", margin: "0 0 14px" }}>
               {fmt(tr("cmpStand"), { d: fmtAsOf(BENCHMARK.asOf, lang) })}.{" "}
               {tr("cmpOwnNotIncl")}{isSmall(BENCHMARK.groups[ALL]) ? " " + tr("cmpSmall") : ""}
@@ -1071,7 +1073,7 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
                 const sc = caps.find((x) => x.cap.key === k)!.score;
                 return fmt(tr("itemsScored"), { a: sc.valid, b: sc.total });
               }}
-              afterCaps={<div style={{ marginBottom: "26px" }}>{afterValues}</div>}
+              afterCaps={answeredNote ? <div style={{ margin: "-8px 0 22px" }}>{answeredNote}</div> : undefined}
             />
           </>
         ) : (

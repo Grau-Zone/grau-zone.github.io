@@ -32,7 +32,7 @@
 // Instruments, auch solche vor dem Hinweis in der Einwilligung (Entscheid
 // 05.10.2026); --since im Skript bleibt fuer einen Stichtag verfuegbar.
 import type { CapacityKey } from "./capacityItems";
-import type { QuadKey, RespondentScores } from "./scoring";
+import { capacityAverage, type QuadKey, type RespondentScores } from "./scoring";
 import { DIMENSIONS, ALL, groupId, type DimKey } from "./benchmarkGroups";
 import { INSTRUMENT_VERSION } from "./instrument";
 
@@ -48,7 +48,7 @@ export const CTX_STEP = 0.05;                          // Skala 0..1, also 5 Pro
 export const INSTRUMENT_ID = "capacity-v1 + " + INSTRUMENT_VERSION + "_research";
 
 export type Quant = { p25: number; p50: number; p75: number };
-export type MetricKey = CapacityKey | "ftc" | "cto" | "cont" | "tra";
+export type MetricKey = CapacityKey | "ftc" | "cto" | "cont" | "tra" | "avg";
 export type GroupBlock = {
   n?: number;                          // nur bei "all"
   nBand?: [number, number];            // nur bei Gruppen
@@ -57,6 +57,7 @@ export type GroupBlock = {
   cto: Quant | null;
   cont: Quant | null;
   tra?: Quant | null;                      // Transparenz; fehlt in Staenden vor dem 06.10.2026
+  avg?: Quant | null;                      // Durchschnitt der Faehigkeiten (1..7), ebenso
   quad?: Record<QuadKey, number | null>;   // Prozent, nur bei "all"; null = unter K_MIN
 };
 export type BenchmarkFile = {
@@ -80,9 +81,10 @@ export const emptyBenchmark = (): BenchmarkFile => ({
 });
 
 const CAP_KEYS: CapacityKey[] = ["SW", "IN", "MS", "NE"];
-const METRICS: MetricKey[] = [...CAP_KEYS, "ftc", "cto", "cont", "tra"];
+const METRICS: MetricKey[] = [...CAP_KEYS, "ftc", "cto", "cont", "tra", "avg"];
 const metricOf = (r: ScoredRow, m: MetricKey): number | null =>
-  m === "ftc" || m === "cto" || m === "cont" || m === "tra" ? r.scores[m] : r.scores.cap[m];
+  m === "avg" ? capacityAverage(r.scores.cap)
+    : m === "ftc" || m === "cto" || m === "cont" || m === "tra" ? r.scores[m] : r.scores.cap[m];
 
 // Quantil nach Hyndman-Fan Typ 7 (Standard in R und numpy), Werte aufsteigend sortiert.
 export function quantile7(sorted: number[], p: number): number {
@@ -144,6 +146,7 @@ function block(rows: ScoredRow[], isAll: boolean, blocked: Set<MetricKey> = new 
   CAP_KEYS.forEach((k) => { cap[k] = pick(k, fine ? CAP_STEP.fine : CAP_STEP.coarse); });
   const b: GroupBlock = {
     cap, ftc: pick("ftc", CTX_STEP), cto: pick("cto", CTX_STEP), cont: pick("cont", CTX_STEP), tra: pick("tra", CTX_STEP),
+    avg: pick("avg", fine ? CAP_STEP.fine : CAP_STEP.coarse),
   };
   if (isAll) {
     b.n = rows.length;
@@ -217,8 +220,12 @@ export function buildBenchmark(
     const changedByOne = prevState && c.ids.some((id, i) => {
       const before = prevState.groups[id];
       if (!before) return false;
-      // Kennzahlen, die es im bisherigen Zustand noch nicht gab, zaehlen dort als 0.
-      const deltas = [counts[i].n - before.n, ...METRICS.map((m) => counts[i].valid[m] - (before.valid[m] ?? 0))];
+      // Kennzahlen, die es im bisherigen Zustand noch nicht gab, wurden nie veroeffentlicht;
+      // ein Unterschied dazu laesst sich nicht zurueckrechnen und zaehlt nicht.
+      const deltas = [
+        counts[i].n - before.n,
+        ...METRICS.filter((m) => before.valid[m] !== undefined).map((m) => counts[i].valid[m] - before.valid[m]),
+      ];
       return deltas.some((x) => Math.abs(x) > 0 && Math.abs(x) < K_MIN);
     });
     if (!changedByOne) return { ...c, action: "new", effMinN: c.minN, counts };

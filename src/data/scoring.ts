@@ -60,6 +60,34 @@ export function transparencyScore(a: Record<string, unknown>): number | null {
   return Math.round(Math.round(((answered - dontKnow) / answered) * 100 * 1e9) / 1e9) / 100;
 }
 
+// Durchschnitt der vier Faehigkeiten (1..7), Hochachse der Transparenz-Matrix.
+// Nur mit mindestens drei Faehigkeitswerten, sonst sagt der Schnitt zu wenig.
+// Exakt im Raster 1/12 gerechnet (Faehigkeiten sind Mittel aus 3 oder 4 ganzen Werten),
+// damit Ergebnisseite und Ergebnis-Code auf dieselbe Zahl kommen.
+export function capacityAverage(cap: Record<string, number | null>): number | null {
+  const v = Object.values(cap).filter((x): x is number => typeof x === "number");
+  return v.length >= 3 ? v.reduce((a, b) => a + Math.round(b * 12), 0) / (12 * v.length) : null;
+}
+
+// Durchschnitt so, wie er angezeigt wird: eine Nachkommastelle.
+export const avgShown = (v: number) => Math.round(Math.round(v * 10 * 1e9) / 1e9) / 10;
+
+export type TraQuadKey = "control" | "optimistic" | "bound" | "blind";
+
+// Feld der Transparenz-Matrix: Transparenz ueber 50 % und Faehigkeiten ueber der
+// Skalenmitte 4 gelten als hoch, wie bei quadrantKey streng groesser. Verglichen wird
+// der angezeigte Wert (ganze Prozent, eine Stelle beim Durchschnitt): wer "4,0" sieht,
+// steht nicht im oberen Feld.
+export function transparencyQuadrant(tra: number | null, avg: number | null): TraQuadKey | null {
+  if (tra === null || avg === null) return null;
+  const r = (v: number) => Math.round(v * 1e9) / 1e9;
+  const hiT = r(tra) > 0.5, hiF = avgShown(avg) > 4;
+  if (hiT && hiF) return "control";
+  if (hiF) return "optimistic";
+  if (hiT) return "bound";
+  return "blind";
+}
+
 export type RespondentScores = {
   cap: Record<CapacityKey, number | null>;   // 1..7 wie gefragt, null unter MIN_VALID
   ftc: number | null;                        // 0..1

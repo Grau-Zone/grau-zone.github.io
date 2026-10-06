@@ -6,12 +6,15 @@
 import { useState, type ReactNode } from "react";
 import ComparisonBand from "./ComparisonBand";
 import { SovereigntyMatrix, QUAD_VIEW } from "./ResultVisuals";
+import TransparencyMatrix from "./TransparencyMatrix";
+import ContinuityGauge from "./ContinuityGauge";
+import { TRA_QUAD, AXIS_TRA, AXIS_AVG, fmtAvg } from "../data/transparencyView";
 import { CAPACITIES, type CapacityKey } from "../data/capacityItems";
 import { BENCHMARK, fmtNum, fmtPct } from "../data/benchmark";
 import { ALL, DIMENSIONS, groupId, type DimKey } from "../data/benchmarkGroups";
 import { positionOf, capStepOf, CTX_STEP, type GroupBlock, type Quant, type Position } from "../data/benchmarkCore";
 import type { Lang } from "../data/instrument";
-import type { QuadKey, RespondentScores } from "../data/scoring";
+import { capacityAverage, transparencyQuadrant, type QuadKey, type RespondentScores } from "../data/scoring";
 import { panelStyles } from "./panelStyles";
 
 type T = { en: string; de: string };
@@ -43,12 +46,16 @@ const CMP_TXT = {
   ),
   traHead: t("Transparency in your organisation", "Transparenz im eigenen Unternehmen"),
   traLead: t(
-    "Share of questions that could be answered instead of “I don't know”. The lower the value, the less insight into what is happening in the organisation. 100 % = no “I don't know”.",
-    "Anteil der Fragen, die beantwortet werden konnten statt „Weiss ich nicht“. Je tiefer der Wert, desto weniger Einblick in das, was im eigenen Unternehmen passiert. 100 % = kein „Weiss ich nicht“."
+    "Across: share of questions that could be answered instead of “I don't know”; the lower, the less insight into what is happening in the organisation. Up: average of the four capacities. Diamond = median of the group, frame = its middle half.",
+    "Waagrecht: Anteil der Fragen, die beantwortet werden konnten statt „Weiss ich nicht“; je tiefer, desto weniger Einblick in das, was im eigenen Unternehmen passiert. Senkrecht: Durchschnitt der vier Fähigkeiten. Raute = Median der Gruppe, Rahmen = ihre mittlere Hälfte."
   ),
   traOld: t(
-    "Your value: not included in older 16-character result codes",
-    "Ihr Wert: in älteren Ergebnis-Codes mit 16 Zeichen nicht enthalten"
+    "transparency not included in older 16-character result codes",
+    "Transparenz in älteren Ergebnis-Codes mit 16 Zeichen nicht enthalten"
+  ),
+  contGauge: t(
+    "Needle = your value, thin arc = middle half of the group, diamond = median.",
+    "Nadel = Ihr Wert, dünner Bogen = mittlere Hälfte der Gruppe, Raute = Median."
   ),
   median: t("Median", "Median"),
   band: t("middle half", "mittlere Hälfte"),
@@ -71,10 +78,6 @@ const CMP_TXT = {
   } as Record<Position, T>,
 };
 
-const CONT_COLOR = "#6cc2b5";
-const TRA_COLOR = "#9b8cf0";
-
-
 // oldCode: Werte aus einem Ergebnis-Code der Version 1 (16 Zeichen), ohne Transparenz.
 export type OwnValues = { scores: RespondentScores; groups: Partial<Record<DimKey, string>>; oldCode?: boolean };
 
@@ -89,7 +92,7 @@ type Props = {
   ownNumbers?: boolean;
   /** Kleiner Zusatz neben dem Namen jeder Faehigkeit (Ergebnisseite: ausgewertete Fragen). */
   capNote?: (key: CapacityKey) => ReactNode;
-  /** Inhalt direkt unter der Karte "Vier Faehigkeiten" (Ergebnisseite: Zusammenfassung, Anfrage). */
+  /** Inhalt direkt unter der Karte "Vier Faehigkeiten" (Ergebnisseite: Zusammenfassung der beantworteten Fragen). */
   afterCaps?: ReactNode;
   /** Ueberschriften der Karten; auf der Ergebnisseite eine Ebene tiefer als der Seitentitel. */
   headingLevel?: "h2" | "h3";
@@ -173,6 +176,14 @@ export default function ComparisonView({
   );
 
   const quadShares = dim === "all" || !rows[0]?.tag ? BENCHMARK.groups[ALL]?.quad : undefined;
+
+  // Transparenz-Matrix: eigener Punkt und Gruppen mit beiden Werten.
+  const ownTra = mine?.tra ?? null;
+  const ownAvg = mine ? capacityAverage(mine.cap) : null;
+  const ownTraQuad = transparencyQuadrant(ownTra, ownAvg);
+  // Aeltere Ergebnis-Codes (Version 1) enthalten keine Transparenz.
+  const traOldCode = !!own?.oldCode && ownTra === null;
+  const traRows = rows.filter((r) => r.block.tra && r.block.avg);
   const fmtCap = (v: number) => fmtNum(v, lang);
   const fmtOwnCap = (v: number) => fmtNum(v, lang, 1);
 
@@ -308,73 +319,94 @@ export default function ComparisonView({
         </div>
       </div>
 
-      {/* Kontinuitaet */}
+      {/* Kontinuitaet als Tacho: Nadel = eigener Wert, Boegen = mittlere Haelfte der Gruppen */}
       <div style={{ ...card, marginBottom: "20px" }}>
         <H style={h2}>{p(CMP_TXT.contHead)}</H>
-        <p style={lead}>{p(CMP_TXT.contLead)}</p>
-        {rows.map((r, i) => (
-          <div key={r.id} style={{ marginBottom: "10px", maxWidth: "640px" }}>
-            {rowHead(r)}
-            {r.block.cont ? (
-              <>
-                <ComparisonBand min={0} max={1} ticks={[0, 0.25, 0.5, 0.75, 1]} q={r.block.cont} own={mine?.cont ?? null} color={CONT_COLOR}
-                  scale={i === rows.length - 1 ? ["0 %", "100 %"] : undefined}
-                  label={p(CMP_TXT.contHead)}
-                  describe={bandDescribe(r.label, r.block.cont, fmtPct, mine?.cont ?? null)} />
-                {r.isOwn && mine && posLine(positionOf(mine.cont, r.block.cont, CTX_STEP), mine.cont, fmtPct)}
-              </>
-            ) : ownNumbers && mine && r.isOwn ? (
-              <>
-                {ownOnly(mine.cont, {
-                  min: 0, max: 1, ticks: [0, 0.25, 0.5, 0.75, 1], color: CONT_COLOR,
-                  scale: i === rows.length - 1 ? ["0 %", "100 %"] : undefined, label: p(CMP_TXT.contHead),
-                }, fmtPct, r.label)}
-                {noValue}
-              </>
-            ) : noValue}
+        <p style={lead}>{p(CMP_TXT.contLead)} {p(CMP_TXT.contGauge)}</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8" style={{ alignItems: "center" }}>
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <ContinuityGauge
+              value={mine?.cont ?? null}
+              compare={rows.filter((r) => r.block.cont).map((r) => ({ q: r.block.cont!, tag: r.tag }))}
+              ariaLabel={[
+                p(CMP_TXT.contHead),
+                ...(mine?.cont != null ? [`${p(CMP_TXT.own)}: ${fmtPct(mine.cont)}`] : []),
+                ...rows.filter((r) => r.block.cont).map((r) =>
+                  `${r.label}, ${p(CMP_TXT.median)}: ${fmtPct(r.block.cont!.p50)}, ${p(CMP_TXT.band)}: ${fmtPct(r.block.cont!.p25)} ${bis} ${fmtPct(r.block.cont!.p75)}`),
+              ].join(". ")} />
           </div>
-        ))}
-        {ownNumbers && mine && !ownInRows && posLine(null, mine.cont, fmtPct)}
+          <div>
+            {rows.map((r) => (
+              <div key={r.id} style={{ marginBottom: "12px" }}>
+                {rowHead(r)}
+                {r.block.cont ? (
+                  <>
+                    <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.6)", margin: 0 }}>
+                      {p(CMP_TXT.median)} {fmtPct(r.block.cont.p50)} · {p(CMP_TXT.band)} {fmtPct(r.block.cont.p25)} {bis} {fmtPct(r.block.cont.p75)}
+                    </p>
+                    {r.isOwn && mine && posLine(positionOf(mine.cont, r.block.cont, CTX_STEP), mine.cont, fmtPct)}
+                  </>
+                ) : (
+                  <>
+                    {noValue}
+                    {ownNumbers && mine && r.isOwn && posLine(null, mine.cont, fmtPct)}
+                  </>
+                )}
+              </div>
+            ))}
+            {ownNumbers && mine && !ownInRows && posLine(null, mine.cont, fmtPct)}
+          </div>
+        </div>
       </div>
 
-      {/* Transparenz: Anteil ohne "Weiss nicht" */}
+      {/* Transparenz-Matrix: Transparenz gegen Durchschnitt der Faehigkeiten */}
       <div style={{ ...card, marginBottom: "20px" }}>
         <H style={h2}>{p(CMP_TXT.traHead)}</H>
         <p style={lead}>{p(CMP_TXT.traLead)}</p>
-        {rows.map((r, i) => {
-          const q = r.block.tra ?? null;
-          const ownTra = mine?.tra ?? null;
-          // Aeltere Ergebnis-Codes (Version 1) enthalten keine Transparenz.
-          const oldCode = !!own?.oldCode && ownTra === null;
-          return (
-            <div key={r.id} style={{ marginBottom: "10px", maxWidth: "640px" }}>
-              {rowHead(r)}
-              {q ? (
-                <>
-                  <ComparisonBand min={0} max={1} ticks={[0, 0.25, 0.5, 0.75, 1]} q={q} own={ownTra} color={TRA_COLOR}
-                    scale={i === rows.length - 1 ? ["0 %", "100 %"] : undefined}
-                    label={p(CMP_TXT.traHead)}
-                    describe={bandDescribe(r.label, q, fmtPct, ownTra)} />
-                  {r.isOwn && mine && !oldCode && posLine(positionOf(ownTra, q, CTX_STEP), ownTra, fmtPct)}
-                </>
-              ) : ownNumbers && mine && r.isOwn && !oldCode ? (
-                <>
-                  {ownOnly(ownTra, {
-                    min: 0, max: 1, ticks: [0, 0.25, 0.5, 0.75, 1], color: TRA_COLOR,
-                    scale: i === rows.length - 1 ? ["0 %", "100 %"] : undefined, label: p(CMP_TXT.traHead),
-                  }, fmtPct, r.label)}
-                  {noValue}
-                </>
-              ) : noValue}
-              {ownNumbers && r.isOwn && oldCode && (
-                <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.55)", margin: "2px 0 0" }}>{p(CMP_TXT.traOld)}</p>
-              )}
-            </div>
-          );
-        })}
-        {ownNumbers && mine && !ownInRows && (own?.oldCode && mine.tra === null
-          ? <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.55)", margin: "2px 0 0" }}>{p(CMP_TXT.traOld)}</p>
-          : posLine(null, mine.tra, fmtPct))}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8" style={{ alignItems: "center" }}>
+          <div style={{ display: "flex", justifyContent: "center" }}>
+            <TransparencyMatrix
+              tra={ownTra} avg={ownAvg} lang={lang}
+              compare={traRows.map((r) => ({ tra: r.block.tra!, avg: r.block.avg!, tag: r.tag }))}
+              ariaLabel={[
+                p(CMP_TXT.traHead),
+                ...(ownTra !== null && ownAvg !== null
+                  ? [`${p(CMP_TXT.own)}: ${p(AXIS_TRA)} ${fmtPct(ownTra)}, ${p(AXIS_AVG)} ${fmtAvg(ownAvg, lang)}`]
+                  : []),
+                ...traRows.map((r) => `${r.label}, ${p(CMP_TXT.median)}: ${p(AXIS_TRA)} ${fmtPct(r.block.tra!.p50)}, ${p(AXIS_AVG)} ${fmtNum(r.block.avg!.p50, lang)}`),
+              ].join(". ")} />
+          </div>
+          <div>
+            {/* Eigenes Feld in Worten, wie "Wo Sie stehen" bei der Souveraenitaets-Matrix */}
+            {ownTraQuad && (
+              <div style={{ marginBottom: "16px" }}>
+                <div style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "clamp(18px,2vw,23px)", color: TRA_QUAD[ownTraQuad].color, marginBottom: "8px" }}>
+                  {p(TRA_QUAD[ownTraQuad].name)}
+                </div>
+                <p style={{ fontFamily: "Inter, sans-serif", fontSize: "14px", lineHeight: 1.6, color: "rgba(255,255,255,0.68)", maxWidth: "46ch", margin: 0 }}>
+                  {p(TRA_QUAD[ownTraQuad].desc)}
+                </p>
+              </div>
+            )}
+            {mine && (
+              <div style={{ marginBottom: "14px", fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.85)" }}>
+                {traOldCode
+                  ? `${p(CMP_TXT.own)}: ${p(AXIS_AVG)} ${ownAvg === null ? "–" : fmtAvg(ownAvg, lang)} · ${p(CMP_TXT.traOld)}`
+                  : `${p(CMP_TXT.own)}: ${p(AXIS_TRA)} ${ownTra === null ? "–" : fmtPct(ownTra)} · ${p(AXIS_AVG)} ${ownAvg === null ? "–" : fmtAvg(ownAvg, lang)}`}
+              </div>
+            )}
+            {rows.map((r) => (
+              <div key={r.id} style={{ marginBottom: "12px" }}>
+                {rowHead(r)}
+                <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.6)", margin: 0 }}>
+                  {r.block.tra && r.block.avg
+                    ? `${p(AXIS_TRA)} ${fmtPct(r.block.tra.p50)} · ${p(AXIS_AVG)} ${fmtNum(r.block.avg.p50, lang)} (${p(CMP_TXT.median)})`
+                    : p(ownNumbers ? CMP_TXT.noCmp : CMP_TXT.noValue)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
     </>
