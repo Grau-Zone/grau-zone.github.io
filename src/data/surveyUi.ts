@@ -364,12 +364,23 @@ export const UI = {
   // ─── Ergebnis-Code (data/resultCode.ts) ──────────────────────────────────
   codeTitle: t("Your result code", "Ihr Ergebnis-Code"),
   codeText: t(
-    "Write down this code. With it, you can view your values later on any device on the comparison page. The code contains your values and your details on industry, size, headquarters and function in short form, not encrypted: anyone who knows it can see these values. It is not transmitted. Only if you sign in with it on the comparison page does your browser remember it, until you sign out.",
-    "Notieren Sie diesen Code. Damit sehen Sie Ihre Werte später auf jedem Gerät auf der Seite mit den Vergleichswerten. Der Code enthält Ihre Werte und Ihre Angaben zu Branche, Grösse, Hauptsitz und Funktion in Kurzform, nicht verschlüsselt: Wer ihn kennt, sieht diese Werte. Er wird nicht übermittelt. Nur wenn Sie sich damit auf der Seite mit den Vergleichswerten anmelden, merkt sich Ihr Browser ihn, bis Sie sich abmelden."
+    "Write down this code. With it, you can view your values later on any device, on the start page of the self-assessment or on the comparison page. The code contains your values and your details on industry, size, headquarters and function in short form, not encrypted: anyone who knows it can see these values. It is not transmitted. Only if you sign in with it does your browser remember it, until you sign out.",
+    "Notieren Sie diesen Code. Damit sehen Sie Ihre Werte später auf jedem Gerät, auf der Startseite des Self-Assessments oder auf der Seite mit den Vergleichswerten. Der Code enthält Ihre Werte und Ihre Angaben zu Branche, Grösse, Hauptsitz und Funktion in Kurzform, nicht verschlüsselt: Wer ihn kennt, sieht diese Werte. Er wird nicht übermittelt. Nur wenn Sie sich damit anmelden, merkt sich Ihr Browser ihn, bis Sie sich abmelden."
   ),
   codeCopy: t("Copy", "Kopieren"),
   codeCopied: t("Copied", "Kopiert"),
   codeDashLink: t("To the comparison values", "Zu den Vergleichswerten"),
+  codeIntroLabel: t("Already taken part? View your result with your result code", "Bereits teilgenommen? Ergebnis mit Ihrem Ergebnis-Code ansehen"),
+  codeIntroHint: t(
+    "You will find the result code at the end of the self-assessment. It is read only in this browser, nothing is transmitted.",
+    "Den Ergebnis-Code finden Sie am Ende des Self-Assessments. Er wird nur in diesem Browser gelesen, nichts wird übertragen."
+  ),
+  codeIntroButton: t("Show result", "Ergebnis anzeigen"),
+  codeViewNote: t(
+    "Signed in with result code {c}. The code contains your values but not your individual answers, so these are not shown here.",
+    "Angemeldet mit Ergebnis-Code {c}. Der Code enthält Ihre Werte, aber nicht Ihre einzelnen Antworten; diese werden hier deshalb nicht gezeigt."
+  ),
+  codeLogout: t("Sign out", "Abmelden"),
 
   // ─── Verdikt: welche der beiden Dimensionen begrenzt heute? ───────────────
   verdictHead: t("Your position", "Ihre Position"),

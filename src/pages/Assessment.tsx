@@ -18,7 +18,8 @@ import { ArrowLeft, ArrowRight, Home, RotateCcw, FileJson, Info, AlertTriangle, 
 import { submitResult, flushQueue, isEnabled, newResponseId, type SubmitState } from "../data/submit";
 import { MISSING, INSTRUMENT_VERSION, type Item, type Lang } from "../data/instrument";
 import { ACTIVE, constructScores, quadrantKey, scoreRespondent, type QuadKey } from "../data/scoring";
-import { encodeResult } from "../data/resultCode";
+import { encodeResult, decodeResult, formatCode, type DecodedResult } from "../data/resultCode";
+import ResultCodeForm from "../components/ResultCodeForm";
 import { LS, readLS } from "../data/storageKeys";
 import { SovereigntyMatrix, QUAD_VIEW } from "../components/ResultVisuals";
 import ComparisonBand from "../components/ComparisonBand";
@@ -84,6 +85,7 @@ const itemIdsOfBlock = (b: BlockDef): string[] =>
 // Intake: gewaehlte Funktion (Schluessel) oder Freitext unter "other"
 type Intake = { fnKey: string; fnOther: string; provider: string; size: string; industry: string; hq: string };
 const EMPTY_INTAKE: Intake = { fnKey: "", fnOther: "", provider: "", size: "", industry: "", hq: "" };
+const EMPTY_ANSWERS: Answers = {};
 
 function functionLabel(intake: Intake, lang: Lang): string {
   if (intake.fnKey === FUNCTION_OTHER) return intake.fnOther.trim();
@@ -119,6 +121,28 @@ export default function Assessment() {
   useEffect(() => { save(LS.consent, consent); }, [consent]);
   useEffect(() => { save(LS.rid, responseId); }, [responseId]);
 
+  // Anmeldung mit Ergebnis-Code (data/resultCode.ts): zeigt die Werte aus dem Code als
+  // Ergebnisseite, ohne Antworten in diesem Browser. Gleicher Speicher wie /dashboard.
+  // Gilt nur auf dem Intro nach der Sprachwahl; sobald ein eigener Durchgang laeuft,
+  // faellt die Anmeldung hier weg (der gespeicherte Code fuer /dashboard bleibt).
+  const [codeLogin, setCodeLogin] = useState<string | null>(() => {
+    const c = load<string | null>(LS.code, null);
+    return typeof c === "string" && decodeResult(c) ? formatCode(c) : null;
+  });
+  const codeResult = useMemo(() => (codeLogin ? decodeResult(codeLogin) : null), [codeLogin]);
+  const showCode = !!codeResult && !!lang && phase === "intro";
+  useEffect(() => { if (phase !== "lang" && phase !== "intro") setCodeLogin(null); }, [phase]);
+  // Nach An- und Abmelden verschwindet das bediente Element; Fokus an den Hinweis
+  // der Code-Ansicht bzw. zurueck ins Eingabefeld.
+  const codeFocus = useRef<"note" | "form" | null>(null);
+  useEffect(() => {
+    const f = codeFocus.current;
+    codeFocus.current = null;
+    if (f) document.getElementById(f === "note" ? "code-view-note" : "intro-code")?.focus();
+  }, [codeLogin]);
+  const loginCode = (c: string) => { codeFocus.current = "note"; save(LS.code, c); setCodeLogin(c); window.scrollTo(0, 0); };
+  const logoutCode = () => { codeFocus.current = "form"; drop(LS.code); setCodeLogin(null); window.scrollTo(0, 0); };
+
   // Liegengebliebene Uebermittlungen aus frueheren Durchlaeufen nachreichen.
   useEffect(() => { flushQueue(); }, []);
 
@@ -144,7 +168,7 @@ export default function Assessment() {
 
   const reset = () => {
     setAnswers({}); setBlockIndex(0); setIntake(EMPTY_INTAKE);
-    setPhase("lang"); setLang(null); setConsent(false); setResponseId("");
+    setPhase("lang"); setLang(null); setConsent(false); setResponseId(""); setCodeLogin(null);
     Object.values(LS).forEach(drop);
   };
 
@@ -155,12 +179,18 @@ export default function Assessment() {
       {/* Bewusst ohne AnimatePresence: mit Wrapper-Komponenten als Kindern meldet die
           Exit-Animation nie "fertig", und die naechste Phase wird nie montiert.
           Die Einblend-Animation steckt in den Screens selbst. */}
+      {showCode && (
+        <Result
+          key={"code-" + codeLogin} lang={L} tr={tr} answers={EMPTY_ANSWERS} intake={{ ...EMPTY_INTAKE, ...codeResult!.intake }}
+          onRestart={logoutCode} responseId="" consent={false} fromCode={codeResult} code={codeLogin}
+        />
+      )}
       {phase === "lang" && (
         <LanguageGate key="lang" onPick={(l) => { setLang(l); setPhase("intro"); }} />
       )}
-      {phase === "intro" && lang && (
+      {phase === "intro" && lang && !showCode && (
         <Intro
-          key="intro" lang={L} tr={tr} consent={consent} setConsent={setConsent}
+          key="intro" lang={L} tr={tr} consent={consent} setConsent={setConsent} onCode={loginCode}
           onStart={() => { if (!responseId) setResponseId(newResponseId()); setPhase("intake"); }}
         />
       )}
@@ -180,6 +210,7 @@ export default function Assessment() {
             // Ein frisch abgeschlossenes Assessment ersetzt eine Anmeldung mit Ergebnis-Code
             // auf /dashboard, sonst zeigte das Dashboard weiter die alten Werte.
             drop(LS.code);
+            setCodeLogin(null);
             setPhase("result");
           }}
         />
@@ -227,7 +258,7 @@ function LanguageGate({ onPick }: { onPick: (l: Lang) => void }) {
 }
 
 // ─── Intro ───────────────────────────────────────────────────────────────────
-function Intro({ lang, tr, onStart, consent, setConsent }: any) {
+function Intro({ lang, tr, onStart, consent, setConsent, onCode }: any) {
   const [touched, setTouched] = useState(false);
   return (
     <motion.div
@@ -324,6 +355,14 @@ function Intro({ lang, tr, onStart, consent, setConsent }: any) {
         {CAP_ITEMS.length + ACTIVE.length} {tr("questionsCount")} · {tr("minutes")}
         {!isEnabled() && <> · {tr("minutesNoStore")}</>}
       </p>
+
+      {/* Wer schon teilgenommen hat: Ergebnis aus dem Ergebnis-Code statt neu starten */}
+      <div style={{ marginTop: "34px", paddingTop: "22px", borderTop: "1px solid rgba(255,255,255,0.08)", width: "100%" }}>
+        <ResultCodeForm
+          id="intro-code" lang={lang} onLogin={onCode} align="center"
+          label={UI.codeIntroLabel} hint={UI.codeIntroHint} button={UI.codeIntroButton}
+        />
+      </div>
     </motion.div>
   );
 }
@@ -733,19 +772,31 @@ function QuestionCard({ id, text, scale, options, multi, lang, tr, color, value,
 // Darunter die Matrix aus den Forschungskonstrukten FTC, CTO und CONT des
 // Kontextblocks, auf 0 bis 100 % der Skala normiert. Beide Teile werden getrennt
 // berechnet.
-function Result({ lang: surveyLang, answers, intake, onRestart, responseId, consent }: any) {
+// fromCode: Ergebnis aus einem Ergebnis-Code (data/resultCode.ts) statt aus Antworten
+// in diesem Browser. Dann fehlen alle Teile, die einzelne Antworten brauchen, und es
+// wird nichts uebermittelt.
+function Result({ lang: surveyLang, answers, intake, onRestart, responseId, consent, fromCode, code }: any) {
+  const fc = fromCode as DecodedResult | null | undefined;
   const lang: Lang = surveyLang;
   const tr = (k: string) => pick((UI as any)[k], lang);
   const fmt = (s: string, vals: Record<string, string | number>) =>
     Object.entries(vals).reduce((acc, [k, v]) => acc.replace("{" + k + "}", String(v)), s);
 
   const caps = useMemo(
-    () => CAPACITIES.map((c) => ({ cap: c, score: scoreCapacity(c.key, answers, MISSING) })),
-    [answers]
+    () => CAPACITIES.map((c) => ({
+      cap: c,
+      score: fc
+        ? { mean: fc.scores.cap[c.key], valid: 0, total: itemsOfCapacity(c.key).length }
+        : scoreCapacity(c.key, answers, MISSING),
+    })),
+    [answers, fc]
   );
   const ohneWert = caps.filter((c) => c.score.mean === null).length;
 
-  const scores = useMemo(() => constructScores(answers), [answers]);
+  const scores = useMemo(
+    () => (fc ? { FTC: fc.scores.ftc, CTO: fc.scores.cto, CONT: fc.scores.cont } : constructScores(answers)) as Record<string, number | null>,
+    [answers, fc]
+  );
 
   // Quadrant der Matrix in Worten; Schwelle und Rundung in data/scoring.ts.
   const quadrant = useMemo(() => {
@@ -875,7 +926,7 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
 
   // Ergebnis-Code (data/resultCode.ts): enthaelt die eigenen Werte, damit sie sich auf
   // /dashboard auch auf einem anderen Geraet anzeigen lassen. Wird nur hier berechnet.
-  const resultCode = useMemo(() => encodeResult(scoreRespondent(answers), intake), [answers, intake]);
+  const resultCode = useMemo(() => (fc && code ? code : encodeResult(scoreRespondent(answers), intake)), [answers, intake, fc, code]);
   const codeRef = useRef<HTMLSpanElement>(null);
   const [copied, setCopied] = useState(false);
   const copyCode = () => {
@@ -955,6 +1006,14 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
         )}
       </div>
 
+      {fc && (
+        <p id="code-view-note" tabIndex={-1} style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", lineHeight: 1.6, color: "rgba(255,255,255,0.7)", maxWidth: "80ch", margin: "0 auto 14px", textAlign: "center", outline: "none" }}>
+          {fmt(tr("codeViewNote"), { c: code })}{" "}
+          <button type="button" onClick={onRestart} style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", color: "#8ba4ff", background: "none", border: "none", padding: 0, cursor: "pointer" }}>
+            {tr("codeLogout")}
+          </button>
+        </p>
+      )}
       <p style={{ fontFamily: "Inter, sans-serif", fontSize: "14px", lineHeight: 1.7, color: "rgba(255,255,255,0.62)", maxWidth: "80ch", margin: "0 auto 24px", textAlign: "center" }}>
         {tr("resultLead")}
       </p>
@@ -1031,9 +1090,11 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
               <span style={{ fontFamily: "Share Tech Mono, monospace", fontSize: "10.5px", letterSpacing: "0.12em", color: cap.color + "cc", textTransform: "uppercase" }}>
                 {cap.term}
               </span>
-              <span style={{ marginLeft: "auto", fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.55)" }}>
-                {fmt(tr("itemsScored"), { a: score.valid, b: score.total })}
-              </span>
+              {!fc && (
+                <span style={{ marginLeft: "auto", fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.55)" }}>
+                  {fmt(tr("itemsScored"), { a: score.valid, b: score.total })}
+                </span>
+              )}
             </div>
 
             {showCmp && !q ? (
@@ -1075,10 +1136,12 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
           );
         })}
 
-        <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.5)", marginTop: "16px" }}>
-          {fmt(tr("answeredSummary"), { a: beantwortet, b: alleIds.length })}
-          {ohneWert === 1 ? " " + tr("notEnoughArea") : ohneWert > 1 ? " " + fmt(tr("notEnoughAreas"), { n: ohneWert }) : ""}
-        </p>
+        {!fc && (
+          <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.5)", marginTop: "16px" }}>
+            {fmt(tr("answeredSummary"), { a: beantwortet, b: alleIds.length })}
+            {ohneWert === 1 ? " " + tr("notEnoughArea") : ohneWert > 1 ? " " + fmt(tr("notEnoughAreas"), { n: ohneWert }) : ""}
+          </p>
+        )}
 
         {/* Derselbe Mailto-Link wie im Abschluss-Kasten, hier direkt unter den
             vier Werten. Bewusst leichter gestaltet und ohne Verdikt: der Kasten
@@ -1149,6 +1212,7 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
         </div>
       </div>
 
+      {!fc && (
       <div style={{ marginBottom: "34px", padding: "22px 24px", borderRadius: "12px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
         <h3 style={{ fontFamily: "Space Grotesk, sans-serif", fontWeight: 500, fontSize: "17px", color: "white", marginBottom: "5px" }}>
           {tr("contextTitle")}
@@ -1178,6 +1242,7 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
           );
         })}
       </div>
+      )}
 
       <div style={{
         marginBottom: "30px", padding: "30px 32px", borderRadius: "14px",
@@ -1246,7 +1311,7 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
         </p>
       </div>
 
-      {submitState !== "off" && (
+      {submitState !== "off" && !fc && (
         <div style={{ textAlign: "center", marginBottom: "16px", fontFamily: "Inter, sans-serif", fontSize: "12.5px", lineHeight: 1.6 }}>
           <span style={{ color: submitState === "failed" ? "#d9a559" : "rgba(255,255,255,0.55)" }}>
             {submitState === "ok" ? tr("submitOk") : submitState === "failed" ? tr("submitFailed") : tr("submitPending")}
@@ -1260,19 +1325,19 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
       )}
 
       <div style={{ display: "flex", gap: "11px", flexWrap: "wrap", justifyContent: "center", paddingBottom: "30px" }}>
-        <button onClick={exportJson} style={{
+        {!fc && <button onClick={exportJson} style={{
           fontFamily: "Space Grotesk, sans-serif", fontSize: "13px", padding: "12px 20px", borderRadius: "8px",
           border: "1px solid rgba(139,164,255,0.3)", background: "rgba(139,164,255,0.08)",
           color: "rgba(139,164,255,0.85)", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px",
         }}>
           <FileJson size={14} /> {tr("downloadJson")}
-        </button>
+        </button>}
         <button onClick={onRestart} style={{
           fontFamily: "Space Grotesk, sans-serif", fontSize: "13px", padding: "12px 20px", borderRadius: "8px",
           border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.04)",
           color: "rgba(255,255,255,0.6)", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px",
         }}>
-          <RotateCcw size={14} /> {tr("restart")}
+          <RotateCcw size={14} /> {fc ? tr("codeLogout") : tr("restart")}
         </button>
         <Link to="/" style={{
           fontFamily: "Space Grotesk, sans-serif", fontSize: "13px", padding: "12px 20px", borderRadius: "8px",

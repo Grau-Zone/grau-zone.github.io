@@ -19,6 +19,7 @@ import type { Lang } from "../data/instrument";
 import { scoreRespondent, type Answers, type RespondentScores } from "../data/scoring";
 import { LS, readLS } from "../data/storageKeys";
 import { decodeResult, formatCode } from "../data/resultCode";
+import ResultCodeForm from "../components/ResultCodeForm";
 
 type T = { en: string; de: string };
 const t = (en: string, de: string): T => ({ en, de });
@@ -107,18 +108,7 @@ const TXT = {
     "Your values from your result code are marked as a dot. The code is read only in this browser, nothing is transmitted.",
     "Ihre Werte aus Ihrem Ergebnis-Code sind als Punkt markiert. Der Code wird nur in diesem Browser gelesen, nichts wird übertragen."
   ),
-  codeLabel: t("Sign in with your result code", "Mit Ihrem Ergebnis-Code anmelden"),
-  codeHint: t(
-    "You will find the result code at the end of the self-assessment. With it, your values appear here on any device.",
-    "Den Ergebnis-Code finden Sie am Ende des Self-Assessments. Damit erscheinen Ihre Werte hier auf jedem Gerät."
-  ),
   codeOpen: t("Sign in with a result code", "Mit einem Ergebnis-Code anmelden"),
-  codeButton: t("Sign in", "Anmelden"),
-  codeError: t("This code is not valid. Please check your entry.", "Dieser Code ist ungültig. Bitte prüfen Sie die Eingabe."),
-  codeRid: t(
-    "This is your response ID, not the result code. The result code has 16 characters (XXXX-XXXX-XXXX-XXXX) and is shown at the end of the self-assessment. For an earlier participation, you can request it by e-mail to adrian.bohrer@unisg.ch.",
-    "Das ist Ihre Antwort-Kennung, nicht der Ergebnis-Code. Der Ergebnis-Code hat 16 Zeichen (XXXX-XXXX-XXXX-XXXX) und steht am Ende des Self-Assessments. Für eine frühere Teilnahme erhalten Sie ihn auf Anfrage per E-Mail an adrian.bohrer@unisg.ch."
-  ),
   codeActive: t("Signed in with result code {c}.", "Angemeldet mit Ergebnis-Code {c}."),
   codeLogout: t("Sign out", "Abmelden"),
   ownLegend: t("Dot = your value.", "Punkt = Ihr Wert."),
@@ -219,8 +209,6 @@ const Dashboard = () => {
   const own = sim ? simOwn : codeOwn ?? browserOwn;
   const ownFromCodeActive = !sim && !!codeOwn;
   const [codeOpen, setCodeOpen] = useState(false);
-  const [codeInput, setCodeInput] = useState("");
-  const [codeErr, setCodeErr] = useState<"invalid" | "rid" | null>(null);
   // Nach An- und Abmelden verschwindet das bediente Element; der Fokus geht dann an
   // die neue Statuszeile bzw. an das Eingabefeld statt ins Leere.
   const activeRef = useRef<HTMLParagraphElement>(null);
@@ -233,17 +221,9 @@ const Dashboard = () => {
     if (f === "active") activeRef.current?.focus();
     else if (f === "form") (inputRef.current ?? openRef.current)?.focus();
   }, [code, codeOpen]);
-  const login = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!decodeResult(codeInput)) {
-      // Haeufige Verwechslung: die Antwort-Kennung (UUID) statt des Ergebnis-Codes.
-      setCodeErr(/^\s*([0-9a-f]{8}-[0-9a-f]{4}-|r-[a-z0-9]{6,})/i.test(codeInput) ? "rid" : "invalid");
-      return;
-    }
-    const c = formatCode(codeInput);
+  const login = (c: string) => {
     focusNext.current = "active";
-    setCode(c); saveCode(c);
-    setCodeInput(""); setCodeErr(null); setCodeOpen(false);
+    setCode(c); saveCode(c); setCodeOpen(false);
   };
   const logout = () => { focusNext.current = "form"; setCode(null); saveCode(null); };
   const openForm = () => { focusNext.current = "form"; setCodeOpen(true); };
@@ -397,35 +377,9 @@ const Dashboard = () => {
                 <button ref={openRef} type="button" onClick={openForm} style={codeLinkBtn}>{p(TXT.codeOpen)} →</button>
               </p>
             ) : !sim ? (
-              <form onSubmit={login} style={{ marginTop: "12px" }}>
-                <label htmlFor="result-code" style={{ display: "block", color: "rgba(255,255,255,0.75)", marginBottom: "6px" }}>
-                  {p(TXT.codeLabel)}
-                </label>
-                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
-                  <input
-                    ref={inputRef} id="result-code" value={codeInput} placeholder="XXXX-XXXX-XXXX-XXXX"
-                    onChange={(e) => { setCodeInput(e.target.value); setCodeErr(null); }}
-                    autoComplete="off" autoCapitalize="characters" spellCheck={false} maxLength={44}
-                    aria-invalid={!!codeErr} aria-describedby="result-code-hint"
-                    style={{
-                      fontFamily: "'Share Tech Mono', monospace", fontSize: "15px", letterSpacing: "0.08em",
-                      padding: "8px 12px", borderRadius: "8px", width: "230px", maxWidth: "100%",
-                      background: "rgba(255,255,255,0.05)", color: "#fff",
-                      border: `1px solid ${codeErr ? "#d9a559" : "rgba(255,255,255,0.18)"}`,
-                    }}
-                  />
-                  <button type="submit" style={{
-                    fontFamily: "Inter, sans-serif", fontSize: "13px", padding: "8px 16px", borderRadius: "8px", cursor: "pointer",
-                    border: "1px solid rgba(139,164,255,0.55)", background: "rgba(75,110,255,0.18)", color: "#c3d0ff",
-                  }}>
-                    {p(TXT.codeButton)}
-                  </button>
-                </div>
-                <p id="result-code-hint" role={codeErr ? "alert" : undefined}
-                  style={{ margin: "6px 0 0", color: codeErr ? "#d9a559" : "rgba(255,255,255,0.5)" }}>
-                  {p(codeErr === "rid" ? TXT.codeRid : codeErr ? TXT.codeError : TXT.codeHint)}
-                </p>
-              </form>
+              <div style={{ marginTop: "12px" }}>
+                <ResultCodeForm ref={inputRef} lang={lang} onLogin={login} />
+              </div>
             ) : null}
           </div>
         )}
