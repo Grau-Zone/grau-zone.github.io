@@ -1,4 +1,4 @@
-// Vergleichsgruppen fuer Ergebnisseite und Dashboard.
+// Vergleichsgruppen fuer die Ergebnisseite.
 //
 // Je Filter genau ZWEI grobe Gruppen (Entscheid 05.10.2026), damit sich die
 // Gruppen schnell fuellen und keine kleinen Zellen entstehen. Gefiltert wird

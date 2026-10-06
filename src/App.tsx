@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,7 +9,6 @@ import Index from "./pages/Index.tsx";
 import Assessment from "./pages/Assessment.tsx";
 import Impressum from "./pages/Impressum.tsx";
 import Awf from "./pages/Awf.tsx";
-import Dashboard from "./pages/Dashboard.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -51,7 +50,8 @@ const App = () => (
           <Route path="/assessment" element={<Assessment />} />
           <Route path="/impressum" element={<Impressum />} />
           <Route path="/awf" element={<Awf />} />
-          <Route path="/dashboard" element={<Dashboard />} />
+          {/* Das Dashboard gibt es nicht mehr (06.10.2026); alte Links fuehren zum Self-Assessment. */}
+          <Route path="/dashboard" element={<Navigate to="/assessment" replace />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

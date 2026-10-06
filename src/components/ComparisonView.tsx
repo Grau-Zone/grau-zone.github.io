@@ -1,6 +1,5 @@
-// Vergleich mit den anderen Teilnahmen: Filter, vier Faehigkeiten, Matrix, Kontinuitaet
-// und auf Wunsch die Tabelle. Gemeinsam fuer /dashboard und die Ergebnisseite, damit
-// beide gleich aussehen (Entscheid Adrian 06.10.2026: die Darstellung des Dashboards).
+// Vergleich mit den anderen Teilnahmen auf der Ergebnisseite: Filter, vier Faehigkeiten,
+// Matrix, Kontinuitaet (Darstellung des frueheren Dashboards, Entscheid Adrian 06.10.2026).
 //
 // Liest ausschliesslich data/benchmark.json. Gefiltert wird nach genau einem Merkmal mit
 // je zwei Gruppen; die Regeln stehen in data/benchmarkCore.ts.
@@ -42,13 +41,19 @@ const CMP_TXT = {
     "How well operations continue when the provider fails or acts unilaterally. 0 % = lowest, 100 % = highest value on the scale.",
     "Wie gut der Betrieb weiterläuft, wenn der Anbieter ausfällt oder einseitig handelt. 0 % = tiefster, 100 % = höchster Wert der Skala."
   ),
+  traHead: t("Transparency in your organisation", "Transparenz im eigenen Unternehmen"),
+  traLead: t(
+    "Share of questions that could be answered instead of “I don't know”. The lower the value, the less insight into what is happening in the organisation. 100 % = no “I don't know”.",
+    "Anteil der Fragen, die beantwortet werden konnten statt „Weiss ich nicht“. Je tiefer der Wert, desto weniger Einblick in das, was im eigenen Unternehmen passiert. 100 % = kein „Weiss ich nicht“."
+  ),
+  traOld: t(
+    "Your value: not included in older 16-character result codes",
+    "Ihr Wert: in älteren Ergebnis-Codes mit 16 Zeichen nicht enthalten"
+  ),
   median: t("Median", "Median"),
   band: t("middle half", "mittlere Hälfte"),
   noValue: t("not enough valid answers", "zu wenige gültige Antworten"),
   noCmp: t("no comparison values for this group yet", "für diese Gruppe noch keine Vergleichswerte"),
-  table: t("Show as table", "Als Tabelle anzeigen"),
-  group: t("Group", "Gruppe"),
-  measure: t("Measure", "Kennzahl"),
   own: t("Your value", "Ihr Wert"),
   ownGroup: t("your group", "Ihre Gruppe"),
   ownLegend: t("Dot = your value.", "Punkt = Ihr Wert."),
@@ -67,9 +72,11 @@ const CMP_TXT = {
 };
 
 const CONT_COLOR = "#6cc2b5";
+const TRA_COLOR = "#9b8cf0";
 
 
-export type OwnValues = { scores: RespondentScores; groups: Partial<Record<DimKey, string>> };
+// oldCode: Werte aus einem Ergebnis-Code der Version 1 (16 Zeichen), ohne Transparenz.
+export type OwnValues = { scores: RespondentScores; groups: Partial<Record<DimKey, string>>; oldCode?: boolean };
 
 type Row = { id: string; label: string; tag?: string; block: GroupBlock; isOwn: boolean };
 
@@ -80,8 +87,6 @@ type Props = {
   matrixSide?: ReactNode;
   /** Eigene Zahl neben der Lage zeigen und fehlende eigene Werte benennen (Ergebnisseite). */
   ownNumbers?: boolean;
-  /** Tabelle zum Nachlesen anbieten (Dashboard). */
-  showTable?: boolean;
   /** Kleiner Zusatz neben dem Namen jeder Faehigkeit (Ergebnisseite: ausgewertete Fragen). */
   capNote?: (key: CapacityKey) => ReactNode;
   /** Inhalt direkt unter der Karte "Vier Faehigkeiten" (Ergebnisseite: Zusammenfassung, Anfrage). */
@@ -96,7 +101,7 @@ const dimPublished = (d: DimKey) => {
 };
 
 export default function ComparisonView({
-  lang, own, matrixSide, ownNumbers = false, showTable = false, capNote, afterCaps, headingLevel = "h2",
+  lang, own, matrixSide, ownNumbers = false, capNote, afterCaps, headingLevel = "h2",
 }: Props) {
   const H = headingLevel;
   const [dim, setDim] = useState<DimKey | "all">("all");
@@ -148,7 +153,7 @@ export default function ComparisonView({
     </div>
   );
 
-  // Fehlen der Gruppe Werte: auf dem Dashboard wie bisher, auf der Ergebnisseite als
+  // Fehlen der Gruppe Werte: ohne ownNumbers wie frueher auf dem Dashboard, mit ownNumbers als
   // Luecke im Vergleich benannt (die eigenen Antworten sind ja vollstaendig).
   const noValue = (
     <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.55)", margin: "4px 0 6px", fontStyle: "italic" }}>
@@ -159,10 +164,10 @@ export default function ComparisonView({
   // Gruppe Vergleichswerte fehlen, und auch wenn man zu keiner der zwei Gruppen gehoert.
   const ownInRows = rows.some((r) => r.isOwn);
   type BandSpec = { min: number; max: number; ticks: number[]; color: string; scale?: [string, string]; label: string };
-  const ownOnly = (ownValue: number | null, band: BandSpec, f: (v: number) => string) => (
+  const ownOnly = (ownValue: number | null, band: BandSpec, f: (v: number) => string, rowLabel: string) => (
     <>
       <ComparisonBand min={band.min} max={band.max} ticks={band.ticks} q={null} own={ownValue} color={band.color}
-        scale={band.scale} label={band.label} describe={bandDescribe(band.label, null, f, ownValue)} />
+        scale={band.scale} label={band.label} describe={[...bandDescribe(rowLabel, null, f, ownValue), p(CMP_TXT.noCmp)]} />
       {posLine(null, ownValue, f)}
     </>
   );
@@ -244,7 +249,7 @@ export default function ComparisonView({
                         {ownOnly(ownValue, {
                           min: 1, max: 7, ticks: [1, 2, 3, 4, 5, 6, 7], color: c.color,
                           scale: i === rows.length - 1 ? ["1", "7"] : undefined, label: lang === "en" ? c.label.en : c.label.de,
-                        }, fmtOwnCap)}
+                        }, fmtOwnCap, r.label)}
                         {noValue}
                       </>
                     ) : noValue}
@@ -323,7 +328,7 @@ export default function ComparisonView({
                 {ownOnly(mine.cont, {
                   min: 0, max: 1, ticks: [0, 0.25, 0.5, 0.75, 1], color: CONT_COLOR,
                   scale: i === rows.length - 1 ? ["0 %", "100 %"] : undefined, label: p(CMP_TXT.contHead),
-                }, fmtPct)}
+                }, fmtPct, r.label)}
                 {noValue}
               </>
             ) : noValue}
@@ -332,46 +337,46 @@ export default function ComparisonView({
         {ownNumbers && mine && !ownInRows && posLine(null, mine.cont, fmtPct)}
       </div>
 
-      {/* Tabelle fuer Screenreader und zum Nachlesen */}
-      {showTable && (
-        <details style={{ ...card, marginBottom: "20px" }}>
-          <summary style={{ fontFamily: "Inter, sans-serif", fontSize: "13.5px", color: "rgba(255,255,255,0.8)", cursor: "pointer" }}>
-            {p(CMP_TXT.table)}
-          </summary>
-          <div style={{ overflowX: "auto", marginTop: "14px" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.75)" }}>
-              <thead>
-                <tr>
-                  {[p(CMP_TXT.group), p(CMP_TXT.measure), ...(mine ? [p(CMP_TXT.own)] : []), "p25", p(CMP_TXT.median), "p75"].map((h) => (
-                    <th key={h} style={{ textAlign: "left", padding: "6px 10px", borderBottom: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.55)", fontWeight: 500 }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.flatMap((r) => [
-                  ...CAPACITIES.map((c) => ({ r, name: lang === "en" ? c.label.en : c.label.de, q: r.block.cap[c.key], ownValue: mine?.cap[c.key] ?? null, f: fmtCap })),
-                  { r, name: "Reconfiguration Discretion", q: r.block.ftc, ownValue: mine?.ftc ?? null, f: fmtPct },
-                  { r, name: "Operational Control", q: r.block.cto, ownValue: mine?.cto ?? null, f: fmtPct },
-                  { r, name: p(CMP_TXT.contHead), q: r.block.cont, ownValue: mine?.cont ?? null, f: fmtPct },
-                ]).map(({ r, name, q, ownValue, f }) => (
-                  <tr key={r.id + name}>
-                    <td style={{ padding: "5px 10px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>{r.label}</td>
-                    <td style={{ padding: "5px 10px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>{name}</td>
-                    {mine && (
-                      <td style={{ padding: "5px 10px", borderBottom: "1px solid rgba(255,255,255,0.05)", color: "#fff" }}>
-                        {ownValue === null ? "–" : f(ownValue)}
-                      </td>
-                    )}
-                    {(q ? [q.p25, q.p50, q.p75] : [null, null, null]).map((v, i) => (
-                      <td key={i} style={{ padding: "5px 10px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>{v === null ? "–" : f(v)}</td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </details>
-      )}
+      {/* Transparenz: Anteil ohne "Weiss nicht" */}
+      <div style={{ ...card, marginBottom: "20px" }}>
+        <H style={h2}>{p(CMP_TXT.traHead)}</H>
+        <p style={lead}>{p(CMP_TXT.traLead)}</p>
+        {rows.map((r, i) => {
+          const q = r.block.tra ?? null;
+          const ownTra = mine?.tra ?? null;
+          // Aeltere Ergebnis-Codes (Version 1) enthalten keine Transparenz.
+          const oldCode = !!own?.oldCode && ownTra === null;
+          return (
+            <div key={r.id} style={{ marginBottom: "10px", maxWidth: "640px" }}>
+              {rowHead(r)}
+              {q ? (
+                <>
+                  <ComparisonBand min={0} max={1} ticks={[0, 0.25, 0.5, 0.75, 1]} q={q} own={ownTra} color={TRA_COLOR}
+                    scale={i === rows.length - 1 ? ["0 %", "100 %"] : undefined}
+                    label={p(CMP_TXT.traHead)}
+                    describe={bandDescribe(r.label, q, fmtPct, ownTra)} />
+                  {r.isOwn && mine && !oldCode && posLine(positionOf(ownTra, q, CTX_STEP), ownTra, fmtPct)}
+                </>
+              ) : ownNumbers && mine && r.isOwn && !oldCode ? (
+                <>
+                  {ownOnly(ownTra, {
+                    min: 0, max: 1, ticks: [0, 0.25, 0.5, 0.75, 1], color: TRA_COLOR,
+                    scale: i === rows.length - 1 ? ["0 %", "100 %"] : undefined, label: p(CMP_TXT.traHead),
+                  }, fmtPct, r.label)}
+                  {noValue}
+                </>
+              ) : noValue}
+              {ownNumbers && r.isOwn && oldCode && (
+                <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.55)", margin: "2px 0 0" }}>{p(CMP_TXT.traOld)}</p>
+              )}
+            </div>
+          );
+        })}
+        {ownNumbers && mine && !ownInRows && (own?.oldCode && mine.tra === null
+          ? <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.55)", margin: "2px 0 0" }}>{p(CMP_TXT.traOld)}</p>
+          : posLine(null, mine.tra, fmtPct))}
+      </div>
+
     </>
   );
 }

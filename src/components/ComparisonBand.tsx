@@ -1,5 +1,5 @@
 // Vergleichsband: Verteilung einer Vergleichsgruppe auf einer Skala, optional mit
-// dem eigenen Wert. Fuer Ergebnisseite und Dashboard.
+// dem eigenen Wert. Fuer die Ergebnisseite.
 //
 //   Band   = mittlere Haelfte (p25 bis p75), als Flaeche in der Farbe der Faehigkeit
 //   Strich = Median, in Textfarbe

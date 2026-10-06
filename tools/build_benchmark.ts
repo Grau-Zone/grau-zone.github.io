@@ -15,11 +15,12 @@
 // in benchmark.json, die Exportdatei nach dem Lauf trotzdem loeschen. Ergebnis
 // als JSON herunterladen und AUSSERHALB von v2/ ablegen:
 //
-//   select response_id, created_at,
+//   select 2 as export_format, response_id, created_at,
 //     payload->>'instrument' instrument,
 //     payload->'intake'->>'funktion' funktion, payload->'intake'->>'mitarbeiterzahl' groesse,
 //     payload->'intake'->>'branche' branche, payload->'intake'->>'hauptsitz' hauptsitz,
-//     (select jsonb_object_agg(a->>'id', a->'antwort')
+//     (select jsonb_object_agg(a->>'id',
+//        case when a->>'status' = 'weiss nicht' then to_jsonb(99) else a->'antwort' end)
 //        from jsonb_array_elements(payload->'antworten') a) antworten
 //   from responses order by created_at;
 //
@@ -33,6 +34,7 @@ import {
   buildBenchmark, emptyBenchmark, INSTRUMENT_ID, type BenchmarkFile, type BenchmarkState, type ScoredRow,
 } from "../src/data/benchmarkCore";
 import { FUNCTION_OTHER } from "../src/data/surveyUi";
+import { MISSING } from "../src/data/instrument";
 
 const REPO = path.resolve(__dirname, "..");
 const OUT = path.join(REPO, "src", "data", "benchmark.json");
@@ -90,13 +92,20 @@ function normaliseRow(r: any): Row {
   if (r.payload) {
     const p = maybeJson(r.payload);
     const ant: Record<string, unknown> = {};
-    (p.antworten || []).forEach((a: any) => { ant[a.id] = a.antwort; });
+    // "Weiss nicht" steht im Datensatz als antwort null mit status; fuer die
+    // Rechnung wie im Browser als MISSING (99), sonst fehlt es der Transparenz.
+    (p.antworten || []).forEach((a: any) => { ant[a.id] = a.status === "weiss nicht" ? MISSING : a.antwort; });
     return {
       response_id: r.response_id, instrument: p.instrument, created_at: r.created_at ?? null,
       funktion: p.intake?.funktion ?? null, groesse: p.intake?.mitarbeiterzahl ?? null,
       branche: p.intake?.branche ?? null, hauptsitz: p.intake?.hauptsitz ?? null,
       antworten: ant,
     };
+  }
+  // Die Abfrage vor dem 06.10.2026 lieferte "Weiss nicht" als null; damit waere die
+  // Transparenz fuer alle 100 %. Deshalb nur Exporte mit der aktuellen Abfrage.
+  if (Number(r.export_format) !== 2) {
+    fail("Export ohne export_format = 2. Bitte die aktuelle Abfrage aus dem Kopf dieses Skripts verwenden (\"Weiss nicht\" als 99).");
   }
   return { ...r, antworten: maybeJson(r.antworten) || {} };
 }

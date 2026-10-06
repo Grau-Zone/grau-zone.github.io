@@ -37,6 +37,7 @@ function row(g: G, v: number, opts: { swNull?: boolean; ftcNull?: boolean } = {}
       cap: { SW: opts.swNull ? null : v, IN: v, MS: v, NE: v },
       ftc: opts.ftcNull ? null : (v - 1) / 6, cto: (v - 1) / 6, cont: (v - 1) / 6,
       quad: opts.ftcNull ? null : v > 4 ? "sovereign" : "exposed",
+      tra: (v - 1) / 6,
     },
   };
 }
@@ -141,5 +142,32 @@ describe("positionOf", () => {
     expect(positionOf(null, q)).toBeNull();
     // eigener Wert 2.75 gegen ein auf 0.5 gerundetes p25 von 3: gleiche Rundung -> mittlere Haelfte
     expect(positionOf(2.75, q, 0.5)).toBe("mid");
+  });
+});
+
+describe("Regel 8 nach Regel 6", () => {
+  it("zaehlt behaltene alte kleine Gruppen mit: nie zwei Merkmale mit kleinen Gruppen", () => {
+    // Stand 1: Funktion mit zwei Gruppen aus je 4 (klein), kein Sitz.
+    const fn = (k: string) => ({ funktion: k });
+    const r1 = [
+      ...[2, 3, 4, 5].map((v) => row(fn("anwendungen"), v)),
+      ...[3, 4, 5, 6].map((v) => row(fn("infrastruktur"), v)),
+    ];
+    const first = buildBenchmark(r1, "2026-10-05", null, null);
+    expect(first.file.groups["funktion:anwendungen"]?.nBand).toEqual([2, 4]);
+    // Stand 2: jede Funktionsgruppe +1 (Regel 6 behaelt den alten kleinen Stand),
+    // dazu Sitz mit einer kleinen Gruppe aus 3.
+    const sitz = (i: number) => (i < 3 ? "schweiz" : "ausland");
+    const r2 = [...r1, row(fn("anwendungen"), 6), row(fn("infrastruktur"), 2)]
+      .map((r, i) => ({ ...r, groups: { ...r.groups, sitz: sitz(i) } }));
+    const second = buildBenchmark(r2, "2026-10-08", first.file, first.state);
+    const smallDims = new Set(
+      Object.entries(second.file.groups)
+        .filter(([id, g]) => id !== "all" && (g.nBand?.[1] ?? Infinity) < 5)
+        .map(([id]) => id.split(":")[0]),
+    );
+    expect(smallDims.size).toBeLessThanOrEqual(1);
+    expect(second.file.groups["funktion:anwendungen"]).toEqual(first.file.groups["funktion:anwendungen"]);
+    expect(second.file.groups["sitz:schweiz"]).toBeUndefined();
   });
 });

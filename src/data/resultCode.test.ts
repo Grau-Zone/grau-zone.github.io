@@ -5,7 +5,8 @@ import { CAP_ITEMS } from "./capacityItems";
 import { MISSING } from "./instrument";
 import { FIRM_SIZE, INDUSTRY, HQ, FUNCTIONS, FUNCTION_OTHER } from "./surveyUi";
 import { groupsOf } from "./benchmarkGroups";
-import { positionOf } from "./benchmarkCore";
+import { positionOf, CTX_STEP } from "./benchmarkCore";
+import { fmtPct } from "./benchmark";
 
 function rng(seed: number) {
   let s = seed >>> 0;
@@ -35,7 +36,7 @@ describe("Ergebnis-Code", () => {
       const { answers, intake } = randomRespondent(r);
       const s = scoreRespondent(answers);
       const code = encodeResult(s, intake);
-      expect(code).toMatch(/^[0-9A-HJKMNP-TV-Z]{4}(-[0-9A-HJKMNP-TV-Z]{4}){3}$/);
+      expect(code).toMatch(/^[0-9A-HJKMNP-TV-Z]{4}(-[0-9A-HJKMNP-TV-Z]{4}){4}$/);
       const d = decodeResult(code)!;
       expect(d).not.toBeNull();
       (Object.keys(s.cap) as (keyof typeof s.cap)[]).forEach((k) => {
@@ -47,6 +48,13 @@ describe("Ergebnis-Code", () => {
         else expect(d.scores[k]!).toBeCloseTo(s[k]!, 12);
       });
       expect(d.scores.quad).toBe(s.quad);
+      // Transparenz in ganzen Prozent: gleiche Anzeige, gleiche Lage in Fuenferschritten.
+      if (s.tra === null) expect(d.scores.tra).toBeNull();
+      else {
+        expect(fmtPct(d.scores.tra!)).toBe(fmtPct(s.tra));
+        const qt = { p25: 0.5, p50: 0.7, p75: 0.85 };
+        expect(positionOf(d.scores.tra, qt, CTX_STEP)).toBe(positionOf(s.tra, qt, CTX_STEP));
+      }
       expect(d.intake).toEqual(intake);
       const g = (i: typeof intake) => groupsOf({ size: i.size, industry: i.industry, hq: i.hq, fn: i.fnKey });
       expect(g(d.intake)).toEqual(g(intake));
@@ -106,8 +114,12 @@ describe("Ergebnis-Code", () => {
       "FTC-1": 7, "FTC-2": 6, "FTC-5": MISSING, "CTO-1": 2, "CTO-4": 3, "CONT-4": 5,
     };
     const intake = { size: "gte25k", industry: "services", hq: "other", fnKey: "ai" };
-    expect(encodeResult(scoreRespondent(a), intake)).toBe("6801-GWTA-5MY2-SQ4X");
+    // Version 2 (seit 06.10.2026, mit Transparenz 19 von 21 = 90 %)
+    expect(encodeResult(scoreRespondent(a), intake)).toBe("A801-GWTA-5MY2-SQ5M-006D");
+    expect(decodeResult("A801-GWTA-5MY2-SQ5M-006D")!.scores.tra).toBe(0.9);
+    // Version 1 (bis 06.10.2026 ausgegeben, ohne Transparenz) bleibt lesbar
     const d = decodeResult("6801-GWTA-5MY2-SQ4X")!;
+    expect(d.scores.tra).toBeNull();
     expect(d.scores.cap).toEqual({ SW: 7, IN: 1, MS: 3, NE: 5.75 });
     expect(d.scores.ftc!).toBeCloseTo(11 / 12, 12);
     expect(d.scores.cto).toBe(0.25);

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { likertScore, quadrantKey, scoreRespondent, ACTIVE, itemsOfConstruct } from "./scoring";
+import { likertScore, quadrantKey, scoreRespondent, transparencyScore, ACTIVE, itemsOfConstruct } from "./scoring";
 import { CONSTRUCTS, MISSING } from "./instrument";
 import { CAP_ITEMS } from "./capacityItems";
 
@@ -69,3 +69,15 @@ describe("scoreRespondent", () => {
     expect(scoreRespondent(a).cap.SW).toBe(5);
   });
 });
+
+describe("transparencyScore", () => {
+  it("zaehlt den Anteil ohne 'Weiss nicht' unter den beantworteten Fragen", () => {
+    expect(transparencyScore({})).toBeNull();
+    expect(transparencyScore({ "CAP-SW-1": 5, "CAP-SW-2": MISSING, "CAP-SW-3": 3, "CAP-SW-4": MISSING })).toBe(0.5);
+    expect(transparencyScore({ "CAP-SW-1": MISSING })).toBe(0);
+    // Mehrfachauswahl zaehlt als beantwortet, unbekannte Kennungen gar nicht
+    const multi = ACTIVE.find((i) => i.type === "multi");
+    if (multi) expect(transparencyScore({ [multi.id]: [1, 2], "XYZ-9": MISSING })).toBe(1);
+  });
+});
+

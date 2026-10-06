@@ -200,16 +200,12 @@ export const UI = {
   answered: t("answered", "beantwortet"),
   block: t("Block", "Block"),
   of: t("of", "von"),
-  dontKnow: t("I don't know", "Weiß ich nicht"),
+  dontKnow: t("I don't know", "Weiss ich nicht"),
   notAssessable: t("Not assessable", "Nicht beurteilbar"),
 
   // Ergebnis
   resultEyebrow: t("Your result", "Ihr Ergebnis"),
   resultTitle: t("Preliminary capacity profile", "Vorläufiges Fähigkeitsprofil"),
-  resultLead: t(
-    "The overview summarises your self-assessments for the function and provider under review. It shows relative strengths and weaknesses across four organisational capacities. The results are not a validated benchmark and do not permit a conclusive statement about whether your organisation is digitally sovereign.",
-    "Die Darstellung fasst Ihre Selbsteinschätzungen für die betrachtete Funktion-Anbieter-Konstellation zusammen. Sie zeigt relative Stärken und Schwächen in vier organisationalen Fähigkeiten. Die Ergebnisse sind noch kein validierter Benchmark und erlauben keine abschliessende Aussage darüber, ob Ihre Organisation digital souverän ist."
-  ),
   resultFor: t("for", "für"),
   atProvider: t("at", "bei"),
   sovereigntyHead: t("Digital Sovereignty: the two dimensions", "Digitale Souveränität: die zwei Dimensionen"),
@@ -230,10 +226,6 @@ export const UI = {
     "Als fehlend gewertet, bewusst nicht als Null gerechnet."
   ),
   notAnswered: t("not answered", "nicht beantwortet"),
-  weakHint: t(
-    "The instrument is under scientific development. The values shown summarise your self-assessments and do not constitute a validated benchmark. Comparison values describe the self-assessments of other participants and are not representative.",
-    "Das Instrument befindet sich in wissenschaftlicher Entwicklung. Die dargestellten Werte fassen Ihre Selbsteinschätzungen zusammen und stellen keinen validierten Benchmark dar. Vergleichswerte beschreiben die Selbsteinschätzungen anderer Teilnehmender und sind nicht repräsentativ."
-  ),
 
   // Vergleich mit anderen Teilnehmenden (Werte aus data/benchmark.json)
   cmpHead: t("Compared with other participants", "Im Vergleich mit anderen Teilnehmenden"),
@@ -270,7 +262,6 @@ export const UI = {
     "Diamond = median of the comparison group, frame = its middle half",
     "Raute = Median der Vergleichsgruppe, Rahmen = ihre mittlere Hälfte"
   ),
-  cmpDashLink: t("All comparison values", "Alle Vergleichswerte"),
   // Visualisierungen
   matrixHead: t("The two dimensions, side by side", "Die zwei Dimensionen im Verhältnis"),
   matrixLead: t(
@@ -364,22 +355,17 @@ export const UI = {
   // ─── Ergebnis-Code (data/resultCode.ts) ──────────────────────────────────
   codeTitle: t("Your result code", "Ihr Ergebnis-Code"),
   codeText: t(
-    "Write down this code. With it, you can view your values later on any device, on the start page of the self-assessment or on the comparison page. The code contains your values and your details on industry, size, headquarters and function in short form, not encrypted: anyone who knows it can see these values. It is not transmitted. Only if you sign in with it does your browser remember it, until you sign out.",
-    "Notieren Sie diesen Code. Damit sehen Sie Ihre Werte später auf jedem Gerät, auf der Startseite des Self-Assessments oder auf der Seite mit den Vergleichswerten. Der Code enthält Ihre Werte und Ihre Angaben zu Branche, Grösse, Hauptsitz und Funktion in Kurzform, nicht verschlüsselt: Wer ihn kennt, sieht diese Werte. Er wird nicht übermittelt. Nur wenn Sie sich damit anmelden, merkt sich Ihr Browser ihn, bis Sie sich abmelden."
+    "Write down this code. Enter it on the start page of the self-assessment to return to this result page later, also on another device.",
+    "Notieren Sie diesen Code. Damit kommen Sie später wieder zu dieser Ergebnisseite: einfach auf der Startseite des Self-Assessments eingeben, auch auf einem anderen Gerät."
   ),
   codeCopy: t("Copy", "Kopieren"),
   codeCopied: t("Copied", "Kopiert"),
-  codeDashLink: t("To the comparison values", "Zu den Vergleichswerten"),
   codeIntroLabel: t("Already taken part? View your result with your result code", "Bereits teilgenommen? Ergebnis mit Ihrem Ergebnis-Code ansehen"),
   codeIntroHint: t(
     "You will find the result code at the end of the self-assessment. It is read only in this browser, nothing is transmitted.",
     "Den Ergebnis-Code finden Sie am Ende des Self-Assessments. Er wird nur in diesem Browser gelesen, nichts wird übertragen."
   ),
   codeIntroButton: t("Show result", "Ergebnis anzeigen"),
-  codeViewNote: t(
-    "Signed in with result code {c}. The code contains your values but not your individual answers, so these are not shown here.",
-    "Angemeldet mit Ergebnis-Code {c}. Der Code enthält Ihre Werte, aber nicht Ihre einzelnen Antworten; diese werden hier deshalb nicht gezeigt."
-  ),
   codeLogout: t("Sign out", "Abmelden"),
 
   // ─── Verdikt: welche der beiden Dimensionen begrenzt heute? ───────────────

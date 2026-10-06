@@ -1,4 +1,4 @@
-// Gestaltung der Karten auf /dashboard und im Vergleich (ComparisonView).
+// Gestaltung der Karten im Vergleich (ComparisonView).
 import type { CSSProperties } from "react";
 
 export const panelStyles: Record<"card" | "h2" | "lead", CSSProperties> = {

@@ -25,7 +25,7 @@ function wrap2(label: string, maxChars = 15): string[] {
   return [words.slice(0, best).join(" "), words.slice(best).join(" ")];
 }
 
-// Quadranten der Matrix in Worten und Farben, fuer Ergebnisseite und Dashboard.
+// Quadranten der Matrix in Worten und Farben, fuer die Ergebnisseite.
 export const QUAD_VIEW: Record<QuadKey, { name: { en: string; de: string }; desc: { en: string; de: string }; color: string }> = {
   sovereign: { name: UI.quadSovereign, desc: UI.quadDesc.sovereign, color: "#6cc2b5" },
   exit:      { name: UI.quadExit,      desc: UI.quadDesc.exit,      color: "#6b9bd8" },
@@ -50,7 +50,7 @@ export function SovereigntyMatrix({
   compare?: MatrixCompare[];
   /** Anteile je Quadrant in Prozent (nur "Alle", ab 10 Teilnahmen); null = unter der Mindestzahl. */
   quadShares?: Record<QuadKey, number | null>;
-  /** Ohne eigenen Punkt (Dashboard) keinen Hinweis "nicht beantwortet" zeigen. */
+  /** Ohne eigenen Punkt keinen Hinweis "nicht beantwortet" zeigen. */
   emptyHint?: boolean;
   /** Beschreibung fuer Screenreader. */
   ariaLabel?: string;

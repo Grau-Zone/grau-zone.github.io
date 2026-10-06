@@ -68,7 +68,7 @@ const SiteFooter = ({ breit = false }: SiteFooterProps) => (
         {/* Als Link, nicht als <a>: der Router laeuft mit basename, ein rohes
             href wuerde ihn umgehen und die Seite komplett neu laden. */}
         <Link
-          to="/dashboard"
+          to="/assessment"
           className="text-xs"
           style={linkStil}
           onMouseEnter={an}
@@ -76,7 +76,7 @@ const SiteFooter = ({ breit = false }: SiteFooterProps) => (
           onFocus={an}
           onBlur={aus}
         >
-          Vergleichswerte
+          Self-Assessment
         </Link>
         <Link
           to="/impressum"

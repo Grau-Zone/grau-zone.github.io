@@ -14,7 +14,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import SiteFooter from "../components/SiteFooter";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { ArrowLeft, ArrowRight, Home, RotateCcw, FileJson, Info, AlertTriangle, Mail, Check, Copy } from "lucide-react";
+import { ArrowLeft, ArrowRight, Home, RotateCcw, FileJson, Info, Mail, Check, Copy } from "lucide-react";
 import { submitResult, flushQueue, isEnabled, newResponseId, type SubmitState } from "../data/submit";
 import { MISSING, INSTRUMENT_VERSION, type Item, type Lang } from "../data/instrument";
 import { ACTIVE, constructScores, quadrantKey, scoreRespondent, type QuadKey } from "../data/scoring";
@@ -121,9 +121,9 @@ export default function Assessment() {
   useEffect(() => { save(LS.rid, responseId); }, [responseId]);
 
   // Anmeldung mit Ergebnis-Code (data/resultCode.ts): zeigt die Werte aus dem Code als
-  // Ergebnisseite, ohne Antworten in diesem Browser. Gleicher Speicher wie /dashboard.
+  // Ergebnisseite, ohne Antworten in diesem Browser.
   // Gilt nur auf dem Intro nach der Sprachwahl; sobald ein eigener Durchgang laeuft,
-  // faellt die Anmeldung hier weg (der gespeicherte Code fuer /dashboard bleibt).
+  // faellt die Anmeldung hier weg.
   const [codeLogin, setCodeLogin] = useState<string | null>(() => {
     const c = load<string | null>(LS.code, null);
     return typeof c === "string" && decodeResult(c) ? formatCode(c) : null;
@@ -137,7 +137,7 @@ export default function Assessment() {
   useEffect(() => {
     const f = codeFocus.current;
     codeFocus.current = null;
-    if (f) document.getElementById(f === "note" ? "code-view-note" : "intro-code")?.focus();
+    if (f) document.getElementById(f === "note" ? "result-title" : "intro-code")?.focus();
   }, [codeLogin]);
   const loginCode = (c: string) => { codeFocus.current = "note"; save(LS.code, c); setCodeLogin(c); window.scrollTo(0, 0); };
   const logoutCode = () => { codeFocus.current = "form"; drop(LS.code); setCodeLogin(null); window.scrollTo(0, 0); };
@@ -207,7 +207,7 @@ export default function Assessment() {
           onNext={() => {
             if (blockIndex < BLOCKS.length - 1) { setBlockIndex(blockIndex + 1); return; }
             // Ein frisch abgeschlossenes Assessment ersetzt eine Anmeldung mit Ergebnis-Code
-            // auf /dashboard, sonst zeigte das Dashboard weiter die alten Werte.
+            // auf dieser Seite.
             drop(LS.code);
             setCodeLogin(null);
             setPhase("result");
@@ -805,7 +805,7 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
 
   // ─── Vergleich mit anderen Teilnehmenden ───────────────────────────────────
   // Werte aus data/benchmark.json (Schnappschuss, nur Zusammenfassungen), dargestellt
-  // wie auf /dashboard (components/ComparisonView): Filter nach einem Merkmal, Standard
+  // mit components/ComparisonView: Filter nach einem Merkmal, Standard
   // "Alle", also kein Filter (Entscheid Adrian 06.10.2026).
   const myGroups = useMemo(
     () => groupsOf({ size: intake.size || "", industry: intake.industry || "", hq: intake.hq || "", fn: intake.fnKey || "" }),
@@ -917,7 +917,8 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
   })();
 
   // Ergebnis-Code (data/resultCode.ts): enthaelt die eigenen Werte, damit sie sich auf
-  // /dashboard auch auf einem anderen Geraet anzeigen lassen. Wird nur hier berechnet.
+  // der Startseite des Self-Assessments auch auf einem anderen Geraet anzeigen lassen.
+  // Wird nur hier berechnet.
   const resultCode = useMemo(() => (fc && code ? code : encodeResult(scoreRespondent(answers), intake)), [answers, intake, fc, code]);
   const codeRef = useRef<HTMLSpanElement>(null);
   const [copied, setCopied] = useState(false);
@@ -1015,7 +1016,7 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
 
   // Eigene Werte und Gruppen fuer den Vergleich (ComparisonView).
   const ownValues = useMemo(
-    () => ({ scores: fc ? fc.scores : scoreRespondent(answers), groups: myGroups }),
+    () => ({ scores: fc ? fc.scores : scoreRespondent(answers), groups: myGroups, oldCode: !!fc && fc.version === 1 }),
     [fc, answers, myGroups]
   );
 
@@ -1046,7 +1047,7 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
         <div style={{ fontSize: "11px", fontFamily: "Space Grotesk, sans-serif", fontWeight: 600, letterSpacing: "0.2em", color: "rgba(139,164,255,0.6)", textTransform: "uppercase", marginBottom: "10px" }}>
           {tr("resultEyebrow")}
         </div>
-        <h2 style={{ fontFamily: "Space Grotesk, sans-serif", fontWeight: 300, fontSize: "clamp(24px,4vw,38px)", color: "white", letterSpacing: "-0.025em" }}>
+        <h2 id="result-title" tabIndex={-1} style={{ fontFamily: "Space Grotesk, sans-serif", fontWeight: 300, fontSize: "clamp(24px,4vw,38px)", color: "white", letterSpacing: "-0.025em", outline: "none" }}>
           {tr("resultTitle")}
         </h2>
         {(functionLabel(intake, lang) || intake.provider) && (
@@ -1056,36 +1057,14 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
         )}
       </div>
 
-      {fc && (
-        <p id="code-view-note" tabIndex={-1} style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", lineHeight: 1.6, color: "rgba(255,255,255,0.7)", maxWidth: "80ch", margin: "0 auto 14px", textAlign: "center", outline: "none" }}>
-          {fmt(tr("codeViewNote"), { c: code })}{" "}
-          <button type="button" onClick={onRestart} style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", color: "#8ba4ff", background: "none", border: "none", padding: 0, cursor: "pointer" }}>
-            {tr("codeLogout")}
-          </button>
-        </p>
-      )}
-      <p style={{ fontFamily: "Inter, sans-serif", fontSize: "14px", lineHeight: 1.7, color: "rgba(255,255,255,0.62)", maxWidth: "80ch", margin: "0 auto 24px", textAlign: "center" }}>
-        {tr("resultLead")}
-      </p>
-
-      <div style={{ padding: "15px 19px", borderRadius: "11px", background: "rgba(217,165,89,0.09)", border: "1px solid rgba(217,165,89,0.28)", marginBottom: "30px", display: "flex", gap: "12px", alignItems: "flex-start" }}>
-        <AlertTriangle size={17} style={{ color: "#d9a559", marginTop: "1px", flexShrink: 0 }} />
-        <p style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.65)", lineHeight: 1.6, margin: 0 }}>
-          {tr("weakHint")}
-        </p>
-      </div>
-
       <div style={{ marginBottom: "34px" }}>
         {showCmp ? (
           <>
             <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", lineHeight: 1.6, color: "rgba(255,255,255,0.55)", margin: "0 0 14px" }}>
               {fmt(tr("cmpStand"), { d: fmtAsOf(BENCHMARK.asOf, lang) })}.{" "}
-              {tr("cmpOwnNotIncl")}{isSmall(BENCHMARK.groups[ALL]) ? " " + tr("cmpSmall") : ""}{" "}
-              <Link to="/dashboard" style={{ color: "#8ba4ff", textDecoration: "none", whiteSpace: "nowrap" }}>
-                {tr("cmpDashLink")} →
-              </Link>
+              {tr("cmpOwnNotIncl")}{isSmall(BENCHMARK.groups[ALL]) ? " " + tr("cmpSmall") : ""}
             </p>
-            {/* Gleiche Darstellung wie auf /dashboard: Filter, Faehigkeiten, Matrix, Kontinuitaet */}
+            {/* Vergleich: Filter, Faehigkeiten, Matrix, Kontinuitaet */}
             <ComparisonView
               lang={lang} own={ownValues} matrixSide={quadrantSide} ownNumbers headingLevel="h3"
               capNote={fc ? undefined : (k) => {
@@ -1256,8 +1235,7 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
           </button>
         </div>
         <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", lineHeight: 1.6, color: "rgba(255,255,255,0.55)", margin: "10px 0 0" }}>
-          {tr("codeText")}{" "}
-          <Link to="/dashboard" style={{ color: "#8ba4ff", textDecoration: "none", whiteSpace: "nowrap" }}>{tr("codeDashLink")} →</Link>
+          {tr("codeText")}
         </p>
       </div>
 

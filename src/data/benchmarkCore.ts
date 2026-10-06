@@ -48,7 +48,7 @@ export const CTX_STEP = 0.05;                          // Skala 0..1, also 5 Pro
 export const INSTRUMENT_ID = "capacity-v1 + " + INSTRUMENT_VERSION + "_research";
 
 export type Quant = { p25: number; p50: number; p75: number };
-export type MetricKey = CapacityKey | "ftc" | "cto" | "cont";
+export type MetricKey = CapacityKey | "ftc" | "cto" | "cont" | "tra";
 export type GroupBlock = {
   n?: number;                          // nur bei "all"
   nBand?: [number, number];            // nur bei Gruppen
@@ -56,6 +56,7 @@ export type GroupBlock = {
   ftc: Quant | null;
   cto: Quant | null;
   cont: Quant | null;
+  tra?: Quant | null;                      // Transparenz; fehlt in Staenden vor dem 06.10.2026
   quad?: Record<QuadKey, number | null>;   // Prozent, nur bei "all"; null = unter K_MIN
 };
 export type BenchmarkFile = {
@@ -79,9 +80,9 @@ export const emptyBenchmark = (): BenchmarkFile => ({
 });
 
 const CAP_KEYS: CapacityKey[] = ["SW", "IN", "MS", "NE"];
-const METRICS: MetricKey[] = [...CAP_KEYS, "ftc", "cto", "cont"];
+const METRICS: MetricKey[] = [...CAP_KEYS, "ftc", "cto", "cont", "tra"];
 const metricOf = (r: ScoredRow, m: MetricKey): number | null =>
-  m === "ftc" || m === "cto" || m === "cont" ? r.scores[m] : r.scores.cap[m];
+  m === "ftc" || m === "cto" || m === "cont" || m === "tra" ? r.scores[m] : r.scores.cap[m];
 
 // Quantil nach Hyndman-Fan Typ 7 (Standard in R und numpy), Werte aufsteigend sortiert.
 export function quantile7(sorted: number[], p: number): number {
@@ -141,7 +142,9 @@ function block(rows: ScoredRow[], isAll: boolean, blocked: Set<MetricKey> = new 
   const pick = (m: MetricKey, step: number) => (blocked.has(m) ? null : quant(rows.map((r) => metricOf(r, m)), step));
   const cap = {} as Record<CapacityKey, Quant | null>;
   CAP_KEYS.forEach((k) => { cap[k] = pick(k, fine ? CAP_STEP.fine : CAP_STEP.coarse); });
-  const b: GroupBlock = { cap, ftc: pick("ftc", CTX_STEP), cto: pick("cto", CTX_STEP), cont: pick("cont", CTX_STEP) };
+  const b: GroupBlock = {
+    cap, ftc: pick("ftc", CTX_STEP), cto: pick("cto", CTX_STEP), cont: pick("cont", CTX_STEP), tra: pick("tra", CTX_STEP),
+  };
   if (isAll) {
     b.n = rows.length;
     const withQuad = rows.filter((r) => r.scores.quad !== null);
@@ -206,40 +209,59 @@ export function buildBenchmark(
     }
   });
 
+  // Regel 6 je Gruppe zuerst: Veraenderung um genau 1 -> bisherigen Stand behalten.
+  // Erst danach Regel 8, damit auch behaltene alte (kleine) Gruppen mitzaehlen.
+  type Plan = Cand & { action: "new" | "keep" | "skip"; effMinN: number; counts: GroupCounts[] };
+  const plans: Plan[] = cands.map((c) => {
+    const counts = c.rows.map(countValid);
+    const changedByOne = prevState && c.ids.some((id, i) => {
+      const before = prevState.groups[id];
+      if (!before) return false;
+      // Kennzahlen, die es im bisherigen Zustand noch nicht gab, zaehlen dort als 0.
+      const deltas = [counts[i].n - before.n, ...METRICS.map((m) => counts[i].valid[m] - (before.valid[m] ?? 0))];
+      return deltas.some((x) => Math.abs(x) > 0 && Math.abs(x) < K_MIN);
+    });
+    if (!changedByOne) return { ...c, action: "new", effMinN: c.minN, counts };
+    const kept = c.ids.every((id) => prev?.groups[id] && prevState?.groups[id]);
+    if (!kept) return { ...c, action: "skip", effMinN: c.minN, counts };
+    // Behalten wird der alte Stand, also zaehlen fuer Regel 8 die alten Groessen.
+    return { ...c, action: "keep", effMinN: Math.min(...c.ids.map((id) => prevState!.groups[id].n)), counts };
+  });
+  plans.filter((pl) => pl.action === "skip")
+    .forEach((pl) => report.push(`${pl.d}: eine Gruppe hat sich nur um 1 veraendert -> zurueckgestellt (Regel 6)`));
+  const live = plans.filter((pl) => pl.action !== "skip");
+
   // Regel 8: hoechstens MAX_SMALL_DIMS Merkmale mit kleinen Gruppen. Bevorzugt
   // das schon bisher veroeffentlichte Merkmal (stabile Anzeige), sonst das mit
   // der groessten kleinsten Gruppe, sonst die Reihenfolge in DIMENSIONS.
   const wasPublished = (c: Cand) => !!prev?.groups[c.ids[0]];
-  const small = cands.filter((c) => c.minN < SMALL_GROUP)
-    .sort((x, y) => Number(wasPublished(y)) - Number(wasPublished(x)) || y.minN - x.minN);
-  const dropped = new Set(small.slice(MAX_SMALL_DIMS).map((c) => c.d));
+  const small = live.filter((pl) => pl.effMinN < SMALL_GROUP)
+    .sort((x, y) => Number(wasPublished(y)) - Number(wasPublished(x)) || y.effMinN - x.effMinN);
+  const dropped = new Set(small.slice(MAX_SMALL_DIMS).map((pl) => pl.d));
   dropped.forEach((d) => report.push(`${d}: kleine Gruppen, -> zurueckgestellt (Regel 8)`));
 
-  cands.filter((c) => !dropped.has(c.d)).forEach((c) => {
-    const counts = c.rows.map(countValid);
-    // Regel 6 je Gruppe: Veraenderung um genau 1 -> bisherigen Stand behalten.
-    const changedByOne = prevState && c.ids.some((id, i) => {
-      const before = prevState.groups[id];
-      if (!before) return false;
-      const deltas = [counts[i].n - before.n, ...METRICS.map((m) => counts[i].valid[m] - before.valid[m])];
-      return deltas.some((x) => Math.abs(x) > 0 && Math.abs(x) < K_MIN);
-    });
-    if (changedByOne) {
-      const kept = c.ids.every((id) => prev?.groups[id] && prevState?.groups[id]);
-      if (kept) {
-        c.ids.forEach((id) => { file.groups[id] = prev!.groups[id]; state.groups[id] = prevState!.groups[id]; });
-        report.push(`${c.d}: eine Gruppe hat sich nur um 1 veraendert -> bisheriger Stand bleibt (Regel 6)`);
-      } else {
-        report.push(`${c.d}: eine Gruppe hat sich nur um 1 veraendert -> zurueckgestellt (Regel 6)`);
-      }
+  live.filter((pl) => !dropped.has(pl.d)).forEach((pl) => {
+    if (pl.action === "keep") {
+      pl.ids.forEach((id) => { file.groups[id] = prev!.groups[id]; state.groups[id] = prevState!.groups[id]; });
+      report.push(`${pl.d}: eine Gruppe hat sich nur um 1 veraendert -> bisheriger Stand bleibt (Regel 6)`);
       return;
     }
-    c.ids.forEach((id, i) => {
-      file.groups[id] = block(c.rows[i], false, c.blocked);
-      state.groups[id] = counts[i];
+    pl.ids.forEach((id, i) => {
+      file.groups[id] = block(pl.rows[i], false, pl.blocked);
+      state.groups[id] = pl.counts[i];
     });
-    report.push(`${c.d}: veroeffentlicht${c.blocked.size ? ` (ohne ${[...c.blocked].join(", ")}, Regel 2 je Kennzahl)` : ""}`);
+    report.push(`${pl.d}: veroeffentlicht${pl.blocked.size ? ` (ohne ${[...pl.blocked].join(", ")}, Regel 2 je Kennzahl)` : ""}`);
   });
+
+  // Endkontrolle Regel 8 am fertigen Ergebnis, unabhaengig vom Weg dorthin.
+  const smallDims = new Set(
+    Object.entries(file.groups)
+      .filter(([id, g]) => id !== ALL && (g.nBand?.[1] ?? Infinity) < SMALL_GROUP)
+      .map(([id]) => id.split(":")[0]),
+  );
+  if (smallDims.size > MAX_SMALL_DIMS) {
+    throw new Error(`Regel 8: kleine Gruppen in ${[...smallDims].join(", ")}, erlaubt sind ${MAX_SMALL_DIMS}.`);
+  }
   return { file, state, report };
 }
 

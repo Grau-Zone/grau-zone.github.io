@@ -17,6 +17,7 @@ import { scoreRespondent, type Answers } from "../src/data/scoring";
 import { keyFromLabel, LABEL_LISTS } from "../src/data/benchmarkGroups";
 import { encodeResult, type CodeIntake } from "../src/data/resultCode";
 import { FUNCTION_OTHER } from "../src/data/surveyUi";
+import { MISSING } from "../src/data/instrument";
 
 function fail(msg: string): never {
   console.error("ABBRUCH: " + msg);
@@ -61,10 +62,17 @@ if (!Array.isArray(raw) && raw?.answers) {
 } else if (Array.isArray(raw)) {
   for (const r of raw) {
     let row = r;
+    // Wie in build_benchmark.ts: nur Exporte mit der aktuellen Abfrage ("Weiss nicht" als 99).
+    if (!r.payload && Number(r.export_format) !== 2) {
+      fail("Export ohne export_format = 2. Bitte die aktuelle Abfrage aus tools/build_benchmark.ts verwenden.");
+    }
     if (r.payload) {
       const p = maybeJson(r.payload);
       const ant: Record<string, unknown> = {};
-      (p.antworten || []).forEach((a: { id: string; antwort: unknown }) => { ant[a.id] = a.antwort; });
+      // "Weiss nicht" als MISSING (99), wie im Browser.
+      (p.antworten || []).forEach((a: { id: string; antwort: unknown; status?: string }) => {
+        ant[a.id] = a.status === "weiss nicht" ? MISSING : a.antwort;
+      });
       row = {
         response_id: r.response_id, created_at: r.created_at,
         funktion: p.intake?.funktion, groesse: p.intake?.mitarbeiterzahl, branche: p.intake?.branche, hauptsitz: p.intake?.hauptsitz,

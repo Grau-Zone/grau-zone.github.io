@@ -1,5 +1,5 @@
 // Schluessel, unter denen das Self-Assessment seinen Stand im Browser ablegt.
-// Geteilt mit dem Dashboard, das daraus die eigenen Werte zeigt, ohne etwas zu
+// Geteilt mit dem Vergleich auf der Ergebnisseite, der daraus die eigenen Werte zeigt, ohne etwas zu
 // uebertragen.
 export const LS = {
   lang: "cds13-lang",
@@ -9,7 +9,7 @@ export const LS = {
   intake: "cds13-intake",
   rid: "cds13-rid",
   consent: "cds13-consent",
-  code: "cds13-code",      // Ergebnis-Code, mit dem sich jemand auf /dashboard angemeldet hat
+  code: "cds13-code",      // Ergebnis-Code, mit dem sich jemand auf /assessment angemeldet hat
 } as const;
 
 // Lesen darf nie werfen: in fremden iframes oder bei gesperrtem Speicher wirft
