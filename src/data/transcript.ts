@@ -118,6 +118,6 @@ export function buildTranscript(inp: TranscriptInput): string {
   }
 
   out.push("", RULE);
-  out.push("Erzeugt auf grau-zone.github.io. Das Instrument ist nicht validiert.");
+  out.push("Erzeugt auf sovereignty-radar.iwi.unisg.ch. Das Instrument ist nicht validiert.");
   return out.join(NL);
 }
