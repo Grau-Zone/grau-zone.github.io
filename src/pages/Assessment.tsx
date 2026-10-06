@@ -20,12 +20,11 @@ import { MISSING, INSTRUMENT_VERSION, type Item, type Lang } from "../data/instr
 import { ACTIVE, constructScores, quadrantKey, scoreRespondent, type QuadKey } from "../data/scoring";
 import { encodeResult, decodeResult, formatCode, type DecodedResult } from "../data/resultCode";
 import ResultCodeForm from "../components/ResultCodeForm";
+import ComparisonView from "../components/ComparisonView";
 import { LS, readLS } from "../data/storageKeys";
 import { SovereigntyMatrix, QUAD_VIEW } from "../components/ResultVisuals";
-import ComparisonBand from "../components/ComparisonBand";
-import { BENCHMARK, hasBenchmark, fmtAsOf, fmtNum, fmtPct, isSmall } from "../data/benchmark";
-import { positionOf, capStepOf } from "../data/benchmarkCore";
-import { ALL, DIMENSIONS, groupDef, groupId, groupsOf } from "../data/benchmarkGroups";
+import { BENCHMARK, hasBenchmark, fmtAsOf, fmtPct, isSmall } from "../data/benchmark";
+import { ALL, groupsOf } from "../data/benchmarkGroups";
 import { UI, CONTEXT_GROUPS, FUNCTIONS, FUNCTION_OTHER, FIRM_SIZE, INDUSTRY, HQ, labelOf, anchorsFor, YES_NO, pick } from "../data/surveyUi";
 import { CAPACITIES, CAP_ITEMS, itemsOfCapacity, scoreCapacity, pickCap, MIN_VALID, type CapacityKey } from "../data/capacityItems";
 
@@ -805,21 +804,14 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
   }, [scores]);
 
   // ─── Vergleich mit anderen Teilnehmenden ───────────────────────────────────
-  // Werte aus data/benchmark.json (Schnappschuss, nur Zusammenfassungen). Zur
-  // Wahl stehen "Alle" und die eigenen Gruppen; nur veroeffentlichte sind
-  // anklickbar. Standard ist die eigene Funktionsgruppe, weil der Vergleich
-  // ueber Funktionen hinweg hinkt.
+  // Werte aus data/benchmark.json (Schnappschuss, nur Zusammenfassungen), dargestellt
+  // wie auf /dashboard (components/ComparisonView): Filter nach einem Merkmal, Standard
+  // "Alle", also kein Filter (Entscheid Adrian 06.10.2026).
   const myGroups = useMemo(
     () => groupsOf({ size: intake.size || "", industry: intake.industry || "", hq: intake.hq || "", fn: intake.fnKey || "" }),
     [intake]
   );
-  const cmpOptions = [ALL, ...DIMENSIONS.filter((d) => myGroups[d.key]).map((d) => groupId(d.key, myGroups[d.key]!))];
   const showCmp = hasBenchmark();
-  const fnGroup = myGroups.funktion ? groupId("funktion", myGroups.funktion) : null;
-  const [cmpId, setCmpId] = useState<string>(fnGroup && BENCHMARK.groups[fnGroup] ? fnGroup : ALL);
-  const cmp = showCmp ? BENCHMARK.groups[cmpId] ?? BENCHMARK.groups[ALL] : null;
-  const cmpLabel = (id: string) => (id === ALL ? tr("cmpAll") : pick(groupDef(id)!.group.label, lang));
-  const bis = lang === "de" ? "bis" : "to";
 
   const section = (title: string, sub?: string) => (
     <div style={{ marginBottom: "14px" }}>
@@ -969,6 +961,64 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
     });
   }, [consent, responseId]);
 
+  // "Wo Sie stehen": Quadrant in Worten, rechts neben der Matrix.
+  const quadrantSide = (
+    <div style={{ marginBottom: "18px" }}>
+      {quadrant ? (
+        <>
+          <div style={{ fontFamily: "Share Tech Mono, monospace", fontSize: "11px", letterSpacing: "0.16em", color: "rgba(255,255,255,0.5)", textTransform: "uppercase", marginBottom: "9px" }}>
+            {tr("quadHead")}
+          </div>
+          <div style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "clamp(19px,2.2vw,25px)", fontWeight: 400, color: quadrant.color, letterSpacing: "-0.015em", marginBottom: "12px" }}>
+            {pick(quadrant.name, lang)}
+          </div>
+          <p style={{ fontFamily: "Inter, sans-serif", fontSize: "14.5px", lineHeight: 1.65, color: "rgba(255,255,255,0.68)", maxWidth: "46ch", margin: 0 }}>
+            {pick(quadrant.desc, lang)}
+          </p>
+        </>
+      ) : (
+        <p style={{ fontFamily: "Inter, sans-serif", fontSize: "14px", color: "rgba(255,255,255,0.5)", fontStyle: "italic", margin: 0 }}>
+          {tr("notAnswered")}
+        </p>
+      )}
+    </div>
+  );
+
+  // Zusammenfassung der beantworteten Fragen und der erste Anfrage-Knopf, direkt unter
+  // den vier Faehigkeiten.
+  const afterValues = (
+    <>
+      {!fc && (
+        <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.5)", marginTop: "16px" }}>
+          {fmt(tr("answeredSummary"), { a: beantwortet, b: alleIds.length })}
+          {ohneWert === 1 ? " " + tr("notEnoughArea") : ohneWert > 1 ? " " + fmt(tr("notEnoughAreas"), { n: ohneWert }) : ""}
+        </p>
+      )}
+
+      {/* Derselbe Mailto-Link wie im Abschluss-Kasten, hier direkt unter den
+          vier Werten. Bewusst leichter gestaltet und ohne Verdikt: der Kasten
+          unten bleibt der Abschluss, und ein automatisch bestimmter Hebel
+          darf laut Vorgabe nirgends stehen. */}
+      <div style={{ display: "flex", justifyContent: "center", marginTop: "26px" }}>
+        <a href={ctaMail} style={{
+          fontFamily: "Space Grotesk, sans-serif", fontSize: "17px", fontWeight: 600,
+          padding: "17px 34px", borderRadius: "11px",
+          border: "1px solid rgba(139,164,255,0.34)", background: "rgba(75,110,255,0.08)",
+          color: "#a8bcff", textDecoration: "none",
+          display: "flex", alignItems: "center", gap: "9px",
+        }}>
+          <Mail size={18} /> {tr("ctaButton")} <ArrowRight size={18} />
+        </a>
+      </div>
+    </>
+  );
+
+  // Eigene Werte und Gruppen fuer den Vergleich (ComparisonView).
+  const ownValues = useMemo(
+    () => ({ scores: fc ? fc.scores : scoreRespondent(answers), groups: myGroups }),
+    [fc, answers, myGroups]
+  );
+
   const antwortText = (i: Item): string => {
     const v = answers[i.id];
     if (v === undefined) return tr("notAnswered");
@@ -1027,190 +1077,90 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
 
       <div style={{ marginBottom: "34px" }}>
         {showCmp ? (
-          <div style={{ marginBottom: "24px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "10px" }}>
-              <span style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.55)" }}>
-                {tr("cmpWith")}:
-              </span>
-              {cmpOptions.map((id) => {
-                const ok = !!BENCHMARK.groups[id];
-                const active = ok && id === cmpId;
-                return (
-                  <button
-                    key={id} type="button" disabled={!ok} aria-pressed={active}
-                    onClick={() => setCmpId(id)}
-                    style={{
-                      fontFamily: "Inter, sans-serif", fontSize: "12.5px", padding: "5px 12px", borderRadius: "999px",
-                      border: `1px solid ${active ? "rgba(139,164,255,0.7)" : "rgba(255,255,255,0.14)"}`,
-                      background: active ? "rgba(75,110,255,0.16)" : "transparent",
-                      color: ok ? (active ? "#fff" : "rgba(255,255,255,0.75)") : "rgba(255,255,255,0.32)",
-                      cursor: ok ? "pointer" : "not-allowed",
-                    }}
-                  >
-                    {cmpLabel(id)}{ok ? "" : ` · ${tr("cmpNotYet")}`}
-                  </button>
-                );
-              })}
-            </div>
-            <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", lineHeight: 1.6, color: "rgba(255,255,255,0.55)", margin: 0 }}>
+          <>
+            <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", lineHeight: 1.6, color: "rgba(255,255,255,0.55)", margin: "0 0 14px" }}>
               {fmt(tr("cmpStand"), { d: fmtAsOf(BENCHMARK.asOf, lang) })}.{" "}
-              {tr("cmpOwnNotIncl")}{cmp && isSmall(cmp) ? " " + tr("cmpSmall") : ""}{" "}
+              {tr("cmpOwnNotIncl")}{isSmall(BENCHMARK.groups[ALL]) ? " " + tr("cmpSmall") : ""}{" "}
               <Link to="/dashboard" style={{ color: "#8ba4ff", textDecoration: "none", whiteSpace: "nowrap" }}>
                 {tr("cmpDashLink")} →
               </Link>
             </p>
-            {/* Legende einmal fuer alle vier Baender, in neutraler Farbe */}
-            <div style={{ display: "flex", gap: "16px", flexWrap: "wrap", marginTop: "10px", fontFamily: "Inter, sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.6)" }}>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
-                <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: "rgba(255,255,255,0.85)" }} />{tr("cmpLegendOwn")}
-              </span>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
-                <span style={{ width: "22px", height: "10px", borderRadius: "4px", background: "rgba(255,255,255,0.25)" }} />{tr("cmpLegendBand")}
-              </span>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>
-                <span style={{ width: "2px", height: "14px", borderRadius: "1px", background: "rgba(255,255,255,0.85)" }} />{tr("cmpLegendMedian")}
-              </span>
-            </div>
-          </div>
+            {/* Gleiche Darstellung wie auf /dashboard: Filter, Faehigkeiten, Matrix, Kontinuitaet */}
+            <ComparisonView
+              lang={lang} own={ownValues} matrixSide={quadrantSide} ownNumbers headingLevel="h3"
+              capNote={fc ? undefined : (k) => {
+                const sc = caps.find((x) => x.cap.key === k)!.score;
+                return fmt(tr("itemsScored"), { a: sc.valid, b: sc.total });
+              }}
+              afterCaps={<div style={{ marginBottom: "26px" }}>{afterValues}</div>}
+            />
+          </>
         ) : (
-          <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.5)", margin: "0 0 20px" }}>
-            {tr("cmpNone")}
-          </p>
-        )}
-
-        {caps.map(({ cap, score }) => {
-          const q = cmp?.cap[cap.key] ?? null;
-          const pos = cmp ? positionOf(score.mean, q, capStepOf(cmp)) : null;
-          return (
-          <div key={cap.key} style={{ marginBottom: "22px" }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: "10px", flexWrap: "wrap", marginBottom: "7px" }}>
-              <span style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "16px", color: "rgba(255,255,255,0.9)" }}>
-                {pickCap(cap.label, lang)}
-              </span>
-              <span style={{ fontFamily: "Share Tech Mono, monospace", fontSize: "10.5px", letterSpacing: "0.12em", color: cap.color + "cc", textTransform: "uppercase" }}>
-                {cap.term}
-              </span>
-              {!fc && (
-                <span style={{ marginLeft: "auto", fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.55)" }}>
-                  {fmt(tr("itemsScored"), { a: score.valid, b: score.total })}
-                </span>
-              )}
-            </div>
-
-            {showCmp && !q ? (
-              // Vergleich laeuft, aber fuer diese Faehigkeit gibt es keine Werte:
-              // trotzdem Punkt auf der Skala, damit die Legende darueber stimmt.
-              <ComparisonBand
-                min={1} max={7} ticks={[1, 2, 3, 4, 5, 6, 7]} q={null} own={score.mean} color={cap.color}
-                scale={["1", "7"]} label={pickCap(cap.label, lang)}
-                describe={[`${tr("cmpLegendOwn")}: ${score.mean !== null ? fmtNum(score.mean, lang, 1) : tr("notEnough")}`, tr("cmpNoValue")]}
-              />
-            ) : q ? (
-              <ComparisonBand
-                min={1} max={7} ticks={[1, 2, 3, 4, 5, 6, 7]} q={q} own={score.mean} color={cap.color}
-                scale={["1", "7"]}
-                label={pickCap(cap.label, lang)}
-                describe={[
-                  cmpLabel(cmpId),
-                  `${tr("cmpLegendOwn")}: ${score.mean !== null ? fmtNum(score.mean, lang, 1) : tr("notEnough")}`,
-                  `${tr("cmpLegendMedian")}: ${fmtNum(q.p50, lang)}`,
-                  `${tr("cmpLegendBand")}: ${fmtNum(q.p25, lang)} ${bis} ${fmtNum(q.p75, lang)}`,
-                ]}
-              />
-            ) : (
-              <div style={{ height: "10px", borderRadius: "5px", background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
-                {score.mean !== null && (
-                  <div style={{ height: "100%", width: (score.mean / 7) * 100 + "%", borderRadius: "5px", background: cap.color }} />
-                )}
+          <>
+            <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.5)", margin: "0 0 20px" }}>
+              {tr("cmpNone")}
+            </p>
+            {caps.map(({ cap, score }) => (
+              <div key={cap.key} style={{ marginBottom: "22px" }}>
+                <div style={{ display: "flex", alignItems: "baseline", gap: "10px", flexWrap: "wrap", marginBottom: "7px" }}>
+                  <span style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "16px", color: "rgba(255,255,255,0.9)" }}>
+                    {pickCap(cap.label, lang)}
+                  </span>
+                  <span style={{ fontFamily: "Share Tech Mono, monospace", fontSize: "10.5px", letterSpacing: "0.12em", color: cap.color + "cc", textTransform: "uppercase" }}>
+                    {cap.term}
+                  </span>
+                  {!fc && (
+                    <span style={{ marginLeft: "auto", fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.55)" }}>
+                      {fmt(tr("itemsScored"), { a: score.valid, b: score.total })}
+                    </span>
+                  )}
+                </div>
+                <div style={{ height: "10px", borderRadius: "5px", background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+                  {score.mean !== null && (
+                    <div style={{ height: "100%", width: (score.mean / 7) * 100 + "%", borderRadius: "5px", background: cap.color }} />
+                  )}
+                </div>
+                <div style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", color: score.mean === null ? "#d9a559" : "rgba(255,255,255,0.7)", marginTop: "6px" }}>
+                  {score.mean === null
+                    ? tr("notEnough")
+                    : fmt(tr("selfRating"), { v: score.mean.toFixed(1).replace(".", lang === "de" ? "," : ".") })}
+                </div>
               </div>
-            )}
-
-            <div style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", color: score.mean === null ? "#d9a559" : "rgba(255,255,255,0.7)", marginTop: "6px" }}>
-              {score.mean === null
-                ? tr("notEnough")
-                : fmt(tr("selfRating"), { v: score.mean.toFixed(1).replace(".", lang === "de" ? "," : ".") })}
-              {pos && <span style={{ color: "rgba(255,255,255,0.6)" }}> · {pick(UI.cmpPos[pos], lang)}</span>}
-              {showCmp && !q && <span style={{ color: "rgba(255,255,255,0.6)" }}> · {tr("cmpNoValue")}</span>}
-            </div>
-          </div>
-          );
-        })}
-
-        {!fc && (
-          <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.5)", marginTop: "16px" }}>
-            {fmt(tr("answeredSummary"), { a: beantwortet, b: alleIds.length })}
-            {ohneWert === 1 ? " " + tr("notEnoughArea") : ohneWert > 1 ? " " + fmt(tr("notEnoughAreas"), { n: ohneWert }) : ""}
-          </p>
+            ))}
+          </>
         )}
 
-        {/* Derselbe Mailto-Link wie im Abschluss-Kasten, hier direkt unter den
-            vier Werten. Bewusst leichter gestaltet und ohne Verdikt: der Kasten
-            unten bleibt der Abschluss, und ein automatisch bestimmter Hebel
-            darf laut Vorgabe nirgends stehen. */}
-        <div style={{ display: "flex", justifyContent: "center", marginTop: "26px" }}>
-          <a href={ctaMail} style={{
-            fontFamily: "Space Grotesk, sans-serif", fontSize: "17px", fontWeight: 600,
-            padding: "17px 34px", borderRadius: "11px",
-            border: "1px solid rgba(139,164,255,0.34)", background: "rgba(75,110,255,0.08)",
-            color: "#a8bcff", textDecoration: "none",
-            display: "flex", alignItems: "center", gap: "9px",
-          }}>
-            <Mail size={18} /> {tr("ctaButton")} <ArrowRight size={18} />
-          </a>
-        </div>
+        {!showCmp && afterValues}
       </div>
 
-      {/* Matrix: Freedom to Change gegen Control to Operate, Punktfarbe = Kontinuitaet */}
+      {/* Matrix ohne Vergleichswerte (mit Werten steckt sie in ComparisonView):
+          Freedom to Change gegen Control to Operate, Punktfarbe = Kontinuitaet */}
+      {!showCmp && (
       <div style={{ marginBottom: "34px" }}>
         {section(tr("matrixHead"), tr("matrixLead"))}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8" style={{ alignItems: "center" }}>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
             <SovereigntyMatrix
               ftc={scores["FTC"]} cto={scores["CTO"]} cont={scores["CONT"]} lang={lang}
-              compare={cmp?.ftc && cmp?.cto ? [{ ftc: cmp.ftc, cto: cmp.cto }] : []}
               ariaLabel={[
                 tr("matrixHead"),
                 scores["FTC"] !== null && scores["CTO"] !== null
                   ? `${tr("cmpLegendOwn")}: Reconfiguration Discretion ${fmtPct(scores["FTC"])}, Operational Control ${fmtPct(scores["CTO"])}`
                   : tr("notAnswered"),
-                cmp?.ftc && cmp?.cto ? fmt(tr("cmpMatrixValues"), { f: fmtPct(cmp.ftc.p50), c: fmtPct(cmp.cto.p50) }) : "",
-              ].filter(Boolean).join(". ")}
+              ].join(". ")}
             />
-            {/* Legende und Zahlen direkt unter der Grafik, auch mobil */}
-            {cmp?.ftc && cmp?.cto && (
-              <div style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", lineHeight: 1.55, color: "rgba(255,255,255,0.6)", marginTop: "8px", maxWidth: 460, textAlign: "center" }}>
-                {tr("cmpMatrixMarker")} ({cmpLabel(cmpId)})
-                <br />
-                {fmt(tr("cmpMatrixValues"), { f: fmtPct(cmp.ftc.p50), c: fmtPct(cmp.cto.p50) })}
-              </div>
-            )}
           </div>
           <div>
-            {quadrant ? (
-              <>
-                <div style={{ fontFamily: "Share Tech Mono, monospace", fontSize: "11px", letterSpacing: "0.16em", color: "rgba(255,255,255,0.5)", textTransform: "uppercase", marginBottom: "9px" }}>
-                  {tr("quadHead")}
-                </div>
-                <div style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "clamp(19px,2.2vw,25px)", fontWeight: 400, color: quadrant.color, letterSpacing: "-0.015em", marginBottom: "12px" }}>
-                  {pick(quadrant.name, lang)}
-                </div>
-                <p style={{ fontFamily: "Inter, sans-serif", fontSize: "14.5px", lineHeight: 1.65, color: "rgba(255,255,255,0.68)", maxWidth: "46ch", margin: 0 }}>
-                  {pick(quadrant.desc, lang)}
-                </p>
-              </>
-            ) : (
-              <p style={{ fontFamily: "Inter, sans-serif", fontSize: "14px", color: "rgba(255,255,255,0.5)", fontStyle: "italic", margin: 0 }}>
-                {tr("notAnswered")}
-              </p>
-            )}
+            {quadrantSide}
             {quadrant && (
-              <div style={{ fontFamily: "Inter, sans-serif", fontSize: "11.5px", color: "rgba(255,255,255,0.5)", marginTop: "16px" }}>
+              <div style={{ fontFamily: "Inter, sans-serif", fontSize: "11.5px", color: "rgba(255,255,255,0.5)" }}>
                 {pick(UI.outcomeDot, lang)}
               </div>
             )}
           </div>
         </div>
       </div>
+      )}
 
       {!fc && (
       <div style={{ marginBottom: "34px", padding: "22px 24px", borderRadius: "12px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>

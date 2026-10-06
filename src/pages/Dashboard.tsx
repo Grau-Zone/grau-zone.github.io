@@ -9,17 +9,15 @@ import { ArrowLeft, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import RadarMark from "../components/RadarMark";
 import SiteFooter from "../components/SiteFooter";
-import ComparisonBand from "../components/ComparisonBand";
-import { SovereigntyMatrix } from "../components/ResultVisuals";
-import { CAPACITIES } from "../data/capacityItems";
-import { BENCHMARK, hasBenchmark, fmtAsOf, fmtNum, fmtPct, isSmall } from "../data/benchmark";
-import { ALL, DIMENSIONS, LABEL_LISTS, groupId, groupsOf, type DimKey } from "../data/benchmarkGroups";
-import { positionOf, capStepOf, CTX_STEP, type GroupBlock, type Quant, type Position } from "../data/benchmarkCore";
+import { BENCHMARK, hasBenchmark, fmtAsOf, isSmall } from "../data/benchmark";
+import { ALL, DIMENSIONS, LABEL_LISTS, groupsOf, type DimKey } from "../data/benchmarkGroups";
 import type { Lang } from "../data/instrument";
 import { scoreRespondent, type Answers, type RespondentScores } from "../data/scoring";
 import { LS, readLS } from "../data/storageKeys";
 import { decodeResult, formatCode } from "../data/resultCode";
 import ResultCodeForm from "../components/ResultCodeForm";
+import ComparisonView from "../components/ComparisonView";
+import { panelStyles } from "../components/panelStyles";
 
 type T = { en: string; de: string };
 const t = (en: string, de: string): T => ({ en, de });
@@ -39,36 +37,7 @@ const TXT = {
     "Sie erscheinen hier, sobald genügend Teilnahmen vorliegen. Jede Teilnahme hilft."
   ),
   toAssessment: t("Go to the self-assessment", "Zum Self-Assessment"),
-  filter: t("Compare by", "Vergleichen nach"),
-  all: t("All participants", "Alle Teilnehmenden"),
-  allTab: t("All", "Alle"),
-  notYet: t("not enough participations yet", "noch zu wenige Teilnahmen"),
-  capHead: t("Four capacities", "Vier Fähigkeiten"),
-  capLead: t(
-    "Self-assessment on a scale from 1 to 7. Band = middle half of the group, line = median.",
-    "Selbsteinschätzung auf einer Skala von 1 bis 7. Band = mittlere Hälfte der Gruppe, Strich = Median."
-  ),
-  matrixHead: t("The two dimensions of sovereignty", "Die zwei Dimensionen der Souveränität"),
-  matrixLead: t(
-    "Reconfiguration Discretion: how freely the provider could be changed. Operational Control: how much control remains while depending on it. Diamond = median of the group, frame = its middle half (A solid, B dashed).",
-    "Reconfiguration Discretion: wie frei sich der Anbieter wechseln liesse. Operational Control: wie viel Kontrolle bleibt, während man von ihm abhängt. Raute = Median der Gruppe, Rahmen = ihre mittlere Hälfte (A durchgezogen, B gestrichelt)."
-  ),
-  shares: t(
-    "Percentages = share of all participations per quadrant; a dash means fewer than two participations.",
-    "Prozente = Anteil aller Teilnahmen je Quadrant; ein Strich bedeutet weniger als zwei Teilnahmen."
-  ),
-  contHead: t("Continuity under provider disruption", "Kontinuität bei Anbieterstörungen"),
-  contLead: t(
-    "How well operations continue when the provider fails or acts unilaterally. 0 % = lowest, 100 % = highest value on the scale.",
-    "Wie gut der Betrieb weiterläuft, wenn der Anbieter ausfällt oder einseitig handelt. 0 % = tiefster, 100 % = höchster Wert der Skala."
-  ),
-  median: t("Median", "Median"),
-  band: t("middle half", "mittlere Hälfte"),
   small: t("The values can still shift with further participations.", "Die Werte können sich mit weiteren Teilnahmen noch verschieben."),
-  noValue: t("not enough valid answers", "zu wenige gültige Antworten"),
-  table: t("Show as table", "Als Tabelle anzeigen"),
-  group: t("Group", "Gruppe"),
-  measure: t("Measure", "Kennzahl"),
   methodHead: t("How the values are produced", "So entstehen die Werte"),
   method: [
     t(
@@ -94,8 +63,6 @@ const TXT = {
   ],
   groupsHead: t("Which categories belong to which group", "Welche Kategorien zu welcher Gruppe gehören"),
   privacy: t("More on data protection", "Mehr zum Datenschutz"),
-  own: t("Your value", "Ihr Wert"),
-  ownGroup: t("your group", "Ihre Gruppe"),
   ownNote: t(
     "Your values from your self-assessment in this browser are marked as a dot. Calculated and shown only here, nothing is transmitted.",
     "Ihre Werte aus Ihrem Self-Assessment in diesem Browser sind als Punkt markiert. Nur hier berechnet und angezeigt, nichts wird übertragen."
@@ -111,17 +78,9 @@ const TXT = {
   codeOpen: t("Sign in with a result code", "Mit einem Ergebnis-Code anmelden"),
   codeActive: t("Signed in with result code {c}.", "Angemeldet mit Ergebnis-Code {c}."),
   codeLogout: t("Sign out", "Abmelden"),
-  ownLegend: t("Dot = your value.", "Punkt = Ihr Wert."),
-  ownMatrix: t("Coloured dot = your position, colour = your continuity.", "Farbiger Punkt = Ihre Position, Farbe = Ihre Kontinuität."),
-  pos: {
-    low: t("your value: lower quarter", "Ihr Wert: unteres Viertel"),
-    mid: t("your value: middle half", "Ihr Wert: mittlere Hälfte"),
-    high: t("your value: upper quarter", "Ihr Wert: oberes Viertel"),
-  } as Record<Position, T>,
 };
 
 const SOURCE: Record<DimKey, keyof typeof LABEL_LISTS> = { branche: "industry", groesse: "size", funktion: "fn", sitz: "hq" };
-const CONT_COLOR = "#6cc2b5";
 
 function initialLang(): Lang {
   return readLS<string | null>(LS.lang, null) === "en" ? "en" : "de";
@@ -165,17 +124,11 @@ function saveCode(c: string | null) {
 
 const Dashboard = () => {
   const [lang, setLang] = useState<Lang>(initialLang);
-  const [dim, setDim] = useState<DimKey | "all">("all");
   const p = (v: T) => (lang === "en" ? v.en : v.de);
   const fill = (s: string, vals: Record<string, string | number>) =>
     Object.entries(vals).reduce((acc, [k, v]) => acc.replace("{" + k + "}", String(v)), s);
-  const bis = lang === "de" ? "bis" : "to";
 
   const ready = hasBenchmark();
-  const dimPublished = (d: DimKey) => {
-    const def = DIMENSIONS.find((x) => x.key === d)!;
-    return def.groups.every((g) => !!BENCHMARK.groups[groupId(d, g.key)]);
-  };
 
   // Nur lokal: /dashboard?sim zeigt eine echte Teilnahme als eigene Werte. Die Daten
   // kommen vom Dev-Server aus ~/Vergleichswerte/simulation.json (siehe vite.config.ts);
@@ -229,69 +182,10 @@ const Dashboard = () => {
   const openForm = () => { focusNext.current = "form"; setCodeOpen(true); };
   const mine = own?.scores ?? null;
 
-  // Zeilen fuer die gewaehlte Ansicht: "Alle" oder die zwei Gruppen eines Merkmals.
-  // isOwn: die Zeile, gegen die der eigene Wert eingeordnet wird ("Alle" bzw.
-  // die eigene Gruppe im gewaehlten Merkmal).
-  const rows: { id: string; label: string; tag?: string; block: GroupBlock; isOwn: boolean }[] = (() => {
-    if (!ready) return [];
-    if (dim === "all" || !dimPublished(dim)) return [{ id: ALL, label: p(TXT.all), block: BENCHMARK.groups[ALL], isOwn: true }];
-    const def = DIMENSIONS.find((x) => x.key === dim)!;
-    return def.groups.map((g, i) => ({
-      id: groupId(dim, g.key), label: p(g.label), tag: i === 0 ? "A" : "B", block: BENCHMARK.groups[groupId(dim, g.key)],
-      isOwn: own?.groups[dim] === g.key,
-    }));
-  })();
-
-  const posLine = (pos: Position | null) =>
-    pos ? (
-      <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.7)", margin: "2px 0 0" }}>
-        {p(TXT.pos[pos])}
-      </p>
-    ) : null;
-
-
-  const bandDescribe = (label: string, q: Quant | null, f: (v: number) => string, ownValue: number | null = null) => [
-    ...(ownValue !== null ? [`${p(TXT.own)}: ${f(ownValue)}`] : []),
-    label,
-    ...(q ? [`${p(TXT.median)}: ${f(q.p50)}`, `${p(TXT.band)}: ${f(q.p25)} ${bis} ${f(q.p75)}`] : []),
-  ];
-
-  const rowHead = (r: (typeof rows)[number]) => (
-    <div style={{ display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap", marginBottom: "2px" }}>
-      {r.tag && (
-        <span style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "11px", fontWeight: 600, color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.25)", borderRadius: "4px", padding: "0 5px" }}>
-          {r.tag}
-        </span>
-      )}
-      <span style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.8)" }}>{r.label}</span>
-      {mine && r.tag && r.isOwn && (
-        <span style={{ fontFamily: "Inter, sans-serif", fontSize: "11.5px", color: "#a8bcff" }}>{p(TXT.ownGroup)}</span>
-      )}
-    </div>
-  );
-
-  // Gruppen der aktuellen Ansicht mit Groesse, einmal oben statt in jeder Zeile.
-  const groupLegend = (
-    <div style={{ display: "flex", gap: "8px 22px", flexWrap: "wrap", alignItems: "baseline", margin: "-8px 0 22px", fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.55)" }}>
-      {rows.map((r) => (
-        <span key={r.id}>
-          {r.tag ? <strong style={{ fontWeight: 600, color: "rgba(255,255,255,0.75)" }}>{r.tag} </strong> : null}
-          {r.label}
-        </span>
-      ))}
-    </div>
-  );
-
-  const card: React.CSSProperties = {
-    background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "16px", padding: "22px 24px",
-  };
-  const h2: React.CSSProperties = { fontFamily: "'Space Grotesk', sans-serif", fontWeight: 500, fontSize: "18px", color: "white", margin: "0 0 4px" };
+  const { card, h2, lead } = panelStyles;
   const codeLinkBtn: React.CSSProperties = {
     fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "#8ba4ff", background: "none", border: "none", padding: 0, cursor: "pointer",
   };
-  const lead: React.CSSProperties = { fontFamily: "Inter, sans-serif", fontSize: "13px", lineHeight: 1.6, color: "rgba(255,255,255,0.5)", margin: "0 0 18px" };
-
-  const quadShares = dim === "all" || !rows[0]?.tag ? BENCHMARK.groups[ALL]?.quad : undefined;
 
   return (
     <div style={{ minHeight: "100vh", background: "hsl(228 45% 4%)" }}>
@@ -398,164 +292,7 @@ const Dashboard = () => {
           </div>
         ) : (
           <>
-            {/* Filter: genau ein Merkmal */}
-            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "22px" }}>
-              <span style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.55)" }}>{p(TXT.filter)}:</span>
-              {(["all", ...DIMENSIONS.map((d) => d.key)] as (DimKey | "all")[]).map((k) => {
-                const ok = k === "all" || dimPublished(k);
-                const active = ok && dim === k;
-                const label = k === "all" ? p(TXT.allTab) : p(DIMENSIONS.find((d) => d.key === k)!.label);
-                return (
-                  <button key={k} type="button" disabled={!ok} aria-pressed={active} onClick={() => setDim(k)}
-                    title={ok ? undefined : p(TXT.notYet)}
-                    style={{
-                      fontFamily: "Inter, sans-serif", fontSize: "13px", padding: "6px 13px", borderRadius: "999px",
-                      border: `1px solid ${active ? "rgba(139,164,255,0.7)" : "rgba(255,255,255,0.14)"}`,
-                      background: active ? "rgba(75,110,255,0.16)" : "transparent",
-                      color: ok ? (active ? "#fff" : "rgba(255,255,255,0.75)") : "rgba(255,255,255,0.32)",
-                      cursor: ok ? "pointer" : "not-allowed",
-                    }}>
-                    {label}{ok ? "" : ` · ${p(TXT.notYet)}`}
-                  </button>
-                );
-              })}
-            </div>
-            {groupLegend}
-
-            {/* Vier Faehigkeiten */}
-            <div style={{ ...card, marginBottom: "20px" }}>
-              <h2 style={h2}>{p(TXT.capHead)}</h2>
-              <p style={lead}>{p(TXT.capLead)}{mine ? " " + p(TXT.ownLegend) : ""}</p>
-              <div className="grid grid-cols-1 md:grid-cols-2" style={{ gap: "26px 36px" }}>
-                {CAPACITIES.map((c) => (
-                  <div key={c.key}>
-                    <div style={{ display: "flex", alignItems: "baseline", gap: "10px", flexWrap: "wrap", marginBottom: "8px" }}>
-                      <span style={{ display: "inline-block", width: "9px", height: "9px", borderRadius: "50%", background: c.color }} />
-                      <span style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "15px", color: "rgba(255,255,255,0.9)" }}>
-                        {lang === "en" ? c.label.en : c.label.de}
-                      </span>
-                    </div>
-                    {rows.map((r, i) => {
-                      const q = r.block.cap[c.key];
-                      const ownValue = mine ? mine.cap[c.key] : null;
-                      return (
-                        <div key={r.id} style={{ marginBottom: "8px" }}>
-                          {rowHead(r)}
-                          {q ? (
-                            <>
-                              <ComparisonBand min={1} max={7} ticks={[1, 2, 3, 4, 5, 6, 7]} q={q} own={ownValue} color={c.color}
-                                scale={i === rows.length - 1 ? ["1", "7"] : undefined}
-                                label={lang === "en" ? c.label.en : c.label.de}
-                                describe={bandDescribe(r.label, q, (v) => fmtNum(v, lang), ownValue)} />
-                              {r.isOwn && posLine(positionOf(ownValue, q, capStepOf(r.block)))}
-                            </>
-                          ) : (
-                            <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.55)", margin: "4px 0 6px", fontStyle: "italic" }}>
-                              {p(TXT.noValue)}
-                            </p>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Matrix */}
-            <div style={{ ...card, marginBottom: "20px" }}>
-              <h2 style={h2}>{p(TXT.matrixHead)}</h2>
-              <p style={lead}>{p(TXT.matrixLead)}{quadShares ? " " + p(TXT.shares) : ""}</p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8" style={{ alignItems: "center" }}>
-                <div style={{ display: "flex", justifyContent: "center" }}>
-                  <SovereigntyMatrix
-                    ftc={mine?.ftc ?? null} cto={mine?.cto ?? null} cont={mine?.cont ?? null} lang={lang} emptyHint={false}
-                    quadShares={quadShares}
-                    compare={rows.filter((r) => r.block.ftc && r.block.cto).map((r) => ({ ftc: r.block.ftc!, cto: r.block.cto!, tag: r.tag }))} />
-                </div>
-                <div>
-                  {mine?.ftc != null && mine?.cto != null && (
-                    <div style={{ marginBottom: "14px", fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.85)" }}>
-                      {p(TXT.own)}: Reconfiguration Discretion {fmtPct(mine.ftc)} · Operational Control {fmtPct(mine.cto)}
-                      <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.55)", marginTop: "2px" }}>{p(TXT.ownMatrix)}</div>
-                    </div>
-                  )}
-                  {rows.map((r) => (
-                    <div key={r.id} style={{ marginBottom: "12px" }}>
-                      {rowHead(r)}
-                      <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.6)", margin: 0 }}>
-                        {r.block.ftc && r.block.cto
-                          ? `Reconfiguration Discretion ${fmtPct(r.block.ftc.p50)} · Operational Control ${fmtPct(r.block.cto.p50)} (${p(TXT.median)})`
-                          : p(TXT.noValue)}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Kontinuitaet */}
-            <div style={{ ...card, marginBottom: "20px" }}>
-              <h2 style={h2}>{p(TXT.contHead)}</h2>
-              <p style={lead}>{p(TXT.contLead)}</p>
-              {rows.map((r, i) => (
-                <div key={r.id} style={{ marginBottom: "10px", maxWidth: "640px" }}>
-                  {rowHead(r)}
-                  {r.block.cont ? (
-                    <>
-                      <ComparisonBand min={0} max={1} ticks={[0, 0.25, 0.5, 0.75, 1]} q={r.block.cont} own={mine?.cont ?? null} color={CONT_COLOR}
-                        scale={i === rows.length - 1 ? ["0 %", "100 %"] : undefined}
-                        label={p(TXT.contHead)}
-                        describe={bandDescribe(r.label, r.block.cont, fmtPct, mine?.cont ?? null)} />
-                      {r.isOwn && posLine(positionOf(mine?.cont ?? null, r.block.cont, CTX_STEP))}
-                    </>
-                  ) : (
-                    <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.55)", margin: "4px 0 6px", fontStyle: "italic" }}>
-                      {p(TXT.noValue)}
-                    </p>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {/* Tabelle fuer Screenreader und zum Nachlesen */}
-            <details style={{ ...card, marginBottom: "20px" }}>
-              <summary style={{ fontFamily: "Inter, sans-serif", fontSize: "13.5px", color: "rgba(255,255,255,0.8)", cursor: "pointer" }}>
-                {p(TXT.table)}
-              </summary>
-              <div style={{ overflowX: "auto", marginTop: "14px" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.75)" }}>
-                  <thead>
-                    <tr>
-                      {[p(TXT.group), p(TXT.measure), ...(mine ? [p(TXT.own)] : []), "p25", p(TXT.median), "p75"].map((h) => (
-                        <th key={h} style={{ textAlign: "left", padding: "6px 10px", borderBottom: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.55)", fontWeight: 500 }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.flatMap((r) => [
-                      ...CAPACITIES.map((c) => ({ r, name: lang === "en" ? c.label.en : c.label.de, q: r.block.cap[c.key], ownValue: mine?.cap[c.key] ?? null, f: (v: number) => fmtNum(v, lang) })),
-                      { r, name: "Reconfiguration Discretion", q: r.block.ftc, ownValue: mine?.ftc ?? null, f: fmtPct },
-                      { r, name: "Operational Control", q: r.block.cto, ownValue: mine?.cto ?? null, f: fmtPct },
-                      { r, name: p(TXT.contHead), q: r.block.cont, ownValue: mine?.cont ?? null, f: fmtPct },
-                    ]).map(({ r, name, q, ownValue, f }) => (
-                      <tr key={r.id + name}>
-                        <td style={{ padding: "5px 10px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>{r.label}</td>
-                        <td style={{ padding: "5px 10px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>{name}</td>
-                        {mine && (
-                          <td style={{ padding: "5px 10px", borderBottom: "1px solid rgba(255,255,255,0.05)", color: "#fff" }}>
-                            {ownValue === null ? "–" : f(ownValue)}
-                          </td>
-                        )}
-                        {(q ? [q.p25, q.p50, q.p75] : [null, null, null]).map((v, i) => (
-                          <td key={i} style={{ padding: "5px 10px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>{v === null ? "–" : f(v)}</td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </details>
+            <ComparisonView lang={lang} own={own} showTable />
           </>
         )}
 
