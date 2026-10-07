@@ -12,6 +12,7 @@ type T = { en: string; de: string };
 const AXIS = "rgba(190,210,230,0.30)";
 const LABEL = "rgba(214,230,245,0.55)";
 const OWN = "#9b8cf0";
+const AVG_ONLY: T = { en: "Your average", de: "Ihr Durchschnitt" };
 
 export type TraCompare = { tra: Quant; avg: Quant; tag?: string };
 
@@ -90,6 +91,18 @@ export default function TransparencyMatrix({
       </text>
       <text x={P - 8} y={H - P + 4} textAnchor="end" fontFamily="'Geist','Inter',sans-serif" fontSize="11" fill={LABEL}>1</text>
       <text x={P - 8} y={P + 4} textAnchor="end" fontFamily="'Geist','Inter',sans-serif" fontSize="11" fill={LABEL}>7</text>
+
+      {/* Aeltere Ergebnis-Codes ohne Transparenz: eigener Durchschnitt als Linie */}
+      {tra === null && avg !== null && (
+        <>
+          <line x1={P} y1={y(avg)} x2={W - P} y2={y(avg)} stroke={OWN} strokeWidth="2" strokeDasharray="6 4" />
+          <text x={P + 8} y={y(avg) - 8} textAnchor="start"
+            fontFamily="'Space Grotesk', sans-serif" fontSize="12.5" fontWeight="600" fill="#fff"
+            stroke="#070a15" strokeWidth="4" strokeLinejoin="round" paintOrder="stroke">
+            {p(AVG_ONLY)} {fmtAvg(avg, lang)}
+          </text>
+        </>
+      )}
 
       {has && (
         <>

@@ -316,8 +316,8 @@ export const ITEMS: Item[] = [
   {
     "id": "O2-5",
     "construct": "O2",
-    "en": "We know in detail how a change on this provider's side would work its way through our own systems for this function.",
-    "de": "Wir wissen im Detail, wie sich eine Änderung auf Seiten dieses Anbieters durch unsere eigenen Systeme für diese Funktion hindurch auswirken würde.",
+    "en": "We know exactly how a change at this provider would affect our own systems for this function.",
+    "de": "Wir wissen genau, wie sich eine Änderung bei diesem Anbieter auf unsere eigenen Systeme für diese Funktion auswirken würde.",
     "selected": true,
     "type": "likert",
     "scale": 7
