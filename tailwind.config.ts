@@ -2,7 +2,14 @@ import type { Config } from "tailwindcss";
 
 export default {
   darkMode: ["class"],
+  // hover:-Klassen nur auf Geraeten mit echtem Hover (kein Haengenbleiben nach Tap)
+  future: {
+    hoverOnlyWhenSupported: true,
+  },
   content: ["./pages/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
+  // fx-Klassen (index.css, @layer components) immer ausliefern, auch wenn sie nur
+  // dynamisch zusammengesetzt werden.
+  safelist: [{ pattern: /^fx-/ }],
   prefix: "",
   theme: {
     container: {
@@ -84,6 +91,10 @@ export default {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
+      },
+      transitionTimingFunction: {
+        "fx-out": "var(--ease-out)",
+        "fx-in-out": "var(--ease-in-out)",
       },
     },
   },

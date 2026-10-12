@@ -1,0 +1,20 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "createdAt": "2026-10-12T16:45:43.947Z",
+        "reason": "Claude: bestehende Hausschrift der Live-Seite seit vor dieser Session (index.css @fontsource-Importe); Schriftwechsel waere ein Redesign ausserhalb des Effekt-Auftrags"
+      },
+      {
+        "rule": "overused-font",
+        "value": "space grotesk",
+        "createdAt": "2026-10-12T16:45:44.077Z",
+        "reason": "Claude: bestehende Titelschrift der Live-Seite seit vor dieser Session; Schriftwechsel waere ein Redesign ausserhalb des Effekt-Auftrags"
+      }
+    ]
+  }
+}

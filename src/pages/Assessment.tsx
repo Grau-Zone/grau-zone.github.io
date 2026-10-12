@@ -20,9 +20,13 @@ import { MISSING, INSTRUMENT_VERSION, type Item, type Lang } from "../data/instr
 import { ACTIVE, constructScores, quadrantKey, scoreRespondent, type QuadKey } from "../data/scoring";
 import { encodeResult, decodeResult, formatCode, type DecodedResult } from "../data/resultCode";
 import ResultCodeForm from "../components/ResultCodeForm";
-import ComparisonView from "../components/ComparisonView";
+import ComparisonView, { QuadrantReveal } from "../components/ComparisonView";
 import { LS, readLS } from "../data/storageKeys";
 import { SovereigntyMatrix, QUAD_VIEW } from "../components/ResultVisuals";
+import { RESULT_VIEW, useRevealOnce } from "../components/ResultVisuals";
+import { BREATHE_S, CSS_EASE_IN_OUT, CSS_EASE_OUT, DecodeText, LineReveal, LockOn, PauseToggle, Ping, Reveal, ScanDivider, usePauseOffscreen, useReducedMotionSafe, withAlpha } from "../components/fx";
+import { ResultFxStyles, playSteps, useSvgUid } from "../components/resultfx";
+import type { CSSProperties, ReactNode, RefObject } from "react";
 import { BENCHMARK, hasBenchmark, fmtAsOf, fmtPct, isSmall } from "../data/benchmark";
 import { ALL, groupsOf } from "../data/benchmarkGroups";
 import { UI, CONTEXT_GROUPS, FUNCTIONS, FUNCTION_OTHER, FIRM_SIZE, INDUSTRY, HQ, labelOf, anchorsFor, YES_NO, pick } from "../data/surveyUi";
@@ -922,6 +926,10 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
   const resultCode = useMemo(() => (fc && code ? code : encodeResult(scoreRespondent(answers), intake)), [answers, intake, fc, code]);
   const codeRef = useRef<HTMLSpanElement>(null);
   const [copied, setCopied] = useState(false);
+  // Nur Deko: Ping am Kopier-Symbol, Leuchtstreifen ueber dem Code, Randblitz der Box.
+  const [copyPing, setCopyPing] = useState(0);
+  const sweepRef = useRef<HTMLSpanElement>(null);
+  const boxFlashRef = useRef<HTMLSpanElement>(null);
   const copyCode = () => {
     // Ohne Zwischenablage (z. B. in fremden iframes) den Code wenigstens markieren.
     const select = () => {
@@ -935,6 +943,7 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
     try {
       navigator.clipboard.writeText(resultCode).then(() => {
         setCopied(true);
+        setCopyPing((n) => n + 1);
         setTimeout(() => setCopied(false), 2000);
       }, select);
     } catch { select(); }
@@ -962,6 +971,69 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
     });
   }, [consent, responseId]);
 
+  // Effekte (nur Darstellung): Glanz ueber dem CTA einmal 1.2 s nach dem Titel,
+  // umlaufendes Kantenlicht der Abschluss-Karte pausiert ausserhalb des Viewports
+  // und mit dem Pause-Knopf (fx-loop unter usePauseOffscreen).
+  // Sanfte Stufe (Reduktion): das Licht steht in Ruhelage und atmet nur per opacity.
+  const reduced = useReducedMotionSafe();
+  const [ctaSheen, setCtaSheen] = useState(false);
+  useEffect(() => {
+    const id = window.setTimeout(() => setCtaSheen(true), 1200);
+    return () => window.clearTimeout(id);
+  }, []);
+  const ctaCardRef = useRef<HTMLElement>(null);
+  usePauseOffscreen(ctaCardRef);
+
+  // Kopierbestaetigung (nur nach echtem Erfolg der Zwischenablage, copied):
+  // ein Leuchtstreifen faehrt per clip-path ueber den Code, der Rand der Box
+  // blitzt einmal auf. Beides endet unsichtbar; der Code bleibt unberuehrt.
+  const copyAnimsRef = useRef<Animation[]>([]);
+  const reducedRef = useRef(reduced);
+  reducedRef.current = reduced;
+  useEffect(() => {
+    if (!copied) return;
+    copyAnimsRef.current.forEach((a) => a.cancel());
+    copyAnimsRef.current = playSteps([
+      {
+        el: sweepRef.current, duration: 650, easing: CSS_EASE_OUT,
+        keyframes: [
+          { clipPath: "inset(0 100% 0 0)", opacity: 1 },
+          { clipPath: "inset(0 0% 0 0)", opacity: 1, offset: 0.4 },
+          { clipPath: "inset(0 0% 0 0)", opacity: 0 },
+        ],
+      },
+      {
+        el: boxFlashRef.current, duration: 700, easing: CSS_EASE_OUT,
+        keyframes: [{ opacity: 0 }, { opacity: 1, offset: 0.2 }, { opacity: 0 }],
+      },
+    ], reducedRef.current);
+  }, [copied]);
+  useEffect(() => () => {
+    copyAnimsRef.current.forEach((a) => a.cancel());
+    copyAnimsRef.current = [];
+  }, []);
+
+  // Abschluss-Karte: Checkliste blendet gestaffelt ein, die Haekchen zeichnen sich.
+  const ctaListRef = useRef<HTMLDivElement>(null);
+  useRevealOnce(ctaListRef, (host) => [
+    ...Array.from(host.querySelectorAll("[data-cta-item]")).map((el, i) => ({
+      el, duration: 320, delay: 200 + i * 60,
+      keyframes: [{ opacity: 0, transform: "translateY(6px)" }, { opacity: 1, transform: "translateY(0px)" }],
+    })),
+    ...Array.from(host.querySelectorAll<SVGPathElement>("[data-cta-item] svg path")).flatMap((el, i) => {
+      const len = typeof el.getTotalLength === "function" ? el.getTotalLength() : 0;
+      return len > 0
+        ? [{
+            el, duration: 300, delay: 340 + i * 60, easing: CSS_EASE_OUT,
+            keyframes: [
+              { strokeDasharray: `${len}`, strokeDashoffset: len },
+              { strokeDasharray: `${len}`, strokeDashoffset: 0 },
+            ],
+          }]
+        : [];
+    }),
+  ]);
+
   // "Wo Sie stehen": Quadrant in Worten, rechts neben der Matrix.
   const quadrantSide = (
     <div style={{ marginBottom: "18px" }}>
@@ -970,12 +1042,7 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
           <div style={{ fontFamily: "Share Tech Mono, monospace", fontSize: "11px", letterSpacing: "0.16em", color: "rgba(255,255,255,0.5)", textTransform: "uppercase", marginBottom: "9px" }}>
             {tr("quadHead")}
           </div>
-          <div style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "clamp(19px,2.2vw,25px)", fontWeight: 400, color: quadrant.color, letterSpacing: "-0.015em", marginBottom: "12px" }}>
-            {pick(quadrant.name, lang)}
-          </div>
-          <p style={{ fontFamily: "Inter, sans-serif", fontSize: "14.5px", lineHeight: 1.65, color: "rgba(255,255,255,0.68)", maxWidth: "46ch", margin: 0 }}>
-            {pick(quadrant.desc, lang)}
-          </p>
+          <QuadrantReveal name={pick(quadrant.name, lang)} desc={pick(quadrant.desc, lang)} color={quadrant.color} />
         </>
       ) : (
         <p style={{ fontFamily: "Inter, sans-serif", fontSize: "14px", color: "rgba(255,255,255,0.5)", fontStyle: "italic", margin: 0 }}>
@@ -998,15 +1065,9 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
   // Hebel darf laut Vorgabe nirgends stehen. Mit Vergleich steht er ueber den Filtern
   // (Entscheid Adrian 06.10.2026), sonst unter den vier Werten.
   const ctaButton = (
-    <a href={ctaMail} style={{
-      fontFamily: "Space Grotesk, sans-serif", fontSize: "17px", fontWeight: 600,
-      padding: "17px 34px", borderRadius: "11px",
-      border: "1px solid rgba(139,164,255,0.34)", background: "rgba(75,110,255,0.08)",
-      color: "#a8bcff", textDecoration: "none",
-      display: "flex", alignItems: "center", gap: "9px",
-    }}>
-      <Mail size={18} /> {tr("ctaButton")} <ArrowRight size={18} />
-    </a>
+    <CtaLink href={ctaMail} sheen={ctaSheen}>
+      <Mail size={18} /> {tr("ctaButton")} <span className="fx-arrow" style={{ display: "inline-flex" }}><ArrowRight size={18} /></span>
+    </CtaLink>
   );
   const afterValues = (
     <>
@@ -1042,30 +1103,50 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
   };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
+    <>
+    {/* Pause-Knopf fuer alle Endlosanimationen (WCAG 2.2.2): erster Tab-Stopp der
+        Ergebnisseite, unsichtbar bis zum Tastaturfokus. Bewusst ausserhalb des
+        einblendenden Wrappers (dessen transform wuerde position: fixed brechen).
+        Ansicht aus einem Ergebnis-Code: der Fokus springt nach der Anmeldung auf
+        #result-title, der Knopf steht deshalb direkt dahinter (siehe unten), damit
+        die erste Tab-Taste ihn erreicht. */}
+    {!fc && <PauseToggle lang={lang} />}
+    <ResultFxStyles />
+    <motion.div initial={reduced ? { opacity: 0 } : { opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
       className="max-w-[1100px] mx-auto px-6 lg:px-10">
-      <div style={{ textAlign: "center", marginBottom: "26px" }}>
-        <div style={{ fontSize: "11px", fontFamily: "Space Grotesk, sans-serif", fontWeight: 600, letterSpacing: "0.2em", color: "rgba(139,164,255,0.6)", textTransform: "uppercase", marginBottom: "10px" }}>
-          {tr("resultEyebrow")}
+      {/* Kopf: ohne isolation/z-index/transform/filter, damit der PauseToggle (bei fc
+          hier drin) mit position: fixed ueber der Navbar liegt. */}
+      <div style={{ textAlign: "center", position: "relative", paddingTop: "28px", paddingBottom: "18px", marginBottom: "8px" }}>
+        <ResultHorizon />
+        <div style={{ position: "relative", fontSize: "11px", fontFamily: "Space Grotesk, sans-serif", fontWeight: 600, letterSpacing: "0.2em", color: "rgba(139,164,255,0.6)", textTransform: "uppercase", marginBottom: "10px" }}>
+          <DecodeText text={tr("resultEyebrow")} duration={500} trigger="mount" />
         </div>
-        <h2 id="result-title" tabIndex={-1} style={{ fontFamily: "Space Grotesk, sans-serif", fontWeight: 300, fontSize: "clamp(24px,4vw,38px)", color: "white", letterSpacing: "-0.025em", outline: "none" }}>
-          {tr("resultTitle")}
-        </h2>
+        <LineReveal as="h2" id="result-title" tabIndex={-1} trigger="mount" lines={[tr("resultTitle")]}
+          style={{ position: "relative", fontFamily: "Space Grotesk, sans-serif", fontWeight: 300, fontSize: "clamp(24px,4vw,38px)", color: "white", letterSpacing: "-0.025em", outline: "none" }} />
+        {/* Nach dem Einblenden (0.5 s) ist der Wrapper ohne transform, position: fixed greift. */}
+        {fc && <PauseToggle lang={lang} />}
         {(functionLabel(intake, lang) || intake.provider) && (
-          <p style={{ fontFamily: "Inter, sans-serif", fontSize: "13.5px", color: "rgba(255,255,255,0.5)", marginTop: "8px" }}>
-            {functionLabel(intake, lang)} {intake.provider ? tr("atProvider") + " " + intake.provider : ""}
-          </p>
+          <Reveal {...RESULT_VIEW} y={6} delay={0.32} duration={0.45} style={{ position: "relative" }}>
+            <p style={{ position: "relative", fontFamily: "Inter, sans-serif", fontSize: "13.5px", color: "rgba(255,255,255,0.5)", marginTop: "8px" }}>
+              {functionLabel(intake, lang)} {intake.provider ? tr("atProvider") + " " + intake.provider : ""}
+            </p>
+          </Reveal>
         )}
+        <ScanDivider position="bottom" alpha={0.22} />
       </div>
 
       <div style={{ marginBottom: "34px" }}>
         {showCmp ? (
           <>
-            <div style={{ display: "flex", justifyContent: "center", margin: "0 0 26px" }}>{ctaButton}</div>
-            <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", lineHeight: 1.6, color: "rgba(255,255,255,0.55)", margin: "0 0 14px" }}>
-              {fmt(tr("cmpStand"), { d: fmtAsOf(BENCHMARK.asOf, lang) })}.{" "}
-              {tr("cmpOwnNotIncl")}{isSmall(BENCHMARK.groups[ALL]) ? " " + tr("cmpSmall") : ""}
-            </p>
+            <Reveal {...RESULT_VIEW} y={8} delay={0.45} duration={0.5}>
+              <div style={{ display: "flex", justifyContent: "center", margin: "0 0 26px" }}>{ctaButton}</div>
+            </Reveal>
+            <Reveal {...RESULT_VIEW} y={0} delay={0.58} duration={0.4}>
+              <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", lineHeight: 1.6, color: "rgba(255,255,255,0.55)", margin: "0 0 14px" }}>
+                {fmt(tr("cmpStand"), { d: fmtAsOf(BENCHMARK.asOf, lang) })}.{" "}
+                {tr("cmpOwnNotIncl")}{isSmall(BENCHMARK.groups[ALL]) ? " " + tr("cmpSmall") : ""}
+              </p>
+            </Reveal>
             {/* Vergleich: Filter, Faehigkeiten, Matrix, Kontinuitaet */}
             <ComparisonView
               lang={lang} own={ownValues} matrixSide={quadrantSide} ownNumbers headingLevel="h3"
@@ -1078,9 +1159,12 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
           </>
         ) : (
           <>
-            <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.5)", margin: "0 0 20px" }}>
-              {tr("cmpNone")}
-            </p>
+            <Reveal {...RESULT_VIEW} y={0} delay={0.45}>
+              <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.5)", margin: "0 0 20px" }}>
+                {tr("cmpNone")}
+              </p>
+            </Reveal>
+            <CapBarsReveal>
             {caps.map(({ cap, score }) => (
               <div key={cap.key} style={{ marginBottom: "22px" }}>
                 <div style={{ display: "flex", alignItems: "baseline", gap: "10px", flexWrap: "wrap", marginBottom: "7px" }}>
@@ -1096,9 +1180,19 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
                     </span>
                   )}
                 </div>
-                <div style={{ height: "10px", borderRadius: "5px", background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+                <div style={{ position: "relative", height: "10px", borderRadius: "5px", background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+                  {/* Teilstriche bei k/7, gleiche Abbildung wie die Balkenbreite (mean/7) */}
+                  {[1, 2, 3, 4, 5, 6].map((k) => (
+                    <span key={k} aria-hidden="true" style={{ position: "absolute", left: `${(k / 7) * 100}%`, top: 0, bottom: 0, width: 1, background: "rgba(255,255,255,0.09)" }} />
+                  ))}
                   {score.mean !== null && (
-                    <div style={{ height: "100%", width: (score.mean / 7) * 100 + "%", borderRadius: "5px", background: cap.color }} />
+                    <div data-cap-bar="" style={{
+                      position: "relative", height: "100%", width: (score.mean / 7) * 100 + "%", borderRadius: "5px",
+                      background: `linear-gradient(90deg, ${withAlpha(cap.color, 0.6)}, ${cap.color})`,
+                      boxShadow: "inset 0 1px 0 rgba(255,255,255,0.25)", transformOrigin: "left center",
+                    }}>
+                      <span aria-hidden="true" style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: 2, background: "rgba(255,255,255,0.85)" }} />
+                    </div>
                   )}
                 </div>
                 <div style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", color: score.mean === null ? "#d9a559" : "rgba(255,255,255,0.7)", marginTop: "6px" }}>
@@ -1108,6 +1202,7 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
                 </div>
               </div>
             ))}
+            </CapBarsReveal>
           </>
         )}
 
@@ -1117,7 +1212,7 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
       {/* Matrix ohne Vergleichswerte (mit Werten steckt sie in ComparisonView):
           Freedom to Change gegen Control to Operate, Punktfarbe = Kontinuitaet */}
       {!showCmp && (
-      <div style={{ marginBottom: "34px" }}>
+      <Reveal {...RESULT_VIEW} y={16} style={{ marginBottom: "34px" }}>
         {section(tr("matrixHead"), tr("matrixLead"))}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8" style={{ alignItems: "center" }}>
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
@@ -1140,11 +1235,11 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
             )}
           </div>
         </div>
-      </div>
+      </Reveal>
       )}
 
       {!fc && (
-      <div style={{ marginBottom: "34px", padding: "22px 24px", borderRadius: "12px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
+      <Reveal {...RESULT_VIEW} y={16} style={{ marginBottom: "34px", padding: "22px 24px", borderRadius: "12px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)" }}>
         <h3 style={{ fontFamily: "Space Grotesk, sans-serif", fontWeight: 500, fontSize: "17px", color: "white", marginBottom: "5px" }}>
           {tr("contextTitle")}
         </h3>
@@ -1172,14 +1267,20 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
             </div>
           );
         })}
-      </div>
+      </Reveal>
       )}
 
-      <div style={{
+      <Reveal {...RESULT_VIEW} ref={ctaCardRef} y={16} className="fx-ring-host" style={{
         marginBottom: "30px", padding: "30px 32px", borderRadius: "14px",
         background: "linear-gradient(135deg, rgba(75,110,255,0.10), rgba(108,194,181,0.06))",
         border: "1px solid rgba(139,164,255,0.28)",
       }}>
+        {reduced ? (
+          <span className="fx-ring-sweep fx-ring-sweep--always fx-loop fx-soft fx-deco" aria-hidden="true"
+            style={{ animation: `fx-breathe ${BREATHE_S}s ease-in-out infinite` }} />
+        ) : (
+          <span className="fx-ring-sweep fx-ring-sweep--always fx-loop fx-deco" aria-hidden="true" />
+        )}
         <div style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "11px", fontWeight: 600, letterSpacing: "0.2em", color: "rgba(139,164,255,0.75)", textTransform: "uppercase", marginBottom: "12px" }}>
           {tr("ctaEyebrow")}
         </div>
@@ -1189,12 +1290,14 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
         <p style={{ fontFamily: "Inter, sans-serif", fontSize: "14.5px", lineHeight: 1.65, color: "rgba(255,255,255,0.65)", maxWidth: "78ch", marginTop: "12px" }}>
           {tr("ctaLead")}
         </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: "12px", marginTop: "22px" }}>
+        <div ref={ctaListRef} className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: "12px", marginTop: "22px" }}>
           {UI.ctaItems.map((it) => (
-            <div key={it.en} style={{
+            <div key={it.en} data-cta-item="" style={{
               display: "flex", gap: "9px", alignItems: "flex-start",
               padding: "13px 15px", borderRadius: "10px",
-              background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
+              background: "linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.025))",
+              border: "1px solid rgba(255,255,255,0.08)",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06)",
             }}>
               <Check size={15} style={{ color: "#6cc2b5", marginTop: "2px", flexShrink: 0 }} />
               <span style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", lineHeight: 1.45, color: "rgba(255,255,255,0.78)" }}>
@@ -1204,42 +1307,59 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
           ))}
         </div>
         <div style={{ display: "flex", marginTop: "24px" }}>
-          <a href={ctaMail} style={{
+          <a href={ctaMail} className="fx-press fx-sheen-host rfx-cta rfx-cta--strong" style={{
             fontFamily: "Space Grotesk, sans-serif", fontSize: "17px", fontWeight: 600,
-            padding: "17px 34px", borderRadius: "11px", border: "1px solid rgba(139,164,255,0.45)",
-            background: "rgba(75,110,255,0.18)", color: "#a8bcff", textDecoration: "none",
+            padding: "17px 34px", borderRadius: "11px", color: "#a8bcff", textDecoration: "none",
             display: "flex", alignItems: "center", gap: "9px",
           }}>
-            <Mail size={18} /> {tr("ctaButton")} <ArrowRight size={18} />
+            <Mail size={18} /> {tr("ctaButton")} <span className="fx-arrow" style={{ display: "inline-flex" }}><ArrowRight size={18} /></span>
+            <span className="fx-sheen" aria-hidden="true" />
           </a>
         </div>
-      </div>
+      </Reveal>
 
       {/* Ergebnis-Code: die eigenen Werte zum Mitnehmen auf ein anderes Geraet */}
-      <div style={{
+      <Reveal {...RESULT_VIEW} y={16} style={{
         maxWidth: "580px", margin: "0 auto 22px", padding: "18px 20px", borderRadius: "12px", textAlign: "center",
-        border: "1px solid rgba(139,164,255,0.28)", background: "rgba(75,110,255,0.07)",
+        border: "1px solid rgba(139,164,255,0.28)",
+        background: "linear-gradient(180deg, rgba(14,19,40,0.92), rgba(8,11,24,0.92))",
+        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 20px 40px -24px rgba(75,110,255,0.45)",
+        position: "relative",
       }}>
+        {/* Deko: feine Scanzeilen und ein Randblitz nach dem Kopieren */}
+        <span aria-hidden="true" className="fx-deco" style={{
+          position: "absolute", inset: 0, borderRadius: "inherit", pointerEvents: "none",
+          background: "repeating-linear-gradient(180deg, rgba(255,255,255,0.025) 0 1px, transparent 1px 3px)",
+        }} />
+        <span ref={boxFlashRef} aria-hidden="true" className="fx-deco" style={{
+          position: "absolute", inset: -1, borderRadius: "inherit", border: "1px solid rgba(108,194,181,0.85)",
+          boxShadow: "0 0 18px rgba(108,194,181,0.22)", opacity: 0, pointerEvents: "none",
+        }} />
         <div style={{ fontFamily: "Share Tech Mono, monospace", fontSize: "11px", letterSpacing: "0.16em", color: "rgba(139,164,255,0.8)", textTransform: "uppercase", marginBottom: "8px" }}>
           {tr("codeTitle")}
         </div>
         <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
-          <span ref={codeRef} style={{ fontFamily: "Share Tech Mono, monospace", fontSize: "22px", letterSpacing: "0.1em", color: "#fff", userSelect: "all", overflowWrap: "anywhere" }}>
+          <CodeScan sweepRef={sweepRef}>
+          <span ref={codeRef} style={{ fontFamily: "Share Tech Mono, monospace", fontSize: "22px", letterSpacing: "0.1em", color: "#fff", userSelect: "all", overflowWrap: "anywhere", textShadow: "0 0 14px rgba(139,164,255,0.45)" }}>
             {resultCode}
           </span>
-          <button type="button" onClick={copyCode} style={{
+          </CodeScan>
+          <button type="button" onClick={copyCode} className="fx-press" style={{
             fontFamily: "Inter, sans-serif", fontSize: "12.5px", padding: "6px 12px", borderRadius: "8px", cursor: "pointer",
-            border: "1px solid rgba(139,164,255,0.45)", background: "rgba(75,110,255,0.14)", color: "#c3d0ff",
+            border: copied ? "1px solid rgba(108,194,181,0.6)" : "1px solid rgba(139,164,255,0.45)",
+            background: copied ? "rgba(108,194,181,0.14)" : "rgba(75,110,255,0.14)",
+            color: copied ? "#bfe9e2" : "#c3d0ff",
+            transition: "border-color 200ms ease, background-color 200ms ease, color 200ms ease, transform 160ms cubic-bezier(0.23,1,0.32,1)",
             display: "inline-flex", alignItems: "center", gap: "6px",
           }}>
-            {copied ? <Check size={14} /> : <Copy size={14} />}
+            <CopyIconSwap copied={copied} ping={copyPing} />
             <span aria-live="polite">{copied ? tr("codeCopied") : tr("codeCopy")}</span>
           </button>
         </div>
         <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", lineHeight: 1.6, color: "rgba(255,255,255,0.55)", margin: "10px 0 0" }}>
           {tr("codeText")}
         </p>
-      </div>
+      </Reveal>
 
       {submitState !== "off" && !fc && (
         <div style={{ textAlign: "center", marginBottom: "16px", fontFamily: "Inter, sans-serif", fontSize: "12.5px", lineHeight: 1.6 }}>
@@ -1278,5 +1398,206 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
         </Link>
       </div>
     </motion.div>
+    </>
   );
+}
+
+// ─── Ergebnis: Hilfskomponenten fuer die Effekte ─────────────────────────────
+// Alle zeigen ohne Animation (Druck, versteckter Tab) den Endzustand; bei Reduktion
+// laeuft die sanfte Variante (clip-path, opacity, Zeichnen, keine Bewegung).
+// Mechanik in components/ResultVisuals.tsx (useRevealOnce).
+// QuadrantReveal (Feldname in Worten) liegt in components/ComparisonView.tsx.
+
+// Kopf-Horizont: ein flacher Radar-Horizont hinter dem Titel (nur Deko, aria-hidden).
+// Beim ersten Sichtkontakt zeichnen sich die Ringe und Peilachsen, ein Strahl
+// streicht einmal von links nach rechts und erlischt. Keine Schleife. Sanfte Stufe:
+// der Strahl steht auf 12 Uhr und blendet nur ein und aus (softSteps entfernt die
+// Drehung). Ohne Animation stehen Ringe und Achsen, der Strahl ist unsichtbar.
+const HZ_RX = [60, 120, 180, 240, 300];
+const HZ_AXES = [0, 30, 60, 90, 120, 150, 180].map((deg) => {
+  const a = (deg * Math.PI) / 180;
+  return { x: Math.round(300 * Math.cos(a) * 100) / 100, y: Math.round(-120 * Math.sin(a) * 100) / 100 };
+});
+
+function ResultHorizon() {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const uid = useSvgUid();
+  const clipId = `${uid}hzc`;
+  const gradId = `${uid}hzg`;
+  useRevealOnce(svgRef, (h) => [
+    ...Array.from(h.querySelectorAll('[data-hz="arc"]')).map((el, i) => ({
+      el, duration: 900, delay: i * 90, easing: CSS_EASE_IN_OUT,
+      keyframes: [{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }],
+    })),
+    ...Array.from(h.querySelectorAll('[data-hz="axis"]')).map((el, i) => ({
+      el, duration: 500, delay: 700 + i * 40,
+      keyframes: [{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }],
+    })),
+    {
+      el: h.querySelector('[data-hz="beam-rot"]'), duration: 1600, delay: 500, easing: CSS_EASE_IN_OUT,
+      keyframes: [{ transform: "rotate(-90deg)" }, { transform: "rotate(90deg)" }],
+    },
+    {
+      el: h.querySelector('[data-hz="beam-op"]'), duration: 1600, delay: 500, easing: "linear",
+      keyframes: [{ opacity: 0 }, { opacity: 1, offset: 0.12 }, { opacity: 1, offset: 0.82 }, { opacity: 0 }],
+    },
+  ]);
+  return (
+    <svg ref={svgRef} aria-hidden="true" className="fx-deco" viewBox="0 0 600 122" preserveAspectRatio="xMidYMax meet"
+      style={{
+        position: "absolute", left: 0, right: 0, margin: "0 auto", bottom: "18px",
+        width: "min(600px,100%)", height: "auto", pointerEvents: "none", opacity: 0.9,
+        maskImage: "linear-gradient(to top, transparent 0%, #000 35%)",
+        WebkitMaskImage: "linear-gradient(to top, transparent 0%, #000 35%)",
+      }}>
+      <defs>
+        <clipPath id={clipId}>
+          <rect x={-300} y={-121} width={600} height={121} />
+        </clipPath>
+        <linearGradient id={gradId} gradientUnits="userSpaceOnUse" x1={0} y1={0} x2={-190} y2={0}>
+          <stop offset="0" stopColor="rgba(139,164,255,0.16)" />
+          <stop offset="1" stopColor="rgba(139,164,255,0)" />
+        </linearGradient>
+      </defs>
+      <g transform="translate(300 121)">
+        {HZ_RX.map((rx) => (
+          <path key={rx} data-hz="arc" d={`M ${-rx} 0 A ${rx} ${0.4 * rx} 0 0 1 ${rx} 0`} pathLength={1}
+            strokeDasharray="1 1" strokeDashoffset={0} stroke="rgba(139,164,255,0.11)" strokeWidth={1}
+            vectorEffect="non-scaling-stroke" fill="none" />
+        ))}
+        {HZ_AXES.map((p, i) => (
+          <path key={i} data-hz="axis" d={`M 0 0 L ${p.x} ${p.y}`} pathLength={1}
+            strokeDasharray="1 1" strokeDashoffset={0} stroke="rgba(139,164,255,0.06)" strokeWidth={1}
+            vectorEffect="non-scaling-stroke" fill="none" />
+        ))}
+        <g clipPath={`url(#${clipId})`}>
+          <g transform="scale(1 0.4)">
+            <g data-hz="beam-rot" style={{ transformBox: "view-box", transformOrigin: "0px 0px", transform: "rotate(0deg)" }}>
+              <g data-hz="beam-op" style={{ opacity: 0 }}>
+                <path d="M0 0 L0 -300 A300 300 0 0 0 -192.8 -229.8 Z" fill={`url(#${gradId})`} />
+                <line x1={0} y1={0} x2={0} y2={-300} stroke="rgba(139,164,255,0.45)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+              </g>
+            </g>
+          </g>
+        </g>
+      </g>
+    </svg>
+  );
+}
+
+// Oberer CTA (derselbe Mailto-Link wie im Abschluss-Kasten). Kantenlicht nur bei
+// Hover/Fokus (ohne --always). Bleibt der Tastaturfokus auf dem Link und scrollt man
+// weiter, haelt usePauseOffscreen die Drehung ausserhalb des Viewports an
+// (data-paused am Link, Strahl als .fx-loop); der Pause-Knopf wirkt ebenso.
+function CtaLink({ href, sheen, children }: { href: string; sheen: boolean; children: ReactNode }) {
+  const ref = useRef<HTMLAnchorElement>(null);
+  usePauseOffscreen(ref);
+  return (
+    <a ref={ref} href={href} className={"fx-press fx-sheen-host fx-ring-host rfx-cta" + (sheen ? " fx-sheen-once" : "")} style={{
+      fontFamily: "Space Grotesk, sans-serif", fontSize: "17px", fontWeight: 600,
+      padding: "17px 34px", borderRadius: "11px",
+      color: "#a8bcff", textDecoration: "none",
+      display: "flex", alignItems: "center", gap: "9px",
+    }}>
+      {children}
+      <span className="fx-sheen" aria-hidden="true" />
+      <span className="fx-ring-sweep fx-loop" aria-hidden="true" />
+    </a>
+  );
+}
+
+// Ergebnis-Code als Fernschreiber: Steht der Code auf einer Zeile, wird er
+// zeichenweise aufgedeckt (steps), der Balken springt mit; bricht er um (Handy),
+// laeuft ein weicher Wipe. Der Code steht immer vollstaendig im DOM (markier- und
+// kopierbar), kein Scramble. Danach greifen Ortungsecken zu (LockOn).
+// sweepRef: Leuchtstreifen fuer die Kopierbestaetigung (gespielt in Result).
+function CodeScan({ children, sweepRef }: { children: ReactNode; sweepRef?: RefObject<HTMLSpanElement> }) {
+  const hostRef = useRef<HTMLSpanElement>(null);
+  const clipRef = useRef<HTMLSpanElement>(null);
+  const layerRef = useRef<HTMLSpanElement>(null);
+  const barRef = useRef<HTMLSpanElement>(null);
+  const played = useRevealOnce(hostRef, (_host, reduced) => {
+    const txt = clipRef.current?.firstElementChild;
+    const n = txt?.textContent?.length ?? 0;
+    const oneLine = !!txt && txt.getClientRects().length === 1;
+    const typed = oneLine && n > 0;
+    const easing = typed ? `steps(${n}, end)` : CSS_EASE_IN_OUT;
+    const duration = typed ? n * 28 : 700;
+    return [
+      {
+        el: clipRef.current, duration, easing,
+        keyframes: [{ clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0% 0 0)" }],
+      },
+      // Sanfte Stufe: nur der Wipe, ohne fahrenden Balken.
+      ...(reduced ? [] : [{
+        el: layerRef.current, duration, easing,
+        keyframes: [{ transform: "translateX(-100%)" }, { transform: "translateX(0%)" }],
+      }, {
+        el: barRef.current, duration: duration + 120, easing: "linear",
+        keyframes: [{ opacity: 1 }, { opacity: 1, offset: 0.85 }, { opacity: 0 }],
+      }]),
+    ];
+  }, { amount: 0.4 });
+  const [locked, setLocked] = useState(false);
+  useEffect(() => {
+    if (!played) return;
+    const id = window.setTimeout(() => setLocked(true), 800);
+    return () => window.clearTimeout(id);
+  }, [played]);
+  return (
+    <LockOn color="#8BA4FF" play={locked} size={8} inset={-9} className="max-w-full">
+      <span ref={hostRef} style={{ position: "relative", display: "block", maxWidth: "100%" }}>
+        <span ref={clipRef} style={{ display: "block" }}>{children}</span>
+        <span ref={layerRef} aria-hidden="true" className="fx-deco" style={{ position: "absolute", inset: 0, pointerEvents: "none" }}>
+          <span ref={barRef} style={{
+            position: "absolute", top: "-3px", bottom: "-3px", right: 0, width: "1px",
+            background: "#8BA4FF", boxShadow: "0 0 8px 1px rgba(139,164,255,0.75)", opacity: 0,
+          }} />
+        </span>
+        <span ref={sweepRef} aria-hidden="true" className="fx-deco" style={{
+          position: "absolute", inset: "-3px -6px", borderRadius: 6, background: "rgba(108,194,181,0.16)",
+          opacity: 0, pointerEvents: "none",
+        }} />
+      </span>
+    </LockOn>
+  );
+}
+
+// Kopieren-Button: Copy und Check liegen uebereinander und tauschen per Crossfade
+// (mit leichtem Zoom, ohne Blur). ping: Ortungsring nach erfolgreichem Kopieren.
+function CopyIconSwap({ copied, ping = 0 }: { copied: boolean; ping?: number }) {
+  const reduced = useReducedMotionSafe();
+  const layer = (show: boolean): CSSProperties => {
+    const ms = show ? 200 : 150;
+    return {
+      gridArea: "1 / 1", display: "inline-flex",
+      opacity: show ? 1 : 0,
+      transform: show || reduced ? "scale(1)" : "scale(0.8)",
+      transition: reduced
+        ? `opacity ${ms}ms ${CSS_EASE_OUT}`
+        : `opacity ${ms}ms ${CSS_EASE_OUT}, transform ${ms}ms ${CSS_EASE_OUT}`,
+    };
+  };
+  return (
+    <span aria-hidden="true" style={{ position: "relative", display: "inline-grid", placeItems: "center" }}>
+      <span style={layer(!copied)}><Copy size={14} /></span>
+      <span style={layer(copied)}><Check size={14} /></span>
+      <Ping play={ping} color="#6cc2b5" size={14} count={1} scale={2.6} duration={0.7} />
+    </span>
+  );
+}
+
+// Faehigkeitsbalken ohne Vergleichswerte: Breite steht fest im DOM, beim
+// Sichtkontakt waechst jeder Balken einmal per scaleX von links (sanfte Stufe:
+// clip-path-Wipe von links, ohne Bewegung).
+function CapBarsReveal({ children }: { children: ReactNode }) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  useRevealOnce(hostRef, (host, reduced) =>
+    Array.from(host.querySelectorAll("[data-cap-bar]")).map((el, i) => ({
+      el, duration: 900, delay: i * 120, easing: CSS_EASE_OUT,
+      keyframes: reduced
+        ? [{ clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0% 0 0)" }]
+        : [{ transform: "scaleX(0)" }, { transform: "scaleX(1)" }],
+    })), { amount: 0.4 });
+  return <div ref={hostRef}>{children}</div>;
 }

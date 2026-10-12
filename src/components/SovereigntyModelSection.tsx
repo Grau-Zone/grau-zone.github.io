@@ -1,9 +1,41 @@
 // Homepage-Sektion für das Refined Digital Sovereignty Model (v13).
 // Steht zwischen "Die drei Dimensionen" und "Digitale Souveränität von Organisationen".
+import { useCallback, useState } from "react";
 import { motion } from "framer-motion";
+import { EASE_IN_OUT, ScanDivider, SectionHeader } from "@/components/fx";
 import SovereigntyModelDiagram from "./SovereigntyModelDiagram";
 
+/**
+ * Farbwort im Lead: Sobald das Diagramm steht, deckt sich eine farbige Kopie
+ * (aria-hidden) von links nach rechts über dem Wort auf. Der clip-path-Wipe
+ * bewegt nichts und läuft deshalb auch bei reduzierter Bewegung (sanfte Stufe).
+ * Die Kopie kommt aus ::after (content: attr(data-text)), damit sie weder in
+ * textContent/innerText noch in Auswahl oder Seitensuche auftaucht.
+ */
+function ColorWord({ color, play, children }: { color: string; play: boolean; children: string }) {
+  return (
+    <span className="relative">
+      {children}
+      <motion.span
+        aria-hidden="true"
+        data-text={children}
+        // Vertikal zentriert statt top-0: Die Inline-Box des Worts ist so hoch wie die
+        // Schrift, die Kopie so hoch wie die Zeile (leading-relaxed). Erst zentriert
+        // liegen beide Grundlinien genau aufeinander.
+        className="pointer-events-none absolute left-0 top-1/2 -translate-y-1/2 select-none whitespace-nowrap after:content-[attr(data-text)]"
+        style={{ color }}
+        initial={{ clipPath: "inset(0% 100% 0% 0%)" }}
+        animate={play ? { clipPath: "inset(0% 0% 0% 0%)" } : undefined}
+        transition={{ duration: 0.5, ease: EASE_IN_OUT }}
+      />
+    </span>
+  );
+}
+
 const SovereigntyModelSection = () => {
+  const [built, setBuilt] = useState(false);
+  const onBuilt = useCallback(() => setBuilt(true), []);
+
   return (
     <section
       id="modell"
@@ -11,50 +43,29 @@ const SovereigntyModelSection = () => {
       style={{ background: "transparent" }}
     >
       {/* Divider top */}
-      <div
-        className="absolute top-0 left-0 right-0 h-px"
-        style={{ background: "linear-gradient(90deg, transparent, rgba(139,164,255,0.15), transparent)" }}
-      />
+      <ScanDivider position="top" />
 
       <div className="max-w-[1600px] mx-auto px-6 lg:px-10 relative z-10">
         {/* Section header */}
-        <div className="mb-16 lg:mb-20 max-w-3xl">
-          <motion.span
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            className="inline-block text-xs font-semibold tracking-[0.2em] uppercase mb-4"
-            style={{ color: "rgba(139,164,255,0.6)", fontFamily: "'Space Grotesk', sans-serif" }}
-          >
-            Das Modell dahinter
-          </motion.span>
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.1 }}
-            className="text-4xl lg:text-5xl font-semibold text-white mb-4"
-            style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.025em" }}
-          >
-            Zwei Wege, unter Abhängigkeit<br />handlungsfähig zu bleiben.
-          </motion.h2>
-          <motion.p
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.15 }}
-            className="text-base leading-relaxed"
-            style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Inter', sans-serif" }}
-          >
-            Sieben Response Capabilities wirken über zwei Mechanismen auf zwei getrennte
-            Souveränitäts-Dimensionen. Erst beide Dimensionen zusammen tragen die Kontinuität, wenn
-            der Anbieter ausfällt oder einseitig handelt. Blau ist der Exit-Pfad (Abhängigkeit
-            reduzieren), grün der Kontroll-Pfad (Kontrolle behalten).
-          </motion.p>
-        </div>
+        <SectionHeader
+          eyebrow="Das Modell dahinter"
+          lines={["Zwei Wege, unter Abhängigkeit", "handlungsfähig zu bleiben."]}
+          className="mb-16 lg:mb-20 max-w-3xl"
+          leadClassName="text-base leading-relaxed"
+          lead={
+            <>
+              Sieben Response Capabilities wirken über zwei Mechanismen auf zwei getrennte
+              Souveränitäts-Dimensionen. Erst beide Dimensionen zusammen tragen die Kontinuität, wenn
+              der Anbieter ausfällt oder einseitig handelt.{" "}
+              <ColorWord color="#6b9bd8" play={built}>Blau</ColorWord> ist der Exit-Pfad (Abhängigkeit
+              reduzieren),{" "}
+              <ColorWord color="#5cbf8a" play={built}>grün</ColorWord> der Kontroll-Pfad (Kontrolle behalten).
+            </>
+          }
+        />
 
         {/* Diagramm */}
-        <SovereigntyModelDiagram />
+        <SovereigntyModelDiagram onBuilt={onBuilt} />
       </div>
     </section>
   );

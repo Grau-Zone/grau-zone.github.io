@@ -1,4 +1,14 @@
-import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+import { motion, useMotionValue, useTransform, type MotionValue, type Transition } from "framer-motion";
+import {
+  CSS_EASE_IN_OUT,
+  EASE_IN_OUT,
+  SvgPing,
+  useAnimatedColor,
+  useIsMobile,
+  useRadarMorph,
+  useReducedMotionSafe,
+} from "@/components/fx";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 const CX = 220;
@@ -185,13 +195,6 @@ function polar(angleDeg: number, r: number) {
   return { x: CX + r * Math.cos(rad), y: CY + r * Math.sin(rad) };
 }
 
-function buildPolygon(values: number[]): string {
-  return AXES.map((ax, i) => {
-    const { x, y } = polar(ax.angle, MAX_R * values[i]);
-    return `${x},${y}`;
-  }).join(" ");
-}
-
 function buildRingPath(fraction: number): string {
   const pts = AXES.map((ax) => {
     const { x, y } = polar(ax.angle, MAX_R * fraction);
@@ -206,6 +209,148 @@ function anchorFor(angle: number): "start" | "middle" | "end" {
   return "middle"; // top / bottom
 }
 
+/** Projektion Achse/Wert -> SVG-Koordinate (stabil, fuer useRadarMorph). */
+const projectAxis = (i: number, v: number) => polar(AXES[i].angle, MAX_R * v);
+
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+
+/** Gummiband-Feder fuer den Polygon-Morph. */
+const MORPH_SPRING: Transition = { type: "spring", duration: 0.7, bounce: 0.25 };
+
+const PING_DELAY_MS = 700;
+/** Pings hoechstens 1 pro 6 s je Achse. */
+const PING_MIN_GAP_MS = 6000;
+
+// badge offsets, outward (toward the label); flips inward only near 100% so it never overlaps the outer label
+function badgeOffset(angle: number, target: number) {
+  const nearMax = target > 0.85;
+  const bx = angle === 0 ? (nearMax ? -12 : 12) : angle === 180 ? (nearMax ? 12 : -12) : 0;
+  const by = angle === -90 ? (nearMax ? 16 : -12) : angle === 90 ? (nearMax ? -8 : 18) : 4;
+  const anchor: "start" | "middle" | "end" =
+    angle === 0 ? (nearMax ? "end" : "start") : angle === 180 ? (nearMax ? "start" : "end") : "middle";
+  return { bx, by, anchor };
+}
+
+/** Dimmen per opacity (auch in der sanften Stufe erlaubt). */
+const OPACITY_FADE = `opacity 200ms ${CSS_EASE_IN_OUT}`;
+
+// ─── % badge (eigene Komponente, damit die Hooks je Achse stabil bleiben) ──────
+interface BadgeProps {
+  index: number;
+  angle: number;
+  target: number;
+  value: MotionValue<number>;
+  vx: MotionValue<number>;
+  vy: MotionValue<number>;
+  fill: MotionValue<string>;
+  dim: boolean;
+}
+
+const RadarBadge = ({ index, angle, target, value, vx, vy, fill, dim }: BadgeProps) => {
+  const { bx, by, anchor: badgeAnchor } = badgeOffset(angle, target);
+
+  const bxMv = useMotionValue(bx);
+  const byMv = useMotionValue(by);
+  useEffect(() => {
+    bxMv.set(bx);
+    byMv.set(by);
+  }, [bx, by, bxMv, byMv]);
+
+  const x = useTransform([vx, bxMv], ([a, b]: number[]) => a + b);
+  const y = useTransform([vy, byMv], ([a, b]: number[]) => a + b);
+  // Die Anzeige bleibt zwischen Start- und Zielwert: Das Polygon darf federn,
+  // das Badge zeigt nie einen Zwischenwert jenseits davon (kein 82 % / 18 %).
+  // Start = bisher angezeigter Wert, also auch bei Schnellklicks mit Restschwung.
+  const range = useRef({ lo: target, hi: target });
+  useLayoutEffect(() => {
+    const { lo, hi } = range.current;
+    const from = clamp(value.get(), lo, hi);
+    range.current = { lo: Math.min(from, target), hi: Math.max(from, target) };
+  }, [target, value]);
+
+  // framer schreibt textContent direkt, ohne React-Render; der Endtext ist exakt
+  const label = useTransform(value, (v) => {
+    const { lo, hi } = range.current;
+    return `${Math.round(clamp(v, lo, hi) * 100)}%`;
+  });
+
+  return (
+    <motion.text
+      data-cr-badge={index}
+      data-dx={bx}
+      data-dy={by}
+      x={x}
+      y={y}
+      textAnchor={badgeAnchor}
+      fill={fill}
+      fontSize="14"
+      fontFamily="Space Grotesk, sans-serif"
+      fontWeight="600"
+      style={{ opacity: dim ? 0.6 : 1, transition: OPACITY_FADE }}
+    >
+      {label}
+    </motion.text>
+  );
+};
+
+// ─── Alte Ecke (nur sanfte Stufe): Punkt + Badge der vorigen Form ──────────────
+// Zeigt die von useRadarMorph festgehaltene alte Ecke statisch; die ganze alte
+// Ebene blendet ueber morph.fadeOut aus.
+interface PrevVertexProps {
+  angle: number;
+  vx: MotionValue<number>;
+  vy: MotionValue<number>;
+  fill: MotionValue<string>;
+  dim: boolean;
+  glowFilter?: string;
+}
+
+/** Achsen liegen auf 0/90/180/270 Grad: Abstand zum Zentrum = |dx| + |dy|. */
+const readVertex = (vx: MotionValue<number>, vy: MotionValue<number>) => {
+  const x = vx.get();
+  const y = vy.get();
+  return { x, y, v: (Math.abs(x - CX) + Math.abs(y - CY)) / MAX_R };
+};
+
+const PrevVertex = ({ angle, vx, vy, fill, dim, glowFilter }: PrevVertexProps) => {
+  const [pt, setPt] = useState(() => readVertex(vx, vy));
+  useEffect(() => {
+    const sync = () => setPt(readVertex(vx, vy));
+    const ux = vx.on("change", sync);
+    const uy = vy.on("change", sync);
+    sync();
+    return () => {
+      ux();
+      uy();
+    };
+  }, [vx, vy]);
+  const { bx, by, anchor } = badgeOffset(angle, pt.v);
+  return (
+    <>
+      <motion.circle
+        cx={pt.x}
+        cy={pt.y}
+        r={5}
+        fill={fill}
+        filter={glowFilter}
+        style={{ opacity: dim ? 0.45 : 1, scale: dim ? 0.7 : 1, transformBox: "fill-box", transformOrigin: "center" }}
+      />
+      <motion.text
+        x={pt.x + bx}
+        y={pt.y + by}
+        textAnchor={anchor}
+        fill={fill}
+        fontSize="14"
+        fontFamily="Space Grotesk, sans-serif"
+        fontWeight="600"
+        style={{ opacity: dim ? 0.6 : 1 }}
+      >
+        {`${Math.round(pt.v * 100)}%`}
+      </motion.text>
+    </>
+  );
+};
+
 // ─── Main Component ────────────────────────────────────────────────────────────
 interface CapacityRadarProps {
   values?: number[];        // 4 values 0..1, defaults to baseline
@@ -217,36 +362,150 @@ interface CapacityRadarProps {
 
 const CapacityRadar = ({ values, color = "#4B6EFF", activeIndex, size = 440 }: CapacityRadarProps) => {
   const vals = values ?? BASELINE_VALUES;
-  const points = buildPolygon(vals);
-  const uid = `cr-${activeIndex ?? "x"}`;
+  // SVG-defs-IDs haengen nie vom Zustand ab
+  const uid = `cr-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const hasHighlight = typeof activeIndex === "number";
+  const reduced = useReducedMotionSafe();
+  const mobile = useIsMobile();
+
+  const morph = useRadarMorph(vals, projectAxis, { transition: MORPH_SPRING });
+  const colorMv = useAnimatedColor(color);
+
+  // ── Druck: Endzustand sofort ──
+  // Eine Feder kommt vor dem Druck-Snapshot nicht an, und framer schreibt
+  // SVG-Attribute erst im naechsten Frame. Deshalb springen die Werte aufs Ziel,
+  // und Polygon, Punkte und Badges werden synchron gesetzt. Kommt das Ziel erst
+  // waehrend des Drucks (OrgSovereignty schaltet per beforeprint scharf), zieht
+  // der Layout-Effekt im selben Commit nach.
+  const svgRef = useRef<SVGSVGElement | null>(null);
+  const printingRef = useRef(false);
+  const snapRef = useRef<() => void>(() => {});
+  useLayoutEffect(() => {
+    const snap = () => {
+      morph.values.forEach((mv, i) => mv.jump(vals[i] ?? 0));
+      // Sanfte Stufe: ein laufender Crossfade endet sofort auf der neuen Form
+      morph.fade.jump(1);
+      const svg = svgRef.current;
+      if (!svg) return;
+      svg.querySelectorAll<SVGElement>("[data-cr-fade]").forEach((el) => (el.style.opacity = "1"));
+      svg.querySelectorAll<SVGElement>("[data-cr-prev]").forEach((el) => {
+        el.style.opacity = "0";
+        el.style.visibility = "hidden";
+      });
+      const pts = morph.points.get();
+      svg.querySelectorAll("[data-cr-poly]").forEach((el) => el.setAttribute("points", pts));
+      svg.querySelectorAll<SVGElement>("[data-cr-dot]").forEach((el) => {
+        const i = Number(el.dataset.crDot);
+        const dim = hasHighlight && i !== activeIndex;
+        el.setAttribute("cx", String(morph.vertices[i].x.get()));
+        el.setAttribute("cy", String(morph.vertices[i].y.get()));
+        el.style.opacity = dim ? "0.45" : "1";
+        el.style.transform = `scale(${dim ? 0.7 : 1})`;
+      });
+      svg.querySelectorAll<SVGElement>("[data-cr-badge]").forEach((el) => {
+        const i = Number(el.dataset.crBadge);
+        const dim = hasHighlight && i !== activeIndex;
+        el.setAttribute("x", String(morph.vertices[i].x.get() + Number(el.dataset.dx)));
+        el.setAttribute("y", String(morph.vertices[i].y.get() + Number(el.dataset.dy)));
+        el.style.opacity = dim ? "0.6" : "1";
+        el.textContent = `${Math.round((vals[i] ?? 0) * 100)}%`;
+      });
+    };
+    snapRef.current = snap;
+    if (printingRef.current) snap();
+  });
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const before = () => {
+      printingRef.current = true;
+      snapRef.current();
+    };
+    const after = () => {
+      printingRef.current = false;
+    };
+    window.addEventListener("beforeprint", before);
+    window.addEventListener("afterprint", after);
+    return () => {
+      window.removeEventListener("beforeprint", before);
+      window.removeEventListener("afterprint", after);
+    };
+  }, []);
+
+  // ── Sanfte Stufe: aktive Achse der vorigen Form (fuer die alte Crossfade-Ebene) ──
+  // Wird beim Rendern nachgefuehrt, idempotent (StrictMode rendert doppelt).
+  const valsKey = vals.join("|");
+  const fadeFrom = useRef({ key: valsKey, active: activeIndex, prevActive: activeIndex });
+  if (fadeFrom.current.key !== valsKey) {
+    fadeFrom.current = { key: valsKey, active: activeIndex, prevActive: fadeFrom.current.active };
+  } else {
+    fadeFrom.current.active = activeIndex;
+  }
+  const prevActiveIdx = fadeFrom.current.prevActive;
+  // Ausgeblendete alte Ebene ganz verbergen (keine doppelten Werte fuer Suche/Kopieren)
+  const prevVisibility = useTransform(morph.fadeOut, (v) => (v > 0.001 ? "visible" : "hidden"));
+
+  // ── Ortung am Wertpunkt: nur bei Wechsel von activeIndex, nie beim ersten Rendern ──
+  // Die Mittellinie (Achsen-Laser) ist auf Wunsch von Adrian entfernt (12.10.2026).
+  // Der Ping kommt aus SvgPing (bei reduzierter Bewegung hoechstens scale 1.15).
+  const prevActive = useRef(activeIndex);
+  const [pingShot, setPingShot] = useState<{ n: number; axis: number }>({ n: 0, axis: 0 });
+  const lastPing = useRef<number[]>([]);
+
+  useEffect(() => {
+    const prev = prevActive.current;
+    prevActive.current = activeIndex;
+    if (prev === activeIndex || typeof activeIndex !== "number") return;
+
+    const axis = activeIndex;
+    const t = window.setTimeout(() => {
+      const now = performance.now();
+      const last = lastPing.current[axis];
+      if (last !== undefined && now - last < PING_MIN_GAP_MS) return;
+      lastPing.current[axis] = now;
+      setPingShot((p) => ({ n: p.n + 1, axis }));
+    }, PING_DELAY_MS);
+
+    return () => {
+      window.clearTimeout(t);
+    };
+  }, [activeIndex]);
+
+  const pingPt = polar(AXES[pingShot.axis].angle, MAX_R * (vals[pingShot.axis] ?? 0));
+  const glow = !mobile;
+  const glowFilter = glow ? `url(#glow-${uid})` : undefined;
+  const dotGlowFilter = glow ? `url(#dot-glow-${uid})` : undefined;
 
   return (
     <div style={{ width: size, maxWidth: "100%", aspectRatio: `${VB_W} / ${VB_H}` }}>
       <svg
+        ref={svgRef}
         viewBox={`${VB_X} ${VB_Y} ${VB_W} ${VB_H}`}
         width="100%"
         height="100%"
         style={{ overflow: "visible" }}
       >
         <defs>
-          <filter id={`glow-${uid}`} x="-40%" y="-40%" width="180%" height="180%">
-            <feGaussianBlur stdDeviation="5" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
-          <filter id={`dot-glow-${uid}`} x="-100%" y="-100%" width="300%" height="300%">
-            <feGaussianBlur stdDeviation="3" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
-          </filter>
+          {glow ? (
+            <>
+              <filter id={`glow-${uid}`} x="-40%" y="-40%" width="180%" height="180%">
+                <feGaussianBlur stdDeviation="5" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+              <filter id={`dot-glow-${uid}`} x="-100%" y="-100%" width="300%" height="300%">
+                <feGaussianBlur stdDeviation="3" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </>
+          ) : null}
           <linearGradient id={`poly-fill-${uid}`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity="0.25" />
-            <stop offset="100%" stopColor={color} stopOpacity="0.05" />
+            <motion.stop offset="0%" stopColor={colorMv} stopOpacity="0.25" />
+            <motion.stop offset="100%" stopColor={colorMv} stopOpacity="0.05" />
           </linearGradient>
         </defs>
 
@@ -278,79 +537,140 @@ const CapacityRadar = ({ values, color = "#4B6EFF", activeIndex, size = 440 }: C
           );
         })}
 
-        {/* Profile polygon */}
-        <AnimatePresence mode="wait">
+        {/* Sanfte Stufe: alte Form (Polygon, Punkte, Badges) blendet aus, die neue ein */}
+        {reduced ? (
+          <motion.g
+            data-cr-prev=""
+            aria-hidden="true"
+            pointerEvents="none"
+            style={{ opacity: morph.fadeOut, visibility: prevVisibility }}
+          >
+            {glow ? null : (
+              <motion.polygon
+                points={morph.prevPoints}
+                fill="none"
+                stroke={colorMv}
+                strokeOpacity="0.2"
+                strokeWidth="6"
+                strokeLinejoin="round"
+              />
+            )}
+            <motion.polygon
+              points={morph.prevPoints}
+              fill={`url(#poly-fill-${uid})`}
+              stroke={colorMv}
+              strokeWidth="1.5"
+              filter={glowFilter}
+            />
+            {AXES.map((ax, i) => (
+              <PrevVertex
+                key={ax.label}
+                angle={ax.angle}
+                vx={morph.prevVertices[i].x}
+                vy={morph.prevVertices[i].y}
+                fill={colorMv}
+                dim={typeof prevActiveIdx === "number" && i !== prevActiveIdx}
+                glowFilter={dotGlowFilter}
+              />
+            ))}
+          </motion.g>
+        ) : null}
+
+        <motion.g data-cr-fade="" style={{ opacity: morph.fade }}>
+          {/* Mobil: Unterlage-Strich statt feGaussianBlur */}
+          {glow ? null : (
+            <motion.polygon
+              data-cr-poly=""
+              aria-hidden="true"
+              points={morph.points}
+              fill="none"
+              stroke={colorMv}
+              strokeOpacity="0.2"
+              strokeWidth="6"
+              strokeLinejoin="round"
+            />
+          )}
+
+          {/* Profile polygon: ein einziger Knoten, morpht per MotionValue (kein Remount) */}
           <motion.polygon
-            key={`poly-${color}`}
-            points={points}
+            data-cr-poly=""
+            points={morph.points}
             fill={`url(#poly-fill-${uid})`}
-            stroke={color}
+            stroke={colorMv}
             strokeWidth="1.5"
-            filter={`url(#glow-${uid})`}
-            initial={{ opacity: 0, scale: 0.7 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-            style={{ transformOrigin: `${CX}px ${CY}px` }}
+            filter={glowFilter}
           />
-        </AnimatePresence>
+        </motion.g>
 
         {/* Axis endpoint dots + labels */}
         {AXES.map((ax, i) => {
           const labelPt = polar(ax.angle, MAX_R + 14);
-          const dotPt = polar(ax.angle, MAX_R * vals[i]);
-          const pct = Math.round(vals[i] * 100);
           const anchor = anchorFor(ax.angle);
           const dim = hasHighlight && i !== activeIndex;
-          const labelColor = dim ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.85)";
-
-          // badge offsets, outward (toward the label); flips inward only near 100% so it never overlaps the outer label
-          const nearMax = vals[i] > 0.85;
-          const bx = ax.angle === 0 ? (nearMax ? -12 : 12) : ax.angle === 180 ? (nearMax ? 12 : -12) : 0;
-          const by = ax.angle === -90 ? (nearMax ? 16 : -12) : ax.angle === 90 ? (nearMax ? -8 : 18) : 4;
-          const badgeAnchor = ax.angle === 0 ? (nearMax ? "end" : "start") : ax.angle === 180 ? (nearMax ? "start" : "end") : "middle";
+          const fade = OPACITY_FADE;
 
           return (
-            <g key={ax.label} style={{ transition: "opacity 0.3s" }}>
+            <g key={ax.label}>
               {/* Axis label */}
               <text
                 x={labelPt.x}
                 y={labelPt.y}
                 textAnchor={anchor}
                 dominantBaseline="middle"
-                fill={labelColor}
+                fill="rgba(255,255,255,0.85)"
                 fontSize="18"
                 fontFamily="Space Grotesk, sans-serif"
                 fontWeight={dim ? 500 : 600}
+                style={{ opacity: dim ? 0.7 : 1, transition: fade }}
               >
                 {ax.label}
               </text>
 
-              {/* Value dot */}
-              <circle
-                cx={dotPt.x}
-                cy={dotPt.y}
-                r={dim ? 3.5 : 5}
-                fill={color}
-                filter={`url(#dot-glow-${uid})`}
-                opacity={dim ? 0.45 : 1}
-              />
-              {/* % badge */}
-              <text
-                x={dotPt.x + bx}
-                y={dotPt.y + by}
-                textAnchor={badgeAnchor}
-                fill={color}
-                fontSize="14"
-                fontFamily="Space Grotesk, sans-serif"
-                fontWeight="600"
-                opacity={dim ? 0.6 : 1}
-              >
-                {pct}%
-              </text>
+              {/* Wertpunkt + Badge: blenden in der sanften Stufe mit der neuen Form ein */}
+              <motion.g data-cr-fade="" style={{ opacity: morph.fade }}>
+                {/* Value dot (sanfte Stufe: Groesse springt, opacity gleitet) */}
+                <motion.circle
+                  data-cr-dot={i}
+                  cx={morph.vertices[i].x}
+                  cy={morph.vertices[i].y}
+                  r={5}
+                  fill={colorMv}
+                  filter={dotGlowFilter}
+                  initial={false}
+                  animate={{ scale: dim ? 0.7 : 1, opacity: dim ? 0.45 : 1 }}
+                  transition={
+                    reduced
+                      ? { duration: 0.2, ease: EASE_IN_OUT, scale: { duration: 0 } }
+                      : { duration: 0.2, ease: EASE_IN_OUT }
+                  }
+                  style={{ transformBox: "fill-box", transformOrigin: "center" }}
+                />
+                {/* % badge */}
+                <RadarBadge
+                  index={i}
+                  angle={ax.angle}
+                  target={vals[i] ?? 0}
+                  value={morph.values[i]}
+                  vx={morph.vertices[i].x}
+                  vy={morph.vertices[i].y}
+                  fill={colorMv}
+                  dim={dim}
+                />
+              </motion.g>
             </g>
           );
         })}
+
+        {/* Ortung am Wertpunkt der aktiven Achse */}
+        <SvgPing
+          cx={pingPt.x}
+          cy={pingPt.y}
+          r={5}
+          color={color}
+          play={pingShot.n}
+          scale={3.6}
+          duration={0.7}
+        />
 
         {/* Center */}
         <circle cx={CX} cy={CY} r={3} fill="rgba(139,164,255,0.5)" />
