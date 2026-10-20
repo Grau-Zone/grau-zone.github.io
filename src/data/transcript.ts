@@ -6,7 +6,7 @@
 // dieses Protokoll ist rund 6000 Zeichen lang. Es geht deshalb ueber die
 // Zwischenablage oder als Textdatei zum Empfaenger, nicht in die URL.
 import { CONSTRUCTS, ITEMS, MISSING, type Lang } from "./instrument";
-import { CONSTRUCT_NAMES, FIRM_SIZE, INDUSTRY, HQ, labelOf, anchorsFor, pick } from "./surveyUi";
+import { CONSTRUCT_NAMES, FIRM_SIZE, INDUSTRY, HQ, STATE_ROLE, OPERATED_BY_PROVIDER, OPERATOR_TYPE, labelOf, anchorsFor, pick } from "./surveyUi";
 
 const NL = String.fromCharCode(10);
 const RULE = "-".repeat(66);
@@ -45,6 +45,12 @@ export function buildTranscript(inp: TranscriptInput): string {
   if (size) out.push(`Mitarbeiterzahl: ${size}`);
   if (ind) out.push(`Branche: ${ind}`);
   if (hq) out.push(`Hauptsitz: ${hq}`);
+  const sr = labelOf(STATE_ROLE, inp.intake.stateRole, lang);
+  const ob = labelOf(OPERATED_BY_PROVIDER, inp.intake.operatedBy, lang);
+  const ot = inp.intake.operatedBy === "yes" ? labelOf(OPERATOR_TYPE, inp.intake.operatorType, lang) : "";
+  if (sr) out.push(`Teil des Staates: ${sr}`);
+  if (ob) out.push(`Betrieb durch IT-Dienstleister: ${ob}`);
+  if (ot) out.push(`IT-Dienstleister: ${ot}`);
 
   // ── Kernzahlen ────────────────────────────────────────────────────────────
   out.push("", RULE, "ERGEBNIS", RULE);

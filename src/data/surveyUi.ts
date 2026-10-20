@@ -60,6 +60,26 @@ export const HQ: { key: string; label: T }[] = [
   { key: "other", label: t("Other", "Sonstige") },
 ];
 
+// Zusatzfragen nach Funktion und Anbieter (seit 20.10.2026, freiwillig). Hintergrund:
+// Wird eine Funktion von einem internen IT-Dienstleister betrieben (z. B. zentrale
+// Verwaltungs-IT), wirkt die Organisation ihm gegenueber fast automatisch souveraen,
+// obwohl die eigentliche Abhaengigkeit beim Anbieter dahinter liegt. Mit diesen
+// Angaben lassen sich solche Faelle in der Auswertung erkennen.
+// Staat oder privat: drei Antworten, damit Staatsunternehmen nicht raten muessen.
+export const STATE_ROLE: { key: string; label: T }[] = [
+  { key: "state",       label: t("Yes, a government body (e.g. administration, police, armed forces, judiciary)", "Ja, staatliche Stelle (z. B. Verwaltung, Polizei, Armee, Justiz)") },
+  { key: "state_owned", label: t("State-owned company (e.g. Swiss Post, SBB, cantonal bank)", "Unternehmen im Staatsbesitz (z. B. Post, SBB, Kantonalbank)") },
+  { key: "private",     label: t("No, private", "Nein, privat") },
+];
+export const OPERATED_BY_PROVIDER: { key: string; label: T }[] = [
+  { key: "yes", label: t("Yes", "Ja") },
+  { key: "no",  label: t("No", "Nein") },
+];
+export const OPERATOR_TYPE: { key: string; label: T }[] = [
+  { key: "internal", label: t("Internal (e.g. own IT subsidiary or central government IT provider)", "Intern (z. B. eigene IT-Gesellschaft oder zentraler IT-Dienstleister der Verwaltung)") },
+  { key: "external", label: t("External", "Extern") },
+];
+
 export const labelOf = (list: { key: string; label: T }[], key: string, lang: Lang) => {
   const hit = list.find((x) => x.key === key);
   return hit ? pick(hit.label, lang) : "";
@@ -296,6 +316,10 @@ export const UI = {
   firmSize: t("Number of employees", "Mitarbeiterzahl Ihres Unternehmens"),
   firmIndustry: t("Main industry category", "Branchen-Hauptkategorie"),
   firmHq: t("Company headquarters", "Hauptsitz Ihres Unternehmens"),
+  extraLead: t("Optional.", "Freiwillig."),
+  stateRoleQ: t("Is your organisation part of the state?", "Ist Ihre Organisation Teil des Staates?"),
+  operatedByQ: t("Is this function operated by an IT service provider?", "Wird diese Funktion von einem IT-Dienstleister betrieben?"),
+  operatorTypeQ: t("Is this IT service provider internal or external?", "Ist dieser IT-Dienstleister intern oder extern?"),
 
   // ─── Bloecke und Kontext ─────────────────────────────────────────────────
   multiHint: t("Several answers possible.", "Mehrere Angaben möglich."),

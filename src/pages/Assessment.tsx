@@ -29,7 +29,7 @@ import { ResultFxStyles, playSteps, useSvgUid } from "../components/resultfx";
 import type { CSSProperties, ReactNode, RefObject } from "react";
 import { BENCHMARK, hasBenchmark, fmtAsOf, fmtPct, isSmall } from "../data/benchmark";
 import { ALL, groupsOf } from "../data/benchmarkGroups";
-import { UI, CONTEXT_GROUPS, FUNCTIONS, FUNCTION_OTHER, FIRM_SIZE, INDUSTRY, HQ, labelOf, anchorsFor, YES_NO, pick } from "../data/surveyUi";
+import { UI, CONTEXT_GROUPS, FUNCTIONS, FUNCTION_OTHER, FIRM_SIZE, INDUSTRY, HQ, STATE_ROLE, OPERATED_BY_PROVIDER, OPERATOR_TYPE, labelOf, anchorsFor, YES_NO, pick } from "../data/surveyUi";
 import { CAPACITIES, CAP_ITEMS, itemsOfCapacity, scoreCapacity, pickCap, MIN_VALID, type CapacityKey } from "../data/capacityItems";
 
 // Mehrfachauswahl-Items (ATR-3) speichern eine Liste von Optionswerten.
@@ -86,8 +86,16 @@ const itemIdsOfBlock = (b: BlockDef): string[] =>
     : CONTEXT_GROUPS.flatMap((g) => ctxItemsOfGroup(g).map((i) => i.id));
 
 // Intake: gewaehlte Funktion (Schluessel) oder Freitext unter "other"
-type Intake = { fnKey: string; fnOther: string; provider: string; size: string; industry: string; hq: string };
-const EMPTY_INTAKE: Intake = { fnKey: "", fnOther: "", provider: "", size: "", industry: "", hq: "" };
+// stateRole, operatedBy, operatorType: freiwillige Zusatzfragen (seit 20.10.2026);
+// operatorType gilt nur, wenn operatedBy = "yes".
+type Intake = {
+  fnKey: string; fnOther: string; provider: string; size: string; industry: string; hq: string;
+  stateRole: string; operatedBy: string; operatorType: string;
+};
+const EMPTY_INTAKE: Intake = {
+  fnKey: "", fnOther: "", provider: "", size: "", industry: "", hq: "",
+  stateRole: "", operatedBy: "", operatorType: "",
+};
 const EMPTY_ANSWERS: Answers = {};
 
 function functionLabel(intake: Intake, lang: Lang): string {
@@ -111,7 +119,7 @@ export default function Assessment() {
     const raw = load<any>(LS.intake, EMPTY_INTAKE);
     // aelterer Stand mit freiem Funktionsfeld
     if (raw && raw.fn !== undefined && raw.fnKey === undefined) {
-      return { fnKey: raw.fn ? FUNCTION_OTHER : "", fnOther: raw.fn || "", provider: raw.provider || "" };
+      return { ...EMPTY_INTAKE, fnKey: raw.fn ? FUNCTION_OTHER : "", fnOther: raw.fn || "", provider: raw.provider || "" };
     }
     return { ...EMPTY_INTAKE, ...raw };
   });
@@ -383,7 +391,7 @@ function Intake({ lang, tr, intake, setIntake, onBack, onNext }: any) {
 
   // Kompakte Auswahlreihe; erneutes Klicken hebt die Auswahl wieder auf,
   // damit eine freiwillige Angabe auch zurueckgenommen werden kann.
-  const chips = (title: string, list: { key: string; label: any }[], field: string) => (
+  const chips = (title: string, list: { key: string; label: any }[], field: string, clearUnless?: { value: string; fields: string[] }) => (
     <div style={{ marginBottom: "16px" }}>
       <div style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.72)", marginBottom: "8px" }}>
         {title}
@@ -393,7 +401,14 @@ function Intake({ lang, tr, intake, setIntake, onBack, onNext }: any) {
           const on = intake[field] === o.key;   // nur Darstellung
           return (
             <button key={o.key}
-              onClick={() => setIntake((p: any) => ({ ...p, [field]: p[field] === o.key ? "" : o.key }))}
+              aria-pressed={on}
+              onClick={() => setIntake((p: any) => {
+                const next = p[field] === o.key ? "" : o.key;
+                const out = { ...p, [field]: next };
+                // Folgefrage nur, solange die ausloesende Antwort gilt
+                if (clearUnless && next !== clearUnless.value) clearUnless.fields.forEach((f) => { out[f] = ""; });
+                return out;
+              })}
               style={{
                 padding: "8px 13px", borderRadius: "8px", cursor: "pointer",
                 fontFamily: "Inter, sans-serif", fontSize: "13px",
@@ -525,6 +540,17 @@ function Intake({ lang, tr, intake, setIntake, onBack, onNext }: any) {
         <p style={{ fontFamily: "Inter, sans-serif", fontSize: "11.5px", lineHeight: 1.55, color: "rgba(255,255,255,0.5)", marginTop: "7px" }}>
           {tr("intakeProviderNote")}
         </p>
+      </div>
+
+      {/* ── Zusatzfragen (freiwillig): Staat oder privat, Betrieb durch
+          IT-Dienstleister und bei Ja dessen Art (intern/extern) ── */}
+      <div style={{ padding: "20px 22px 4px", borderRadius: "12px", background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.08)", marginTop: "26px" }}>
+        <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.5)", margin: "0 0 14px" }}>
+          {tr("extraLead")}
+        </p>
+        {chips(tr("stateRoleQ"), STATE_ROLE, "stateRole")}
+        {chips(tr("operatedByQ"), OPERATED_BY_PROVIDER, "operatedBy", { value: "yes", fields: ["operatorType"] })}
+        {intake.operatedBy === "yes" && chips(tr("operatorTypeQ"), OPERATOR_TYPE, "operatorType")}
       </div>
 
       <Nav tr={tr} onBack={onBack} color="#8ba4ff" nextLabel={tr("next")}
@@ -839,6 +865,14 @@ function Result({ lang: surveyLang, answers, intake, onRestart, responseId, cons
       mitarbeiterzahl: labelOf(FIRM_SIZE, intake.size, surveyLang),
       branche: labelOf(INDUSTRY, intake.industry, surveyLang),
       hauptsitz: labelOf(HQ, intake.hq, surveyLang),
+      // Zusatzfragen (seit 20.10.2026), sprachunabhaengig; "" = nicht beantwortet
+      organisation_staat: intake.stateRole === "state" ? "staatliche_stelle"
+        : intake.stateRole === "state_owned" ? "staatsunternehmen"
+        : intake.stateRole === "private" ? "privat" : "",
+      betrieb_durch_it_dienstleister: intake.operatedBy === "yes" ? "ja" : intake.operatedBy === "no" ? "nein" : "",
+      it_dienstleister: intake.operatedBy === "yes"
+        ? (intake.operatorType === "internal" ? "intern" : intake.operatorType === "external" ? "extern" : "")
+        : "",
     },
     antworten: [
       ...CAP_ITEMS.map((i) => {
