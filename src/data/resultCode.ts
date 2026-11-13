@@ -34,7 +34,8 @@ export const CODE_VERSION = 2;
 // Code. Jeder Schluessel aus surveyUi.ts muss hier vorkommen (geprueft in
 // resultCode.test.ts, dort ist auch das Format mit festen Codes abgesichert).
 export const CODE_KEYS = {
-  size: ["lt250", "250_999", "1k_5k", "5k_25k", "gte25k"],
+  // gte25k: alte Klasse (bis 12.11.2026). Mit 3 Bit ist hier jetzt Schluss (7 Werte + leer).
+  size: ["lt250", "250_999", "1k_5k", "5k_25k", "gte25k", "25k_100k", "gte100k"],
   industry: ["manufacturing", "finance", "retail", "tmt", "energy", "health", "public", "logistics", "services"],
   hq: ["eu", "ch", "uk", "na", "other"],
   fn: ["erp", "crm", "hr", "iam", "dwh", "compute", "files", "backup", "itsm", "shop", "fraud", "ai", "other"],

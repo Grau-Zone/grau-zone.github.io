@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { DIMENSIONS, groupsOf, keyFromLabel, LABEL_LISTS } from "./benchmarkGroups";
-import { FIRM_SIZE, INDUSTRY, HQ, FUNCTIONS } from "./surveyUi";
+import { FIRM_SIZE, FIRM_SIZE_LEGACY, INDUSTRY, HQ, FUNCTIONS } from "./surveyUi";
 
-const SOURCE = { branche: INDUSTRY, groesse: FIRM_SIZE, funktion: FUNCTIONS, sitz: HQ };
+const SOURCE = { branche: INDUSTRY, groesse: [...FIRM_SIZE, ...FIRM_SIZE_LEGACY], funktion: FUNCTIONS, sitz: HQ };
 
 describe("Vergleichsgruppen", () => {
   it("hat je Merkmal genau zwei Gruppen", () => {
@@ -28,6 +28,12 @@ describe("Vergleichsgruppen", () => {
     );
     expect(keyFromLabel(FIRM_SIZE, "1.000–4.999")).toBe("1k_5k");
     expect(keyFromLabel(FIRM_SIZE, "1.000-4.999")).toBe("1k_5k");
+    // alte Antworten (vor 13.11.2026) und neue Klassen
+    expect(keyFromLabel(LABEL_LISTS.size, "≥ 25.000")).toBe("gte25k");
+    expect(keyFromLabel(LABEL_LISTS.size, "≥ 25,000")).toBe("gte25k");
+    expect(keyFromLabel(LABEL_LISTS.size, "25.000–99.999")).toBe("25k_100k");
+    expect(keyFromLabel(LABEL_LISTS.size, "≥ 100.000")).toBe("gte100k");
+    expect(groupsOf({ size: "gte100k", industry: "", hq: "", fn: "" })).toEqual({ groesse: "ab1000" });
     expect(keyFromLabel(FUNCTIONS, "Eigene Lohnbuchhaltung")).toBeNull();
     expect(keyFromLabel(FUNCTIONS, "")).toBeNull();
   });

@@ -4,7 +4,7 @@
 // Gruppen schnell fuellen und keine kleinen Zellen entstehen. Gefiltert wird
 // immer nur nach einem Merkmal, nie kombiniert, und nie nach Anbieter.
 // "Andere Funktion" (Freitext) und "keine Angabe" zaehlen nur in "Alle".
-import { FIRM_SIZE, INDUSTRY, HQ, FUNCTIONS } from "./surveyUi";
+import { FIRM_SIZE, FIRM_SIZE_LEGACY, INDUSTRY, HQ, FUNCTIONS } from "./surveyUi";
 
 type T = { en: string; de: string };
 const t = (en: string, de: string): T => ({ en, de });
@@ -30,7 +30,7 @@ export const DIMENSIONS: DimDef[] = [
     label: t("Size", "Grösse"),
     groups: [
       { key: "unter1000", label: t("Under 1,000 employees", "Unter 1000 Mitarbeitende"), members: ["lt250", "250_999"] },
-      { key: "ab1000", label: t("1,000 employees or more", "Ab 1000 Mitarbeitende"), members: ["1k_5k", "5k_25k", "gte25k"] },
+      { key: "ab1000", label: t("1,000 employees or more", "Ab 1000 Mitarbeitende"), members: ["1k_5k", "5k_25k", "25k_100k", "gte100k", "gte25k"] },
     ],
   },
   {
@@ -92,4 +92,5 @@ export function keyFromLabel(list: { key: string; label: T }[], label: string | 
   return hit ? hit.key : null;
 }
 
-export const LABEL_LISTS = { size: FIRM_SIZE, industry: INDUSTRY, hq: HQ, fn: FUNCTIONS };
+// Grösse inklusive der alten Klasse "≥ 25.000" (Antworten vor dem 13.11.2026).
+export const LABEL_LISTS = { size: [...FIRM_SIZE, ...FIRM_SIZE_LEGACY], industry: INDUSTRY, hq: HQ, fn: FUNCTIONS };

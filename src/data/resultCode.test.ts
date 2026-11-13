@@ -133,6 +133,11 @@ describe("Ergebnis-Code", () => {
 
   it("kennt jeden Schluessel der Angaben am Anfang des Fragebogens", () => {
     FIRM_SIZE.forEach((x) => expect(CODE_KEYS.size).toContain(x.key));
+    // Neue Grössenklassen (seit 13.11.2026) passen in die 3 Bit und kommen unverändert zurück
+    for (const size of ["25k_100k", "gte100k"]) {
+      const intake = { size, industry: "", hq: "", fnKey: "" };
+      expect(decodeResult(encodeResult(scoreRespondent({}), intake))!.intake).toEqual(intake);
+    }
     INDUSTRY.forEach((x) => expect(CODE_KEYS.industry).toContain(x.key));
     HQ.forEach((x) => expect(CODE_KEYS.hq).toContain(x.key));
     FUNCTIONS.forEach((x) => expect(CODE_KEYS.fn).toContain(x.key));

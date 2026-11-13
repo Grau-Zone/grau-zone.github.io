@@ -37,6 +37,14 @@ export const FIRM_SIZE: { key: string; label: T }[] = [
   { key: "250_999",    label: t("250–999", "250–999") },
   { key: "1k_5k",      label: t("1,000–4,999", "1.000–4.999") },
   { key: "5k_25k",     label: t("5,000–24,999", "5.000–24.999") },
+  // Seit 13.11.2026 statt "≥ 25.000" (Entscheid Adrian: oben zu grob).
+  { key: "25k_100k",   label: t("25,000–99,999", "25.000–99.999") },
+  { key: "gte100k",    label: t("≥ 100,000", "≥ 100.000") },
+];
+
+// Nicht mehr waehlbar, steht aber in Antworten vor dem 13.11.2026 und in
+// alten Ergebnis-Codes. Nur fuer Auswertung und Vergleichsgruppen.
+export const FIRM_SIZE_LEGACY: { key: string; label: T }[] = [
   { key: "gte25k",     label: t("≥ 25,000", "≥ 25.000") },
 ];
 
