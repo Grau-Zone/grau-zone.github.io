@@ -330,16 +330,16 @@ const Hero = () => {
 
       {/* Auf Desktop oben ausgerichtet statt vertikal zentriert: bei Zentrierung
           waechst der Abstand zur Navigationsleiste mit der Fensterhoehe und der
-          Inhalt rutscht bei kleinen Fenstern darunter. pt entspricht exakt der
-          Hoehe der fixierten Leiste (65 px), der Inhalt beginnt also unmittelbar
-          darunter, ohne Puffer und ohne Ueberlappung.
+          Inhalt rutscht bei kleinen Fenstern darunter. pt ist die Hoehe der
+          fixierten Leiste (65 px) plus fester Luft ueber dem Titel (48 px mobil,
+          72 px Desktop; Feedback 13.11.2026: mehr Abstand ueber dem Titel).
 
           Kein min-h-screen mehr, weder hier noch auf der Section: zusammen mit
           items-start sammelte sich der gesamte Ueberschuss unten. Der Inhalt
           endete immer auf derselben Hoehe, die Section wuchs aber mit dem
           Fenster, die Luecke also eins zu eins mit. Bei 2200x1240 waren 48 % des
           Hero leer. Jetzt bestimmt der Inhalt die Hoehe. */}
-      <div className="relative z-10 max-w-[1600px] mx-auto px-6 lg:px-10 w-full grid grid-cols-1 lg:grid-cols-2 gap-16 items-center lg:items-start pt-[65px] pb-28 lg:pb-32">
+      <div className="relative z-10 max-w-[1600px] mx-auto px-6 lg:px-10 w-full grid grid-cols-1 lg:grid-cols-2 gap-16 items-center lg:items-start pt-[113px] lg:pt-[137px] pb-28 lg:pb-32">
         {/* Left: Text content */}
         <motion.div style={{ y: textY, opacity: textOpacity }}>
           {/* Headline: Zeilen gleiten aus der Maske, die h1 selbst bleibt sichtbar (LCP) */}

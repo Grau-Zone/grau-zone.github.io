@@ -19,7 +19,6 @@ import {
   ScanDivider,
   ScrollWords,
   SectionHeader,
-  SpotlightCard,
   formatCountable,
   parseCountable,
   pingScales,
@@ -178,11 +177,11 @@ function StatCount({ value, play }: { value: string; play: boolean }) {
 function ThreatCard({
   threat,
   hubRef,
-  tiltOn,
+  scaleOn,
 }: {
   threat: Threat;
   hubRef: RefObject<HTMLElement>;
-  tiltOn: boolean;
+  scaleOn: boolean;
 }) {
   const reduced = useReducedMotionSafe();
   const inView = useInViewOnce(hubRef, { amount: 0.5 });
@@ -283,25 +282,22 @@ function ThreatCard({
 
   return (
     <RevealItem ref={hubRef} y={24} duration={DUR.reveal} className="h-full">
-      <SpotlightCard
-        color={threat.color}
-        tilt={5}
-        lift={4}
-        intensity={0.14}
-        className={cn("rounded-2xl p-6 lg:p-8 flex flex-col h-full", tiltOn && "group/card isolation-auto")}
+      {/* Hover nur als leichtes Skalieren (Feedback 13.11.2026): kein Licht unter
+          dem Zeiger, keine Neigung. */}
+      <div
+        className={cn(
+          "relative rounded-2xl p-6 lg:p-8 flex flex-col h-full",
+          scaleOn && "transition-transform duration-300 ease-fx-out hover:scale-[1.02]",
+        )}
         style={{
           background: `linear-gradient(${threat.colorBg}, ${threat.colorBg}), rgba(5,7,15,0.55)`,
           border: `1px solid ${threat.colorBorder}`,
-          ...(tiltOn ? { transformStyle: "preserve-3d" as const } : {}),
         }}
       >
         {/* Big stat */}
-        <div className="mb-5" style={tiltOn ? { transformStyle: "preserve-3d" } : undefined}>
+        <div className="mb-5">
           <div
-            className={cn(
-              "text-5xl font-bold text-white mb-1",
-              tiltOn && "transition-transform duration-300 ease-fx-out group-hover/card:[transform:translateZ(24px)]",
-            )}
+            className="text-5xl font-bold text-white mb-1"
             style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.03em" }}
           >
             <LockOn color={threat.color} play={inView}>
@@ -366,15 +362,16 @@ function ThreatCard({
             </li>
           ))}
         </ul>
-      </SpotlightCard>
+      </div>
     </RevealItem>
   );
 }
 
 const ThreatContext = () => {
-  const reduced = useReducedMotionSafe();
   const fine = useFinePointer();
-  const tiltOn = fine && !reduced;
+  // Wie fx-contained: kleine, vom Zeiger ausgeloeste Bewegung, laeuft auch bei
+  // reduzierter Bewegung (sonst sieht man den Effekt mit Windows-Einstellung nie).
+  const scaleOn = fine;
   const sectionRef = useRef<HTMLElement | null>(null);
   const hubRefs = useMemo(() => threats.map(() => createRef<HTMLElement>()), []);
   const netReady = useInViewOnce(sectionRef, { amount: 0, margin: "600px" });
@@ -420,7 +417,7 @@ const ThreatContext = () => {
         {/* Threat cards */}
         <RevealGroup stagger={0.09} margin="0px 0px -12% 0px" className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {threats.map((threat, i) => (
-            <ThreatCard key={threat.title} threat={threat} hubRef={hubRefs[i]} tiltOn={tiltOn} />
+            <ThreatCard key={threat.title} threat={threat} hubRef={hubRefs[i]} scaleOn={scaleOn} />
           ))}
         </RevealGroup>
 
