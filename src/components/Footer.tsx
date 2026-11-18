@@ -122,7 +122,7 @@ const Footer = () => {
                   Universität St.Gallen. Entwicklung des Messmodells, empirische Untersuchung und
                   Analyse organisationaler digitaler Souveränität.
                 </p>
-                <p className="fr-partner__d">Prof. Dr. Mahei Li · Prof. Dr. Andreas Janson · Prof. Dr. Andreas Hein</p>
+                <p className="fr-partner__d">Prof. Dr. Mahei Li · Prof. Dr. Andreas Janson · Prof. Dr. Andreas Hein · Adrian Bohrer</p>
               </div>
             </RevealItem>
           </RevealGroup>
