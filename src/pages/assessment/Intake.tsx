@@ -3,6 +3,7 @@ import { useId, useRef, useState, type Dispatch, type SetStateAction } from "rea
 import { useReducedMotionSafe } from "@/components/fx";
 import type { Lang } from "../../data/instrument";
 import { FUNCTIONS, FUNCTION_OTHER, FIRM_SIZE, INDUSTRY, HQ, STATE_ROLE, OPERATED_BY_PROVIDER, OPERATOR_TYPE, pick } from "../../data/surveyUi";
+import { DIMENSIONS } from "../../data/benchmarkGroups";
 import { ActionBar, RiseWords } from "./ui";
 import { useStepEntry } from "./hooks";
 import { typicalProviders, type IntakeState, type Tr } from "./model";
@@ -88,6 +89,7 @@ export default function Intake({ lang, tr, intake, setIntake, onBack, onNext, fo
     if (!fnMissing) (el as HTMLInputElement | null)?.focus({ preventScroll: true });
   };
 
+  const fnGroups = DIMENSIONS.find((d) => d.key === "funktion")!.groups;
   const other = chosen === FUNCTION_OTHER;
   const otherBad = touched && other && intake.fnOther.trim().length === 0;
   const provBad = touched && intake.provider.trim().length === 0;
@@ -135,7 +137,16 @@ export default function Intake({ lang, tr, intake, setIntake, onBack, onNext, fo
           </div>
           <div>
             <div role="radiogroup" aria-labelledby={fnHeadId} className="as-pick">
-              {FUNCTIONS.map((f) => option(f.key, pick(f.label, lang), pick(f.providers, lang)))}
+              {/* Gruppiert nach denselben zwei Gruppen wie der Vergleich auf der Ergebnisseite
+                  (benchmarkGroups.ts). Schluessel, Reihenfolge und Ergebnis-Code bleiben unveraendert. */}
+              {fnGroups.map((g) => (
+                <div key={g.key} role="group" aria-labelledby={uid + "-fng-" + g.key} className="as-pickgroup">
+                  <p id={uid + "-fng-" + g.key} className="as-pickgroup__h">{pick(g.label, lang)}</p>
+                  {FUNCTIONS.filter((f) => (g.members as string[]).includes(f.key)).map((f) =>
+                    option(f.key, pick(f.label, lang), pick(f.providers, lang)),
+                  )}
+                </div>
+              ))}
               {option(FUNCTION_OTHER, tr("intakeOther"))}
             </div>
             <div className={"as-other__in" + (other ? " is-open" : "")}>

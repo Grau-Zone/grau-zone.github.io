@@ -154,6 +154,8 @@ html:has(.as-bar) { scroll-padding-top: 4.25rem; scroll-padding-bottom: 8.5rem; 
 
 /* Ruled selectable rows (Funktion, Fakten) */
 .as-pick { border-top: 1px solid var(--rx-line); }
+.as-pickgroup__h { margin: 0; padding: 1.6rem 0.35rem 0.5rem; font-size: 0.8125rem; font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--rx-green-ink); }
+.as-pickgroup:first-child .as-pickgroup__h { padding-top: 1.1rem; }
 .as-pickrow { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 1rem; align-items: start; padding: 1rem 0.35rem; min-height: 3.5rem; border-bottom: 1px solid var(--rx-line); cursor: pointer; transition: background-color 0.4s; }
 .as-pickrow__t { display: block; font-size: clamp(1.1rem, 1.7vw, 1.4rem); font-weight: 500; letter-spacing: -0.015em; line-height: 1.25; transition: transform 0.5s var(--rx-ease), color 0.25s; }
 .as-pickrow__s { display: block; margin-top: 0.25rem; font-size: 0.9rem; line-height: 1.45; color: var(--rx-mute); }
