@@ -9,17 +9,16 @@ import {
   LineReveal,
   LockOn,
   Magnetic,
-  ParticleNetwork,
   safeAnimate,
   useFinePointer,
   useInViewOnce,
   useMediaQuery,
-  usePauseOffscreen,
   useReducedMotionSafe,
 } from "@/components/fx";
-import HeroRadarOrb from "./HeroRadarOrb";
+import { ParticleGather, radarShape } from "@/rx";
 
 const TICKS = Array.from({ length: 11 }, (_, i) => i);
+const GREEN = "#00802f";
 
 /** Startet ein Effekt-Bündel und liefert alle laufenden Animationen. */
 type Anim = Animation | null;
@@ -47,12 +46,16 @@ const MeasureRuler = ({ hostRef }: { hostRef: RefObject<HTMLElement> }) => {
     const g = glide / (glide + snap);
     const out: Anim[] = [];
     out.push(
-      safeAnimate(trackRef.current, [{ transform: "translateX(0%)" }, { transform: "translateX(100%)" }], {
-        duration: glide,
-        delay,
-        easing: CSS_EASE_IN_OUT,
-        fill: "backwards",
-      }),
+      safeAnimate(
+        trackRef.current,
+        [{ transform: "translateX(0%)" }, { transform: "translateX(100%)" }],
+        {
+          duration: glide,
+          delay,
+          easing: CSS_EASE_IN_OUT,
+          fill: "backwards",
+        },
+      ),
     );
     const op = fadeIn ? 0 : 1;
     out.push(
@@ -60,9 +63,18 @@ const MeasureRuler = ({ hostRef }: { hostRef: RefObject<HTMLElement> }) => {
         markerRef.current,
         [
           { opacity: op, transform: "scale(1)", offset: 0 },
-          { opacity: 1, transform: "scale(1)", offset: Math.min(g, 150 / (glide + snap)) },
+          {
+            opacity: 1,
+            transform: "scale(1)",
+            offset: Math.min(g, 150 / (glide + snap)),
+          },
           { opacity: 1, transform: "scale(1)", offset: g },
-          { opacity: 1, transform: "scale(1.3)", offset: g, easing: CSS_EASE_OUT },
+          {
+            opacity: 1,
+            transform: "scale(1.3)",
+            offset: g,
+            easing: CSS_EASE_OUT,
+          },
           { opacity: 1, transform: "scale(1)", offset: 1 },
         ],
         { duration: glide + snap, delay, fill: "backwards" },
@@ -115,7 +127,12 @@ const MeasureRuler = ({ hostRef }: { hostRef: RefObject<HTMLElement> }) => {
                 { opacity: 0, transform: "translateY(-4px)" },
                 { opacity: 1, transform: "translateY(0px)" },
               ],
-          { duration: 300, delay: T0 + 100 + i * 25, easing: CSS_EASE_OUT, fill: "backwards" },
+          {
+            duration: 300,
+            delay: T0 + 100 + i * 25,
+            easing: CSS_EASE_OUT,
+            fill: "backwards",
+          },
         ),
       );
     });
@@ -165,14 +182,20 @@ const MeasureRuler = ({ hostRef }: { hostRef: RefObject<HTMLElement> }) => {
     const host = hostRef.current;
     if (!host || reduced || !fine) return;
     const onEnter = (e: PointerEvent) => {
-      if (e.pointerType && e.pointerType !== "mouse" && e.pointerType !== "pen") return;
+      if (e.pointerType && e.pointerType !== "mouse" && e.pointerType !== "pen")
+        return;
       const now = performance.now();
       if (now < busyUntil.current) return;
       busyUntil.current = now + 500 + 450;
-      anims.current = [...anims.current.filter((a) => a && a.playState !== "finished"), ...runMarker(0, 500, false)];
+      anims.current = [
+        ...anims.current.filter((a) => a && a.playState !== "finished"),
+        ...runMarker(0, 500, false),
+      ];
     };
     host.addEventListener("pointerenter", onEnter);
     return () => host.removeEventListener("pointerenter", onEnter);
+    // runMarker ist stabil genug: es liest nur Refs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hostRef, reduced, fine]);
 
   return (
@@ -185,7 +208,11 @@ const MeasureRuler = ({ hostRef }: { hostRef: RefObject<HTMLElement> }) => {
       <span
         ref={baseRef}
         className="absolute left-0 bottom-0 w-full"
-        style={{ height: 1.5, background: "#4B6EFF", transformOrigin: "left center" }}
+        style={{
+          height: 1.5,
+          background: GREEN,
+          transformOrigin: "left center",
+        }}
       />
       {/* 11 Ticks, 0/50/100 doppelt hoch */}
       {TICKS.map((i) => {
@@ -202,13 +229,17 @@ const MeasureRuler = ({ hostRef }: { hostRef: RefObject<HTMLElement> }) => {
               width: 1,
               marginLeft: i === 0 ? 0 : i === 10 ? -1 : -0.5,
               height: major ? "100%" : "50%",
-              background: "rgba(75,110,255,0.75)",
+              background: "rgba(0,128,47,0.8)",
             }}
           />
         );
       })}
       {/* Marker: die Spur verschiebt sich um ihre eigene Breite (= Lineal) */}
-      <span ref={trackRef} className="absolute inset-0" style={{ transform: "translateX(100%)" }}>
+      <span
+        ref={trackRef}
+        className="absolute inset-0"
+        style={{ transform: "translateX(100%)" }}
+      >
         <span
           ref={glowRef}
           className="absolute rounded-full"
@@ -217,8 +248,8 @@ const MeasureRuler = ({ hostRef }: { hostRef: RefObject<HTMLElement> }) => {
             bottom: 0,
             width: 6,
             height: 6,
-            background: "rgba(139,164,255,0.6)",
-            boxShadow: "0 0 8px 2px rgba(139,164,255,0.9)",
+            background: "rgba(0,128,47,0.35)",
+            boxShadow: "0 0 0 3px rgba(0,128,47,0.14)",
             opacity: 0.35,
           }}
         />
@@ -230,7 +261,7 @@ const MeasureRuler = ({ hostRef }: { hostRef: RefObject<HTMLElement> }) => {
             bottom: 1.5,
             width: 6,
             height: 5,
-            background: "#8BA4FF",
+            background: GREEN,
             clipPath: "polygon(0 0, 100% 0, 50% 100%)",
             transformOrigin: "50% 100%",
           }}
@@ -252,10 +283,18 @@ const useDelayedFlag = (flag: boolean, delay: number) => {
 };
 
 /** Kennzahl mit Zielerfassung; die Ecken greifen zeitgleich mit dem Zaehlstart. */
-const StatValue = ({ value, delay, play }: { value: string; delay: number; play: boolean }) => {
+const StatValue = ({
+  value,
+  delay,
+  play,
+}: {
+  value: string;
+  delay: number;
+  play: boolean;
+}) => {
   const lock = useDelayedFlag(play, delay);
   return (
-    <LockOn color="#8BA4FF" play={lock}>
+    <LockOn color={GREEN} play={lock}>
       <CountUp value={value} start={play} delay={delay} duration={0.6} />
     </LockOn>
   );
@@ -267,43 +306,93 @@ const STATS = [
   { value: "3", label: "Zukunftspfade bis 2030", delay: 0.85 },
 ];
 
+/** Kennzahlen mit Zaehlung. Auf dem Handy steht die Reihe unter dem Hero, damit sie das Radar nicht ueberdeckt. */
+const StatsRow = ({ className }: { className?: string }) => {
+  const reduced = useReducedMotionSafe();
+  const statsRef = useRef<HTMLDivElement | null>(null);
+  const statsInView = useInViewOnce(statsRef, { amount: 0.6 });
+  const follow = (delay: number) =>
+    reduced
+      ? {
+          initial: { opacity: 0 },
+          animate: { opacity: 1 },
+          transition: { duration: 0.5, ease: EASE_OUT, delay },
+        }
+      : {
+          initial: { opacity: 0, transform: "translateY(10px)" },
+          animate: { opacity: 1, transform: "translateY(0px)" },
+          transition: { duration: 0.5, ease: EASE_OUT, delay },
+        };
+  return (
+    <motion.div
+      ref={statsRef}
+      {...follow(0.57)}
+      className={
+        "max-w-[32rem] grid-cols-3 gap-4 border-t border-border pt-5 lg:gap-8 " +
+        (className ?? "grid")
+      }
+    >
+      {STATS.map(({ value, label, delay }) => (
+        <div key={label}>
+          <div
+            className="relative mb-1 text-3xl font-medium tabular-nums text-ink lg:text-4xl"
+            style={{ letterSpacing: "-0.03em" }}
+          >
+            <StatValue value={value} delay={delay} play={statsInView} />
+            {/* Hairline, synchron zur Zaehlung; absolut, also ohne Layout-Einfluss.
+                Reduzierte Bewegung: per clip-path aufgedeckt statt skaliert. */}
+            <motion.span
+              aria-hidden="true"
+              className="fx-deco pointer-events-none absolute left-0 -bottom-1 h-px w-6"
+              style={{ background: GREEN, transformOrigin: "left center" }}
+              initial={
+                reduced
+                  ? { clipPath: "inset(0 100% 0 0)" }
+                  : { transform: "scaleX(0)" }
+              }
+              animate={
+                statsInView
+                  ? reduced
+                    ? { clipPath: "inset(0 0% 0 0)" }
+                    : { transform: "scaleX(1)" }
+                  : undefined
+              }
+              transition={{ duration: 0.6, ease: EASE_OUT, delay }}
+            />
+          </div>
+          <div className="text-xs leading-snug text-muted-foreground">
+            {label}
+          </div>
+        </div>
+      ))}
+    </motion.div>
+  );
+};
+
+type Place = { cx: number; cy: number; w: number; h: number };
+
 const Hero = () => {
   const reduced = useReducedMotionSafe();
   const lg = useMediaQuery("(min-width: 1024px)");
   const sectionRef = useRef<HTMLElement | null>(null);
   const h1Ref = useRef<HTMLElement | null>(null);
-  const statsRef = useRef<HTMLDivElement | null>(null);
   const ctaRef = useRef<HTMLAnchorElement | null>(null);
+  const [place, setPlace] = useState<Place | null>(null);
 
-  // Endlosschleifen (Sweep, Blips) und der begrenzte Tropfen laufen nur, solange der Hero sichtbar ist
-  usePauseOffscreen(sectionRef);
-
-  const statsInView = useInViewOnce(statsRef, { amount: 0.6 });
-
-  // Scroll-Kopplung
-  const { scrollYProgress: heroProgress } = useScroll({ target: sectionRef, offset: ["start start", "end start"] });
+  // Scroll-Kopplung: Suchstrahl dreht mit dem Scrollen, das Radar erscheint, sobald die Punkte sich sammeln
+  const { scrollYProgress: pin } = useScroll({
+    target: sectionRef,
+    offset: ["start start", "end end"],
+  });
   const { scrollY } = useScroll();
-  // Reduzierte Bewegung (sanfte Stufe): keine scroll-gekoppelte Verschiebung,
-  // die Opacity-Kopplung an den Scroll bleibt erlaubt.
-  const textOut = lg;
-  const textMove = lg && !reduced;
-  const textY = useTransform(heroProgress, (p) => (textMove ? -50 * Math.max(0, (p - 0.4) / 0.6) : 0));
-  const textOpacity = useTransform(heroProgress, (p) => (textOut ? 1 - 0.85 * Math.max(0, (p - 0.4) / 0.6) : 1));
-  const hintOpacity = useTransform(scrollY, (y) => 1 - Math.min(1, Math.max(0, y / 80)));
-
-  // Einmaliger Glanz ueber den Primaer-CTA, 1.3 s nach dem Laden
-  useEffect(() => {
-    if (reduced) return;
-    const el = ctaRef.current;
-    if (!el) return;
-    const t1 = window.setTimeout(() => el.classList.add("fx-sheen-once"), 1300);
-    const t2 = window.setTimeout(() => el.classList.remove("fx-sheen-once"), 1300 + 900);
-    return () => {
-      window.clearTimeout(t1);
-      window.clearTimeout(t2);
-      el.classList.remove("fx-sheen-once");
-    };
-  }, [reduced]);
+  const sweepRot = useTransform(pin, (p) => (reduced ? 40 : -50 + 420 * p));
+  const sweepOpacity = useTransform(pin, (p) =>
+    reduced ? 1 : Math.min(1, Math.max(0, (p - 0.5) / 0.28)),
+  );
+  const hintOpacity = useTransform(
+    scrollY,
+    (y) => 1 - Math.min(1, Math.max(0, y / 80)),
+  );
 
   // Reduzierte Bewegung (sanfte Stufe): gleiches Einblenden, ohne y-Versatz
   const follow = (delay: number) =>
@@ -320,164 +409,167 @@ const Hero = () => {
         };
 
   return (
-    <section
-      ref={sectionRef}
-      className="relative flex items-center overflow-hidden"
-      style={{ background: "radial-gradient(ellipse 80% 60% at 60% 50%, rgba(30,45,120,0.35) 0%, transparent 70%)" }}
-    >
-      {/* Particle network */}
-      <ParticleNetwork className="absolute inset-0 w-full h-full" />
-
-      {/* Auf Desktop oben ausgerichtet statt vertikal zentriert: bei Zentrierung
-          waechst der Abstand zur Navigationsleiste mit der Fensterhoehe und der
-          Inhalt rutscht bei kleinen Fenstern darunter. pt ist die Hoehe der
-          fixierten Leiste (65 px) plus fester Luft ueber dem Titel (48 px mobil,
-          72 px Desktop; Feedback 13.11.2026: mehr Abstand ueber dem Titel).
-
-          Kein min-h-screen mehr, weder hier noch auf der Section: zusammen mit
-          items-start sammelte sich der gesamte Ueberschuss unten. Der Inhalt
-          endete immer auf derselben Hoehe, die Section wuchs aber mit dem
-          Fenster, die Luecke also eins zu eins mit. Bei 2200x1240 waren 48 % des
-          Hero leer. Jetzt bestimmt der Inhalt die Hoehe. */}
-      <div className="relative z-10 max-w-[1600px] mx-auto px-6 lg:px-10 w-full grid grid-cols-1 lg:grid-cols-2 gap-16 items-center lg:items-start pt-[113px] lg:pt-[137px] pb-28 lg:pb-32">
-        {/* Left: Text content */}
-        <motion.div style={{ y: textY, opacity: textOpacity }}>
-          {/* Headline: Zeilen gleiten aus der Maske, die h1 selbst bleibt sichtbar (LCP) */}
-          <LineReveal
-            ref={h1Ref}
-            as="h1"
-            trigger="mount"
-            delay={0.08}
-            stagger={0.09}
-            duration={0.8}
-            className="text-5xl lg:text-6xl xl:text-7xl font-semibold leading-[1.05] mb-6 text-white"
-            style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.03em" }}
-            lines={[
-              "Digitale",
-              "Souveränität",
-              <>
-                <span className="relative inline-block" style={{ color: "#4B6EFF" }}>
-                  messbar
-                  <MeasureRuler hostRef={h1Ref} />
-                </span>{" "}
-                machen.
-              </>,
-            ]}
+    <>
+      <section
+        ref={sectionRef}
+        className="relative"
+        style={{ height: lg ? "250vh" : "230vh" }}
+      >
+        <div
+          className="sticky top-0 overflow-hidden"
+          style={{ height: "100svh" }}
+        >
+          {/* Punkte treiben durch ein Strömungsfeld und sammeln sich beim Scrollen zum Radar */}
+          <ParticleGather
+            key={lg ? "lg" : "sm"}
+            className="absolute inset-0 h-full w-full"
+            sectionRef={sectionRef}
+            shapes={[radarShape]}
+            center={lg ? { x: 0.74, y: 0.54 } : { x: 0.5, y: 0.8 }}
+            size={(W, H) =>
+              lg ? Math.min(H * 0.8, W * 0.44) : Math.min(W * 0.78, H * 0.3)
+            }
+            range={0.8}
+            onLayout={(items) => setPlace(items[0] ?? null)}
           />
 
-          {/* Subline */}
-          <motion.p
-            {...follow(0.45)}
-            className="text-base lg:text-lg leading-relaxed mb-10 max-w-lg"
-            style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Inter', sans-serif" }}
-          >
-            Organisationen sind bei digitalen Technologien zunehmend von externen Anbietern und
-            technologischen Ökosystemen abhängig. Der Sovereignty Radar macht diese Abhängigkeiten
-            und den daraus resultierenden organisationalen Handlungsspielraum messbar.
-          </motion.p>
-
-          {/* CTAs */}
-          <motion.div {...follow(0.51)} className="flex flex-wrap gap-4">
-            <Magnetic strength={0.3} max={10}>
-              <Link
-                ref={ctaRef}
-                to="/assessment"
-                className="fx-glow fx-sheen-host fx-press inline-flex items-center gap-2 px-7 py-3.5 rounded-full font-semibold text-sm"
-                style={{
-                  background: "#4B6EFF",
-                  color: "white",
-                  fontFamily: "'Space Grotesk', sans-serif",
-                }}
-              >
-                <span className="fx-sheen" aria-hidden="true" />
-                {/* inline-block statt flex: sonst faellt das Leerzeichen vor dem Pfeil weg */}
-                <span data-magnet-inner="" className="relative inline-block">
-                  Organisation Self-Assessment{" "}<span className="fx-arrow">→</span>
-                </span>
-              </Link>
-            </Magnetic>
-            <a
-              href="#scenarios"
-              className="fx-press inline-flex items-center gap-2 px-7 py-3.5 rounded-full font-semibold text-sm bg-white/[0.06] hover:bg-white/10"
+          {/* Suchstrahl: dreht mit dem Scrollen, kein Dauerlauf */}
+          {place && (
+            <motion.div
+              aria-hidden="true"
+              className="pointer-events-none absolute rounded-full"
               style={{
-                border: "1px solid rgba(255,255,255,0.12)",
-                color: "rgba(255,255,255,0.8)",
-                fontFamily: "'Space Grotesk', sans-serif",
-                transition: "transform 160ms var(--ease-out), background-color 200ms var(--ease-out)",
+                left: place.cx - place.w * 0.45,
+                top: place.cy - place.w * 0.45,
+                width: place.w * 0.9,
+                height: place.w * 0.9,
+                rotate: sweepRot,
+                opacity: sweepOpacity,
+                background:
+                  "conic-gradient(from 0deg, rgba(0,128,47,0) 0deg 292deg, rgba(0,128,47,0.05) 292deg, rgba(0,128,47,0.2) 358.6deg, rgba(0,128,47,0.85) 360deg)",
+                WebkitMaskImage:
+                  "radial-gradient(circle, #000 0 99.2%, transparent 100%)",
+                maskImage:
+                  "radial-gradient(circle, #000 0 99.2%, transparent 100%)",
               }}
-            >
-              Szenarien 2030
-            </a>
-          </motion.div>
+            />
+          )}
 
-          {/* Stats row */}
-          <motion.div ref={statsRef} {...follow(0.57)} className="mt-14 flex gap-10 flex-wrap">
-            {STATS.map(({ value, label, delay }) => (
-              <div key={label}>
-                <div
-                  className="relative text-3xl font-bold text-white mb-1"
-                  style={{ fontFamily: "'Space Grotesk', sans-serif" }}
-                >
-                  <StatValue value={value} delay={delay} play={statsInView} />
-                  {/* Hairline, synchron zur Zaehlung; absolut, also ohne Layout-Einfluss.
-                      Reduzierte Bewegung: per clip-path aufgedeckt statt skaliert. */}
-                  <motion.span
-                    aria-hidden="true"
-                    className="fx-deco pointer-events-none absolute left-0 -bottom-0.5 h-px w-6"
-                    style={{ background: "#4B6EFF", transformOrigin: "left center" }}
-                    initial={reduced ? { clipPath: "inset(0 100% 0 0)" } : { transform: "scaleX(0)" }}
-                    animate={
-                      statsInView
-                        ? reduced
-                          ? { clipPath: "inset(0 0% 0 0)" }
-                          : { transform: "scaleX(1)" }
-                        : undefined
-                    }
-                    transition={{ duration: 0.6, ease: EASE_OUT, delay }}
-                  />
-                </div>
-                <div className="text-xs" style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Inter', sans-serif" }}>
-                  {label}
-                </div>
-              </div>
-            ))}
-          </motion.div>
-        </motion.div>
+          {/* Heller Grund unter dem Text, damit die Punkte die Schrift nicht stören */}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0"
+            style={{
+              background: lg
+                ? "radial-gradient(ellipse 52% 70% at 22% 50%, rgba(255,255,255,0.94) 0%, rgba(255,255,255,0.7) 55%, transparent 100%)"
+                : "linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.88) 46%, transparent 62%)",
+            }}
+          />
 
-        {/* Right: Radar orb visual */}
-        <HeroRadarOrb heroRef={sectionRef} progress={heroProgress} />
-      </div>
-
-      {/* Scroll indicator */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1.2 }}
-        className="absolute bottom-8 left-1/2 -translate-x-1/2"
-      >
-        <motion.div className="flex flex-col items-center gap-2" style={{ opacity: hintOpacity }}>
-          <div className="relative w-px h-10 overflow-hidden bg-gradient-to-b from-transparent to-white/20">
-            {reduced ? null : (
-              <span
-                aria-hidden="true"
-                className="fx-deco fx-drop fx-loop pointer-events-none absolute left-0 top-0 w-px h-3 bg-gradient-to-b from-transparent to-white/70"
-                style={{
-                  ["--fx-drop-travel" as string]: "40px",
-                  // Keine Dauerschleife: drei Tropfen ab dem Einblenden des Hinweises,
-                  // danach bleibt der Tropfen unsichtbar (Endframe opacity 0).
-                  animationDelay: "1.2s",
-                  animationIterationCount: 3,
-                  animationFillMode: "both",
-                }}
+          {/* Text */}
+          <div className="rx-wrap flex h-full flex-col justify-start pt-[96px] lg:justify-center lg:pt-16">
+            <div className="max-w-[40rem]">
+              {/* Headline: Zeilen gleiten aus der Maske, die h1 selbst bleibt sichtbar (LCP) */}
+              <LineReveal
+                ref={h1Ref}
+                as="h1"
+                trigger="mount"
+                delay={0.08}
+                stagger={0.09}
+                duration={0.8}
+                className="rx-h1 mb-6 !text-[clamp(2.5rem,6.2vw,5.6rem)] text-ink"
+                lines={[
+                  "Digitale",
+                  "Souveränität",
+                  <>
+                    <span className="relative inline-block text-green">
+                      messbar
+                      <MeasureRuler hostRef={h1Ref} />
+                    </span>{" "}
+                    machen.
+                  </>,
+                ]}
               />
-            )}
+
+              {/* Subline */}
+              <motion.p
+                {...follow(0.45)}
+                className="rx-sub !mt-0 mb-8 max-w-[34rem] !text-base lg:!text-lg"
+              >
+                Organisationen sind bei digitalen Technologien zunehmend von
+                externen Anbietern und technologischen Ökosystemen abhängig. Der
+                Sovereignty Radar macht diese Abhängigkeiten und den daraus
+                resultierenden organisationalen Handlungsspielraum messbar.
+              </motion.p>
+
+              {/* CTAs */}
+              <motion.div {...follow(0.51)} className="flex flex-wrap gap-3">
+                <Magnetic strength={0.3} max={10}>
+                  <Link
+                    ref={ctaRef}
+                    to="/assessment"
+                    className="rx-pill fx-press text-sm"
+                  >
+                    {/* inline-block statt flex: sonst faellt das Leerzeichen vor dem Pfeil weg */}
+                    <span
+                      data-magnet-inner=""
+                      className="relative inline-block"
+                    >
+                      Organisation Self-Assessment{" "}
+                      <span className="fx-arrow">→</span>
+                    </span>
+                  </Link>
+                </Magnetic>
+                <a
+                  href="#scenarios"
+                  className="rx-pill rx-pill--ghost fx-press text-sm"
+                >
+                  Szenarien 2030
+                </a>
+              </motion.div>
+
+              <StatsRow className="mt-12 hidden lg:grid" />
+            </div>
           </div>
-          <span className="text-[10px] tracking-widest uppercase" style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Space Grotesk', sans-serif" }}>
-            Scroll
-          </span>
-        </motion.div>
-      </motion.div>
-    </section>
+
+          {/* Scroll indicator */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.2 }}
+            className="absolute bottom-6 left-1/2 hidden -translate-x-1/2 lg:block"
+          >
+            <motion.div
+              className="flex flex-col items-center gap-2"
+              style={{ opacity: hintOpacity }}
+            >
+              <div className="relative h-10 w-px overflow-hidden bg-gradient-to-b from-transparent to-ink/25">
+                {reduced ? null : (
+                  <span
+                    aria-hidden="true"
+                    className="fx-deco fx-drop fx-loop pointer-events-none absolute left-0 top-0 h-3 w-px bg-gradient-to-b from-transparent to-green"
+                    style={{
+                      ["--fx-drop-travel" as string]: "40px",
+                      // Keine Dauerschleife: drei Tropfen ab dem Einblenden des Hinweises,
+                      // danach bleibt der Tropfen unsichtbar (Endframe opacity 0).
+                      animationDelay: "1.2s",
+                      animationIterationCount: 3,
+                      animationFillMode: "both",
+                    }}
+                  />
+                )}
+              </div>
+              <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground">
+                Scroll
+              </span>
+            </motion.div>
+          </motion.div>
+        </div>
+      </section>
+      <div className="rx-wrap pb-10 pt-2 lg:hidden">
+        <StatsRow className="grid" />
+      </div>
+    </>
   );
 };
 

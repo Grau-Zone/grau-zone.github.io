@@ -2,7 +2,7 @@ import { motion, useScroll, useSpring, useTransform } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { useReducedMotionSafe } from "./hooks";
 
-const BAR_BG = "linear-gradient(90deg, #4B6EFF, #8BA4FF 70%, transparent)";
+const BAR_BG = "linear-gradient(90deg, #00802f, #00802f 78%, transparent)";
 
 function supportsScrollTimeline(): boolean {
   try {
@@ -20,14 +20,14 @@ const Head = () => (
       height: 6,
       marginTop: -3,
       marginRight: -3,
-      background: "#8BA4FF",
-      boxShadow: "0 0 8px 1px rgba(139,164,255,0.8)",
+      background: "#00802f",
+      boxShadow: "0 0 0 3px rgba(0,128,47,0.16)",
     }}
   />
 );
 
 /**
- * Lesefortschritt der Seite als 2-px-Leiste mit Lichtkopf. Mit CSS
+ * Lesefortschritt der Seite als 2-px-Leiste mit Kopf. Mit CSS
  * Scroll-Timeline ganz ohne JS, sonst framer useScroll + Feder. Bleibt auch
  * bei reduzierter Bewegung, da sie nur die Position abbildet.
  */

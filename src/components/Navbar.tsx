@@ -43,15 +43,10 @@ const PING_GAP_MS = 6000;
 /** So lange haelt ein Klick den Wert fest, falls die Zielsektion nie ins Band kommt. */
 const CLICK_LOCK_MS = 2000;
 
-const FONT = { fontFamily: "'Space Grotesk', sans-serif" };
+const FONT = undefined;
 
-// CTA: Farben als Klassen, damit Hover und Fokus per CSS laufen.
-const CTA_BASE =
-  "fx-press fx-ring-host rounded-full font-semibold border border-[rgba(75,110,255,0.4)] bg-[rgba(75,110,255,0.15)] text-[#8ba4ff] " +
-  "hover:bg-[rgba(75,110,255,0.25)] hover:text-white focus-visible:bg-[rgba(75,110,255,0.25)] focus-visible:text-white " +
-  "[transition:background-color_200ms,color_200ms,transform_160ms_var(--ease-out)]";
-
-const RingSweep = () => <span aria-hidden="true" className="fx-ring-sweep fx-loop" />;
+// CTA: Pille im Grün der HSG, Hover und Fokus per CSS.
+const CTA_BASE = "rx-pill rx-pill--sm fx-press justify-center";
 
 const menuVariants: Variants = {
   hidden: { opacity: 0, y: -10 },
@@ -257,15 +252,13 @@ const Navbar = () => {
 
   return (
     <header ref={headerRef} className="group fixed top-0 left-0 right-0 z-50">
-      {/* Hintergrund als eigene Ebene: backdrop-filter bleibt dauerhaft an, nur die Deckkraft wechselt. */}
+      {/* Hintergrund als eigene Ebene, nur die Deckkraft wechselt (weisse Leiste mit Haarlinie, kein Milchglas). */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 opacity-0 transition-opacity [transition-duration:240ms] ease-fx-out group-data-[scrolled=true]:opacity-100"
         style={{
-          background: "rgba(5, 6, 18, 0.78)",
-          backdropFilter: "blur(16px) saturate(160%)",
-          WebkitBackdropFilter: "blur(16px) saturate(160%)",
-          borderBottom: "1px solid rgba(255,255,255,0.06)",
+          background: "rgba(255, 255, 255, 0.97)",
+          borderBottom: "1px solid var(--rx-line)",
         }}
       />
 
@@ -280,7 +273,7 @@ const Navbar = () => {
           <RadarMark size={28} sweep={sweep} ping={ping} />
           <div className="flex flex-col leading-none">
             <span
-              className="text-sm font-semibold tracking-tight text-white"
+              className="text-sm font-semibold tracking-tight text-ink"
               style={FONT}
             >
               Sovereignty Radar
@@ -290,7 +283,7 @@ const Navbar = () => {
                 Self-Assessment-Knopf aus der Leiste draengt; dort deshalb die
                 Kurzform. Die vollstaendige Angabe steht ohnehin auf jeder Seite
                 in der Fusszeile. */}
-            <span className="text-[10px] text-white/40 tracking-widest uppercase font-medium whitespace-nowrap">
+            <span className="text-[10px] text-muted-foreground tracking-widest uppercase font-medium whitespace-nowrap">
               <span className="sm:hidden">IWI-HSG</span>
               <span className="hidden sm:inline">HSG - Institut für Wirtschaftsinformatik</span>
             </span>
@@ -309,7 +302,7 @@ const Navbar = () => {
                 aria-current={isActive ? "location" : undefined}
                 className={cn(
                   "relative isolate rounded-full whitespace-nowrap text-sm font-medium transition-colors duration-200",
-                  isActive ? "text-white" : "text-white/60 hover:text-white",
+                  isActive ? "text-green" : "text-ink/70 hover:text-ink",
                 )}
                 style={FONT}
               >
@@ -322,7 +315,7 @@ const Navbar = () => {
                         key="nav-active"
                         aria-hidden="true"
                         className="pointer-events-none absolute -inset-x-3 -inset-y-1.5 -z-10 rounded-full"
-                        style={{ background: "rgba(75,110,255,0.14)", border: "1px solid rgba(139,164,255,0.3)" }}
+                        style={{ background: "rgba(0,128,47,0.08)", border: "1px solid rgba(0,128,47,0.28)" }}
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
@@ -336,7 +329,7 @@ const Navbar = () => {
                       layoutId="nav-active"
                       aria-hidden="true"
                       className="pointer-events-none absolute -inset-x-3 -inset-y-1.5 -z-10 rounded-full"
-                      style={{ background: "rgba(75,110,255,0.14)", border: "1px solid rgba(139,164,255,0.3)" }}
+                      style={{ background: "rgba(0,128,47,0.08)", border: "1px solid rgba(0,128,47,0.28)" }}
                       transition={SPRING.snappy}
                     />
                   )
@@ -352,7 +345,6 @@ const Navbar = () => {
           <Magnetic strength={0.2} max={6}>
             <Link to="/assessment" className={cn(CTA_BASE, "text-sm px-5 py-2 whitespace-nowrap")} style={FONT}>
               Organisation Self-Assessment <span className="fx-arrow">→</span>
-              <RingSweep />
             </Link>
           </Magnetic>
         </div>
@@ -365,11 +357,10 @@ const Navbar = () => {
             style={FONT}
           >
             Self-Assessment
-            <RingSweep />
           </Link>
           <button
             type="button"
-            className="-m-2 p-2 rounded-md text-white/70 hover:text-white transition-colors"
+            className="-m-2 p-2 rounded-md text-ink/70 hover:text-ink transition-colors"
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label="Menü"
             aria-expanded={mobileOpen}
@@ -407,7 +398,7 @@ const Navbar = () => {
             animate="shown"
             exit="exit"
             className="relative xl:hidden px-6 pb-5 pt-2 space-y-3"
-            style={{ background: "rgba(5, 6, 18, 0.98)", borderTop: "1px solid rgba(255,255,255,0.06)" }}
+            style={{ background: "#ffffff", borderTop: "1px solid var(--rx-line)" }}
           >
             {navItems.map((item) => {
               const isActive = active === item.href;
@@ -423,7 +414,7 @@ const Navbar = () => {
                   aria-current={isActive ? "location" : undefined}
                   className={cn(
                     "relative block whitespace-nowrap text-sm font-medium py-2 transition-colors",
-                    isActive ? "text-white" : "text-white/70 hover:text-white",
+                    isActive ? "text-green" : "text-ink/75 hover:text-ink",
                   )}
                   style={FONT}
                 >
@@ -431,7 +422,7 @@ const Navbar = () => {
                     <motion.span
                       aria-hidden="true"
                       className="pointer-events-none absolute -left-3 top-2 bottom-2 w-[2px] rounded-full origin-top"
-                      style={{ background: "#8BA4FF" }}
+                      style={{ background: "#00802f" }}
                       // reduzierte Bewegung: Einblenden statt Wachsen
                       initial={reduced ? { opacity: 0 } : { scaleY: 0 }}
                       animate={reduced ? { opacity: 1 } : { scaleY: 1 }}
@@ -446,11 +437,10 @@ const Navbar = () => {
               <Link
                 to="/assessment"
                 onClick={() => setMobileOpen(false)}
-                className={cn(CTA_BASE, "block text-center text-sm px-5 py-3 mt-2")}
+                className={cn(CTA_BASE, "flex text-center text-sm px-5 py-3 mt-2")}
                 style={FONT}
               >
                 Organisation Self-Assessment <span className="fx-arrow">→</span>
-                <RingSweep />
               </Link>
             </motion.div>
           </motion.div>

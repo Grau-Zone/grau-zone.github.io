@@ -2,7 +2,6 @@ import { Component, lazy, Suspense, useEffect, type ReactNode } from "react";
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { MotionConfig } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
-import GlassBackground from "@/components/GlassBackground";
 import RadarMark from "@/components/RadarMark";
 import { usePrintFinish } from "@/components/fx";
 import Index from "./pages/Index.tsx";
@@ -131,21 +130,7 @@ function ErrorFallback() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
       <RadarMark size={44} />
-      <a
-        href={import.meta.env.BASE_URL}
-        className="inline-flex items-center gap-2 mt-8"
-        style={{
-          fontFamily: "'Space Grotesk', sans-serif",
-          fontSize: "15px",
-          fontWeight: 500,
-          padding: "13px 24px",
-          borderRadius: "10px",
-          border: "1px solid rgba(75,110,255,0.45)",
-          background: "rgba(75,110,255,0.18)",
-          color: "#a8bcff",
-          textDecoration: "none",
-        }}
-      >
+      <a href={import.meta.env.BASE_URL} className="rx-pill mt-8">
         <ArrowLeft size={16} /> Zur Startseite
       </a>
     </div>
@@ -194,7 +179,6 @@ function PrintFinish() {
 
 const App = () => (
   <MotionConfig reducedMotion="user">
-    <GlassBackground />
     <PrintFinish />
     <BrowserRouter basename={import.meta.env.BASE_URL}>
       <ScrollToHash />
