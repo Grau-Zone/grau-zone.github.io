@@ -116,7 +116,7 @@ describe("Intro und Intake", () => {
       "Bitte wählen Sie eine Funktion und geben Sie einen Anbieter oder eine anonymisierte Anbieterbezeichnung an.",
     );
     expect(ls(LS.phase)).toBe("intake");
-    fireEvent.click(screen.getByRole("radio", { name: /ERP oder Kernsystem der Warenwirtschaft/ }));
+    fireEvent.click(screen.getByRole("radio", { name: /ERP, Finanzen und Personal/ }));
     fireEvent.change(screen.getByLabelText("Anbieter oder anonymisierte Bezeichnung"), { target: { value: "SAP" } });
     fireEvent.click(screen.getByRole("button", { name: /Weiter/ }));
     expect(ls(LS.phase)).toBe("blocks");
@@ -143,7 +143,7 @@ describe("Fragebloecke", () => {
     expect(screen.getByText("Block 1 von 5")).toBeInTheDocument();
     expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "1");
     expect(screen.getByRole("status")).toHaveTextContent("0/4 beantwortet");
-    expect(container.textContent).toContain("ERP oder Kernsystem der Warenwirtschaft bei SAP");
+    expect(container.textContent).toContain("ERP, Finanzen und Personal bei SAP");
     // keine Item-IDs oder Konstruktcodes im DOM (Priming)
     expect(container.innerHTML).not.toMatch(/CAP-SW|CAP-IN|ATR-|DKC-|FTC-|CTO-/);
     const groups = screen.getAllByRole("radiogroup");
@@ -207,7 +207,7 @@ describe("Ergebnis", () => {
     expect(h1).toHaveAttribute("id", "result-title");
     expect(h1).toHaveAttribute("tabindex", "-1");
     expect(norm(h1.textContent)).toBe("Preliminary capacity profile");
-    expect(container.textContent).toContain("ERP or core merchandise management system at SAP");
+    expect(container.textContent).toContain("ERP, finance and HR at SAP");
     expect(screen.getByText("Your result code")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Export JSON/ })).toBeInTheDocument();
     // der Mail-Link steht an zwei Stellen (oben und in der Abschluss-Karte), beide gleich

@@ -4,7 +4,7 @@
 import { ACTIVE } from "../../data/scoring";
 import { readLS } from "../../data/storageKeys";
 import { CAPACITIES, itemsOfCapacity, type CapacityKey } from "../../data/capacityItems";
-import { CONTEXT_GROUPS, FUNCTIONS, FUNCTION_OTHER, UI, pick } from "../../data/surveyUi";
+import { CONTEXT_GROUPS, FUNCTIONS, FUNCTIONS_LEGACY, FUNCTION_OTHER, UI, pick } from "../../data/surveyUi";
 import type { Lang } from "../../data/instrument";
 
 // Mehrfachauswahl-Items (ATR-3) speichern eine Liste von Optionswerten.
@@ -65,13 +65,16 @@ export const EMPTY_INTAKE: IntakeState = {
 };
 export const EMPTY_ANSWERS: Answers = {};
 
+// Auch entfallene Funktionen (vor dem 18.11.2026 gewaehlt: im Browser gespeicherter Stand
+// oder alter Ergebnis-Code) behalten ihre Bezeichnung.
+const ALL_FUNCTIONS = [...FUNCTIONS, ...FUNCTIONS_LEGACY];
 export function functionLabel(intake: IntakeState, lang: Lang): string {
   if (intake.fnKey === FUNCTION_OTHER) return intake.fnOther.trim();
-  const f = FUNCTIONS.find((x) => x.key === intake.fnKey);
+  const f = ALL_FUNCTIONS.find((x) => x.key === intake.fnKey);
   return f ? pick(f.label, lang) : "";
 }
 export function typicalProviders(intake: IntakeState, lang: Lang): string {
-  const f = FUNCTIONS.find((x) => x.key === intake.fnKey);
+  const f = ALL_FUNCTIONS.find((x) => x.key === intake.fnKey);
   return f ? pick(f.providers, lang) : "";
 }
 

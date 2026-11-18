@@ -4,7 +4,7 @@
 // Gruppen schnell fuellen und keine kleinen Zellen entstehen. Gefiltert wird
 // immer nur nach einem Merkmal, nie kombiniert, und nie nach Anbieter.
 // "Andere Funktion" (Freitext) und "keine Angabe" zaehlen nur in "Alle".
-import { FIRM_SIZE, FIRM_SIZE_LEGACY, INDUSTRY, HQ, FUNCTIONS } from "./surveyUi";
+import { FIRM_SIZE, FIRM_SIZE_LEGACY, INDUSTRY, HQ, FUNCTIONS, FUNCTIONS_LEGACY, FUNCTION_LABELS_OLD } from "./surveyUi";
 
 type T = { en: string; de: string };
 const t = (en: string, de: string): T => ({ en, de });
@@ -93,4 +93,8 @@ export function keyFromLabel(list: { key: string; label: T }[], label: string | 
 }
 
 // Grösse inklusive der alten Klasse "≥ 25.000" (Antworten vor dem 13.11.2026).
-export const LABEL_LISTS = { size: [...FIRM_SIZE, ...FIRM_SIZE_LEGACY], industry: INDUSTRY, hq: HQ, fn: FUNCTIONS };
+// Funktion inklusive der entfallenen Funktionen und der alten Bezeichnungen (Antworten vor dem 18.11.2026).
+export const LABEL_LISTS = {
+  size: [...FIRM_SIZE, ...FIRM_SIZE_LEGACY], industry: INDUSTRY, hq: HQ,
+  fn: [...FUNCTIONS, ...FUNCTIONS_LEGACY, ...FUNCTION_LABELS_OLD],
+};

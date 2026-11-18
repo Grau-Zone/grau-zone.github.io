@@ -95,21 +95,38 @@ export const labelOf = (list: { key: string; label: T }[], key: string, lang: La
 
 // ─── Auswahlliste kritischer digitaler Funktionen ────────────────────────────
 // "providers" sind typische Anbieter und dienen nur als Beispiel im Hinweistext.
+//
+// Seit 18.11.2026 sieben statt zwoelf Funktionen (Entscheid Adrian: zu viele zur Auswahl).
+// Die Schluessel bleiben, damit alte Antworten, Ergebnis-Codes und die Vergleichsgruppen
+// weiter passen:
+//   erp     nimmt Personalwirtschaft auf (frueher eigener Schluessel hr)
+//   crm     nimmt Kundenportal und Webshop auf (frueher shop)
+//   compute nimmt Backup als Dienst auf (frueher backup)
+//   files   ist breiter gefasst: Arbeitsplatz und Zusammenarbeit mit E-Mail und Office
+//   itsm und fraud entfallen; wer sie meint, waehlt "Andere" und benennt die Funktion.
+// Reihenfolge = Anzeige im Fragebogen, gegliedert nach den Gruppen in benchmarkGroups.ts.
 export const FUNCTIONS: { key: string; label: T; providers: T }[] = [
-  { key: "erp",      label: t("ERP or core merchandise management system", "ERP oder Kernsystem der Warenwirtschaft"),
-    providers: t("SAP S/4HANA Cloud, Microsoft Dynamics, Oracle", "SAP S/4HANA Cloud, Microsoft Dynamics, Oracle") },
-  { key: "crm",      label: t("CRM and sales management", "CRM und Vertriebssteuerung"),
-    providers: t("Salesforce, Microsoft Dynamics, HubSpot", "Salesforce, Microsoft Dynamics, HubSpot") },
-  { key: "hr",       label: t("HR and payroll", "Personalwirtschaft und Lohnabrechnung"),
-    providers: t("Workday, SAP SuccessFactors, Personio", "Workday, SAP SuccessFactors, Personio") },
+  { key: "erp",      label: t("ERP, finance and HR", "ERP, Finanzen und Personal"),
+    providers: t("SAP S/4HANA Cloud, Microsoft Dynamics, Oracle, Workday", "SAP S/4HANA Cloud, Microsoft Dynamics, Oracle, Workday") },
+  { key: "crm",      label: t("CRM, sales and customer portal", "CRM, Vertrieb und Kundenportal"),
+    providers: t("Salesforce, Microsoft Dynamics, HubSpot, Shopify", "Salesforce, Microsoft Dynamics, HubSpot, Shopify") },
+  { key: "compute",  label: t("Cloud infrastructure and hosting", "Cloud-Infrastruktur und Hosting"),
+    providers: t("AWS, Azure, Google Cloud", "AWS, Azure, Google Cloud") },
+  { key: "files",    label: t("Workplace and collaboration (e-mail, office, file storage)", "Arbeitsplatz und Zusammenarbeit (E-Mail, Office, Dateiablage)"),
+    providers: t("Microsoft 365, Google Workspace, Box", "Microsoft 365, Google Workspace, Box") },
   { key: "iam",      label: t("Identity and access management", "Identitäts- und Zugriffsverwaltung"),
     providers: t("Microsoft Entra ID, Okta, Ping", "Microsoft Entra ID, Okta, Ping") },
-  { key: "dwh",      label: t("Data warehouse and analytics", "Data Warehouse und Analytik"),
+  { key: "dwh",      label: t("Data platform and analytics", "Datenplattform und Analytik"),
     providers: t("Snowflake, Databricks, Google BigQuery", "Snowflake, Databricks, Google BigQuery") },
-  { key: "compute",  label: t("Compute and hosting for own applications", "Rechenleistung und Hosting eigener Anwendungen"),
-    providers: t("AWS, Azure, Google Cloud", "AWS, Azure, Google Cloud") },
-  { key: "files",    label: t("File storage and document archive", "Dateiablage und Dokumentenarchiv"),
-    providers: t("SharePoint, Box, Google Drive", "SharePoint, Box, Google Drive") },
+  { key: "ai",       label: t("AI services and language models", "KI-Dienste und Sprachmodelle"),
+    providers: t("OpenAI, Anthropic, Azure OpenAI, DeepL", "OpenAI, Anthropic, Azure OpenAI, DeepL") },
+];
+
+// Nicht mehr waehlbar, stehen aber in Antworten vor dem 18.11.2026 und in alten
+// Ergebnis-Codes. Nur fuer Auswertung, Vergleichsgruppen und die Anzeige alter Staende.
+export const FUNCTIONS_LEGACY: { key: string; label: T; providers: T }[] = [
+  { key: "hr",       label: t("HR and payroll", "Personalwirtschaft und Lohnabrechnung"),
+    providers: t("Workday, SAP SuccessFactors, Personio", "Workday, SAP SuccessFactors, Personio") },
   { key: "backup",   label: t("Backup and disaster recovery as a service", "Backup und Notfallwiederherstellung als Dienst"),
     providers: t("Veeam Cloud, Rubrik, Azure Backup", "Veeam Cloud, Rubrik, Azure Backup") },
   { key: "itsm",     label: t("Service management and ticketing", "Servicemanagement und Ticketing"),
@@ -118,8 +135,17 @@ export const FUNCTIONS: { key: string; label: T; providers: T }[] = [
     providers: t("Shopify, SAP Commerce, Adobe Commerce", "Shopify, SAP Commerce, Adobe Commerce") },
   { key: "fraud",    label: t("Fraud detection or risk scoring", "Betrugserkennung oder Risikoscoring"),
     providers: t("industry-specific", "branchenspezifisch") },
-  { key: "ai",       label: t("AI services, language models, OCR, translation", "KI-Dienste, Sprachmodelle, Texterkennung, Übersetzung"),
-    providers: t("OpenAI, Anthropic, Azure OpenAI, DeepL", "OpenAI, Anthropic, Azure OpenAI, DeepL") },
+];
+
+// Alte Bezeichnungen weiter gueltiger Schluessel (bis 18.11.2026). Im Datensatz stehen die
+// Bezeichnungen, nicht die Schluessel; damit lassen sich alte Antworten weiter zuordnen.
+export const FUNCTION_LABELS_OLD: { key: string; label: T }[] = [
+  { key: "erp",      label: t("ERP or core merchandise management system", "ERP oder Kernsystem der Warenwirtschaft") },
+  { key: "crm",      label: t("CRM and sales management", "CRM und Vertriebssteuerung") },
+  { key: "dwh",      label: t("Data warehouse and analytics", "Data Warehouse und Analytik") },
+  { key: "compute",  label: t("Compute and hosting for own applications", "Rechenleistung und Hosting eigener Anwendungen") },
+  { key: "files",    label: t("File storage and document archive", "Dateiablage und Dokumentenarchiv") },
+  { key: "ai",       label: t("AI services, language models, OCR, translation", "KI-Dienste, Sprachmodelle, Texterkennung, Übersetzung") },
 ];
 export const FUNCTION_OTHER = "other";
 
