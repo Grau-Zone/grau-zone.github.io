@@ -211,7 +211,7 @@ function QuestionCard({ id, text, scale, options, multi, lang, tr, value, onAnsw
             </div>
           </div>
         ) : scale === 2 ? (
-          <div role="radiogroup" aria-labelledby={qid}>
+          <div role="radiogroup" aria-labelledby={qid} className="as-ynrow">
             <div className="as-yn">
               <label className="as-pillopt">
                 <input type="radio" name={name} className="as-vh as-in" checked={value === 2} onChange={() => onAnswer(id, 2)} />
@@ -225,7 +225,7 @@ function QuestionCard({ id, text, scale, options, multi, lang, tr, value, onAnsw
             {dk(false)}
           </div>
         ) : (
-          <div role="radiogroup" aria-labelledby={qid}>
+          <div role="radiogroup" aria-labelledby={qid} className="as-scalerow">
             <div className="as-scale" style={{ "--n": scale } as CSSProperties}>
               <span className="as-scale__track" aria-hidden="true">
                 <i style={{ "--f": fillFraction } as CSSProperties} />

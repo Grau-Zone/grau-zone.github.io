@@ -33,8 +33,6 @@ const SovereigntyModelSection = () => {
       <div className="relative z-[1] mx-auto mt-[clamp(3rem,6vw,5.5rem)] w-full max-w-[96rem] px-[clamp(1.25rem,4vw,3rem)]">
         <figure className="m-0">
           <SovereigntyModelDiagram />
-          {/* Der frühere Kicker "Das Modell dahinter" bleibt als Bildunterschrift erhalten */}
-          <figcaption className="mt-5 px-1 text-[0.9375rem] font-semibold text-deep-on">Das Modell dahinter</figcaption>
         </figure>
       </div>
     </section>

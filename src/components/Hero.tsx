@@ -581,10 +581,8 @@ const Hero = () => {
                 {...follow(0.45)}
                 className="rx-sub !mt-0 mb-8 max-w-[34rem] !text-base lg:!text-lg"
               >
-                Organisationen sind bei digitalen Technologien zunehmend von
-                externen Anbietern und technologischen Ökosystemen abhängig. Der
-                Sovereignty Radar macht diese Abhängigkeiten und den daraus
-                resultierenden organisationalen Handlungsspielraum messbar.
+                Organisationen hängen zunehmend von externen Anbietern ab. Der
+                Sovereignty Radar macht ihren Handlungsspielraum messbar.
               </motion.p>
 
               {/* CTAs */}
