@@ -1,7 +1,10 @@
 // Impressum und Datenschutz.
 //
-// Der Text ist die rechtliche Grundlage der Datenverarbeitung und steht hier
-// wortgleich wie vorher; geaendert sind nur Typografie und Layout. Jeder
+// Der Text ist die rechtliche Grundlage der Datenverarbeitung. Gegenueber dem alten Stand
+// sind Typografie und Layout neu; inhaltlich korrigiert (18.11.2026, vor Veroeffentlichung
+// rechtlich gegenzulesen): Zahl der Fragen (52), die drei Zusatzfragen zur Organisation,
+// der Foerderer (Dieter Schwarz Stiftung, wie im Rest der Seite) und die Angaben zur
+// lokalen Speicherung im Browser, damit sie dem tatsaechlichen Verhalten entsprechen. Jeder
 // Abschnitt ist eine Zeile mit Haarlinie: links der Titel (bleibt beim Lesen
 // stehen), rechts der Text. Die Linie zeichnet sich beim Hineinscrollen.
 // Die ids vergleichswerte, ergebnis-code und kontaktliste und der Abstand
@@ -64,7 +67,7 @@ const sections: { title: string; id?: string; tight?: boolean; lines: React.Reac
   {
     title: "Förderung",
     tight: true,
-    lines: ["Dieses Forschungsprojekt wird durch die Schwarz Stiftung gefördert."],
+    lines: ["Dieses Forschungsprojekt wird durch die Dieter Schwarz Stiftung und Schwarz Digits gefördert."],
   },
   {
     title: "Datenschutz · Verantwortliche Stelle",
@@ -77,9 +80,10 @@ const sections: { title: string; id?: string; tight?: boolean; lines: React.Reac
   {
     title: "Welche Daten das Self-Assessment erhebt",
     lines: [
-      "Ihre Antworten auf die 39 Fragen des Self-Assessments.",
+      "Ihre Antworten auf die 52 Fragen des Self-Assessments.",
       "Die digitale Funktion, die Sie betrachten, und den Namen des Anbieters, den Sie eintragen.",
       "Freiwillige Angaben zu Ihrer Organisation: Größenklasse, Branchen-Hauptkategorie und Hauptsitz.",
+      "Freiwillige Angaben dazu, ob Ihre Organisation Teil des Staates ist (staatliche Stelle, Staatsunternehmen oder privat) und ob die betrachtete Funktion von einem IT-Dienstleister betrieben wird (ja oder nein, bei ja zusätzlich, ob dieser intern oder extern ist).",
       "Erhebungssprache, Zeitpunkt der Übermittlung und eine zufällig erzeugte Antwort-Kennung.",
       "Nicht erhoben werden Name, E-Mail-Adresse und IP-Adresse.",
       <>
@@ -129,8 +133,9 @@ const sections: { title: string; id?: string; tight?: boolean; lines: React.Reac
   {
     title: "Fortschritt in Ihrem Browser",
     lines: [
-      "Der Fragebogen speichert Ihren Fortschritt lokal in Ihrem Browser, damit Sie unterbrechen können. Diese Daten bleiben auf Ihrem Gerät, bis Sie den Fragebogen abschließen und absenden.",
-      "Die Schaltfläche „Erneut durchführen“ am Ende des Fragebogens löscht sie.",
+      "Der Fragebogen speichert Ihren Fortschritt lokal in Ihrem Browser, damit Sie unterbrechen können: Antworten, Angaben zu Organisation und Anbieter, Antwort-Kennung und Ergebnis-Code. Diese Daten bleiben auf Ihrem Gerät, auch nach dem Abschluss und dem Absenden, bis Sie sie löschen.",
+      "Die Schaltfläche „Erneut durchführen“ am Ende des Fragebogens löscht diesen Fortschritt. Alternativ löschen Sie die Browserdaten dieser Seite.",
+      "Lässt sich ein abgeschlossener Fragebogen nicht übermitteln, wird der vollständige Datensatz vorübergehend im Browser zwischengespeichert und beim nächsten Aufruf erneut gesendet. Diese Zwischenspeicherung und die Antwort-Kennungen bereits übermittelter Datensätze, die verhindern, dass etwas doppelt gesendet wird, entfernt „Erneut durchführen“ nicht; sie lassen sich nur über die Browserdaten löschen.",
     ],
   },
   {

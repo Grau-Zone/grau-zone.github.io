@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { flushSync } from "react-dom";
-import { motion, AnimatePresence, useScroll, useTransform, type Transition } from "framer-motion";
+import { motion, AnimatePresence, type Transition } from "framer-motion";
 import CapacityRadar, { CAPACITIES, BASELINE_VALUES } from "./CapacityRadar";
-import { EASE_OUT, LineReveal, useInViewOnce, useMotionTier, useReducedMotionSafe } from "@/components/fx";
+import { EASE_OUT, LineReveal, useInViewOnce, useReducedMotionSafe } from "@/components/fx";
 import "./landing-a/landing-a.css";
 
 /** Erster Sichtkontakt: so lange nach dem inView, bis Switching aufzieht. */
@@ -14,49 +14,6 @@ const BAR_S = 0.4;
 const T_DEF_TEXT = T_BAR + BAR_S;
 const T_LIST = 0.22;
 const LIST_STAGGER = 0.045;
-
-/**
- * Laufband mit den vier Faehigkeiten: wandert mit dem Scrollen, nie von selbst (keine Schleife).
- * Ruhige Stufe: steht still und umbricht, damit alle vier Namen lesbar sind. Reine Zierde,
- * die Namen stehen ohnehin in der Liste darunter.
- */
-function Marquee() {
-  const still = useMotionTier() === "off";
-  const boxRef = useRef<HTMLDivElement>(null);
-  const trackRef = useRef<HTMLDivElement>(null);
-  const halfRef = useRef(0);
-  const { scrollYProgress } = useScroll({ target: boxRef, offset: ["start end", "end start"] });
-  const x = useTransform(scrollYProgress, (p) => -(0.04 + 0.5 * p) * halfRef.current);
-
-  useEffect(() => {
-    const el = trackRef.current;
-    if (!el) return;
-    const measure = () => {
-      halfRef.current = el.scrollWidth / 2;
-    };
-    measure();
-    if (typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
-  return (
-    <div ref={boxRef} className="la-mq" data-still={still} aria-hidden="true">
-      <motion.div ref={trackRef} className="la-mq__track" style={still ? undefined : { x }}>
-        {[1, 2].map((s) => (
-          <div key={s} className={`la-mq__set la-mq__set--${s}`}>
-            {CAPACITIES.map((c) => (
-              <span key={c.key} className="la-mq__item">
-                {c.tag}
-              </span>
-            ))}
-          </div>
-        ))}
-      </motion.div>
-    </div>
-  );
-}
 
 const OrgSovereignty = () => {
   const reduced = useReducedMotionSafe();
@@ -134,15 +91,8 @@ const OrgSovereignty = () => {
               </>,
             ]}
           />
-          <p className="rx-sub la-or__lead">
-            Digitale Souveränität bezeichnet den Handlungsspielraum einer Organisation im Umgang mit kritischen digitalen
-            Abhängigkeiten. Wir erfassen diesen Handlungsspielraum anhand von vier organisationalen Fähigkeiten:
-            Switching, Internalization, Multi-Sourcing und Negotiation.
-          </p>
         </div>
       </div>
-
-      <Marquee />
 
       <div className="rx-wrap la-or__in la-or__in--main">
         <div className="la-or__main">

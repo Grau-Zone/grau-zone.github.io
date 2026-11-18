@@ -87,8 +87,8 @@
     @apply border-border;
   }
 
-  /* Weiches Scrollen nur, wenn keine reduzierte Bewegung gewuenscht ist. */
-  @media (prefers-reduced-motion: no-preference) {
+  /* Weiches Scrollen. Bewegung-Entscheid 18.11.2026: gilt auch bei "Bewegung reduzieren" (siehe fx/hooks.ts). */
+  @media all {
     html {
       scroll-behavior: smooth;
     }
@@ -385,7 +385,7 @@
 @media (hover: hover) and (pointer: fine) {
   .fx-glow:hover::before { opacity: 1; }
 }
-@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+@media (hover: hover) and (pointer: fine) {
   .fx-sheen-host:hover .fx-sheen::before {
     transform: translateX(120%);
     transition: transform 750ms var(--ease-in-out);
@@ -443,7 +443,8 @@ html[data-fx-paused='true'] .glass-blob {
    Opacity-/Farb-Uebergaenge (Farbklima, Sweep-Farbe). Ausnahme .fx-contained:
    kleine, auf eine Grafik begrenzte Bewegung (Radar-Strahlen samt Blips) laeuft
    weiter (Entscheid Adrian 12.10.2026); Pause-Knopf und offscreen halten sie an. */
-@media (prefers-reduced-motion: reduce) {
+/* Bewegung-Entscheid 18.11.2026: ausgeschaltet (nie zutreffend); siehe fx/hooks.ts motionPolicy */
+@media not all {
   .fx-loop:not(.fx-soft):not(.fx-contained),
   .fx-once,
   .fx-loop:not(.fx-soft):not(.fx-contained)::before,

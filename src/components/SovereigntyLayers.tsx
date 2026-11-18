@@ -311,11 +311,6 @@ const SovereigntyLayers = () => {
               className="rx-h2"
               lines={["Drei Bereiche", <>digitaler <span className="text-green">Abhängigkeit</span></>]}
             />
-            <p className="rx-sub">
-              Digitale Abhängigkeiten können in unterschiedlichen technologischen Bereichen entstehen. Der Sovereignty
-              Radar unterscheidet drei zentrale Bereiche: Cloud-Infrastruktur, KI-Modelle sowie Daten und
-              Schnittstellen.
-            </p>
           </div>
 
           {/* Linienzeichnung des Stapels: bleibt beim Lesen der Reihen im Bild (ab 62rem) */}

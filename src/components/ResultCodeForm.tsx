@@ -46,7 +46,7 @@ const CSS = `
 .rcf-btn:active{transform:scale(0.97)}
 .rcf-btn svg{transition:transform .4s cubic-bezier(0.16,1,0.3,1)}
 @media (hover:hover) and (pointer:fine){.rcf-btn:hover{background:var(--rcf-btn-hover,var(--rx-green-ink,#006a27))}.rcf-btn:hover svg{transform:translateX(4px)}.rx-deep .rcf-btn:hover,.rv-deep .rcf-btn:hover{--rcf-btn-hover:#8be3b0}}
-@media (prefers-reduced-motion:reduce){.rcf-btn:active{transform:none}.rcf-btn svg{transition:none}.rcf-btn:hover svg{transform:none}}
+@media not all{.rcf-btn:active{transform:none}.rcf-btn svg{transition:none}.rcf-btn:hover svg{transform:none}}
 .rcf-hint{margin:.65rem 0 0;max-width:62ch;font-size:.9375rem;color:var(--rv-mute,#4f5d56)}
 .rcf-hint[role='alert']{color:var(--rv-warn,#8a5a12)}
 .rcf[data-align='center'] .rcf-hint{margin-inline:auto}

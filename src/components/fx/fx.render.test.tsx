@@ -9,6 +9,7 @@ import {
   LineReveal,
   LockOn,
   Magnetic,
+  motionPolicy,
   ParticleNetwork,
   Ping,
   RadarSweep,
@@ -343,6 +344,8 @@ describe("Live-Wechsel von prefers-reduced-motion (ohne Neuladen)", () => {
   let reduce = false;
   const listeners = new Set<() => void>();
   beforeEach(() => {
+    // Die Seite folgt "Bewegung reduzieren" derzeit nicht (motionPolicy); der Test prueft den Schalter.
+    motionPolicy.honourOsReducedMotion = true;
     reduce = false;
     listeners.clear();
     Object.defineProperty(window, "matchMedia", {
@@ -366,6 +369,7 @@ describe("Live-Wechsel von prefers-reduced-motion (ohne Neuladen)", () => {
     });
   });
   afterEach(() => {
+    motionPolicy.honourOsReducedMotion = false;
     window.matchMedia = original;
   });
 

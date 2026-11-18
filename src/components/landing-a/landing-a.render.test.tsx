@@ -146,9 +146,8 @@ describe("OrgSovereignty (#organisationen)", () => {
       "Vier Fähigkeiten bestimmen den organisationalen Handlungsspielraum",
     );
     expect(container.textContent).toContain("Digitale Souveränität von Organisationen");
-    expect(container.textContent).toContain(
-      "Wir erfassen diesen Handlungsspielraum anhand von vier organisationalen Fähigkeiten: Switching, Internalization, Multi-Sourcing und Negotiation.",
-    );
+    // Der einleitende Absatz und der Lauftext der vier Namen sind auf Wunsch entfallen (18.11.2026).
+    expect(container.textContent).not.toContain("Wir erfassen diesen Handlungsspielraum anhand von vier");
 
     const tabs = Array.from(container.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
     expect(tabs.map((t) => t.id)).toEqual([0, 1, 2, 3].map((i) => `capacity-pill-tab-${i}`));

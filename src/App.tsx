@@ -3,7 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes, useLocation } from "react-route
 import { MotionConfig } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
 import RadarMark from "@/components/RadarMark";
-import { usePrintFinish } from "@/components/fx";
+import { motionPolicy, usePrintFinish } from "@/components/fx";
 import Index from "./pages/Index.tsx";
 
 // Die Startseite bleibt im Hauptbundle, alle anderen Routen kommen als eigene
@@ -19,7 +19,11 @@ const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 function prefersReducedMotion(): boolean {
   try {
-    return typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    return (
+      motionPolicy.honourOsReducedMotion &&
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches
+    );
   } catch {
     return false;
   }
@@ -177,8 +181,9 @@ function PrintFinish() {
   return null;
 }
 
+// Bewegung-Entscheid 18.11.2026: framer folgt "Bewegung reduzieren" nicht (siehe fx/hooks.ts, motionPolicy).
 const App = () => (
-  <MotionConfig reducedMotion="user">
+  <MotionConfig reducedMotion="never">
     <PrintFinish />
     <BrowserRouter basename={import.meta.env.BASE_URL}>
       <ScrollToHash />

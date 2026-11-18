@@ -3,6 +3,17 @@ import { useInView } from "framer-motion";
 import { VIEWPORT_ONCE } from "./motion";
 import { usePausedAll } from "./pause";
 
+/**
+ * Entscheid des Eigentuemers (18.11.2026): Wie das Schwarz-Reporting folgt die Seite der
+ * Betriebssystem-Einstellung "Bewegung reduzieren" nicht; alle Effekte laufen immer. Bleiben:
+ * der Pause-Knopf (WCAG 2.2.2, erster Tab-Stopp), das Anhalten ausserhalb des Bildschirms und
+ * im verborgenen Tab. Die sanfte Stufe ist weiter eingebaut. Wieder einschalten:
+ * honourOsReducedMotion = true, in App.tsx MotionConfig auf reducedMotion="user" und in den
+ * CSS-Dateien "@media not all" (Suche: "Bewegung-Entscheid") zurueck auf
+ * "@media (prefers-reduced-motion: reduce)" bzw. no-preference stellen.
+ */
+export const motionPolicy = { honourOsReducedMotion: false };
+
 type InViewMargin = NonNullable<Parameters<typeof useInView>[1]>["margin"];
 
 /**
@@ -19,7 +30,8 @@ type InViewMargin = NonNullable<Parameters<typeof useInView>[1]>["margin"];
  * Pfad-Wanderer und alle zeigergekoppelten Effekte.
  */
 export function useReducedMotionSafe(): boolean {
-  return useMediaQuery("(prefers-reduced-motion: reduce)");
+  const osReduce = useMediaQuery("(prefers-reduced-motion: reduce)");
+  return motionPolicy.honourOsReducedMotion && osReduce;
 }
 
 function matches(query: string): boolean {

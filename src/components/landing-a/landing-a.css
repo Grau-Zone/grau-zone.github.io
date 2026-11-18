@@ -741,68 +741,6 @@
 .la-or .rx-h2 {
   max-width: none;
 }
-.la-or__lead {
-  margin-top: 0 !important;
-}
-@media (min-width: 62rem) {
-  .la-or__lead {
-    justify-self: end;
-    width: min(100%, 36rem);
-  }
-}
-
-/* Laufband der vier Faehigkeiten: bewegt sich mit dem Scrollen, nie von selbst */
-.la-mq {
-  margin-top: clamp(3.5rem, 7vw, 6rem);
-  overflow: hidden;
-  padding-block: clamp(1.6rem, 3vw, 2.6rem);
-  border-block: 1px solid var(--rx-line);
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
-  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
-}
-.la-mq__track {
-  display: flex;
-  width: max-content;
-  will-change: transform;
-}
-.la-mq__item {
-  display: inline-flex;
-  align-items: center;
-  white-space: nowrap;
-  font-size: clamp(2.2rem, 6.4vw, 5.4rem);
-  font-weight: 500;
-  letter-spacing: -0.04em;
-  line-height: 1.05;
-  color: var(--rx-ink);
-}
-.la-mq__item::after {
-  content: "";
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  background: var(--rx-green);
-  margin-inline: clamp(1.4rem, 3vw, 2.6rem);
-  flex: none;
-}
-.la-mq[data-still="true"] {
-  -webkit-mask-image: none;
-  mask-image: none;
-}
-.la-mq[data-still="true"] .la-mq__track {
-  width: auto;
-  flex-wrap: wrap;
-  padding-inline: clamp(1.25rem, 4vw, 3rem);
-  row-gap: 0.4rem;
-}
-.la-mq[data-still="true"] .la-mq__set--2 {
-  display: none;
-}
-.la-mq__set {
-  display: flex;
-}
-.la-mq[data-still="true"] .la-mq__set {
-  flex-wrap: wrap;
-}
 
 .la-or__main {
   display: grid;
@@ -1044,7 +982,8 @@
 /* =====================================================================
    Reduzierte Bewegung: nur Deckkraft, Farbe, Linienzeichnen
    ===================================================================== */
-@media (prefers-reduced-motion: reduce) {
+/* Bewegung-Entscheid 18.11.2026: ausgeschaltet, siehe fx/hooks.ts */
+@media not all {
   .la-row__title,
   .la-row__sub,
   .la-row__q,
@@ -1101,8 +1040,7 @@
     opacity: 1 !important;
     transform: none !important;
   }
-  .la-amb,
-  .la-mq {
+  .la-amb {
     display: none !important;
   }
 }

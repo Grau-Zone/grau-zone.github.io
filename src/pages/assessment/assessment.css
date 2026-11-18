@@ -366,7 +366,8 @@ html:has(.as-bar) { scroll-padding-top: 4.25rem; scroll-padding-bottom: 8.5rem; 
 }
 
 /* ── Reduzierte Bewegung (sanfte Stufe): Farbe, Deckkraft, Linien ────── */
-@media (prefers-reduced-motion: reduce) {
+/* Bewegung-Entscheid 18.11.2026: ausgeschaltet, siehe fx/hooks.ts */
+@media not all {
   .as-step, .as-rise { animation-name: as-fade; animation-duration: 0.5s; }
   .as-langrow:hover .as-langrow__t, .as-pickrow:hover .as-pickrow__t, .as-opt:hover .as-opt__t { transform: none; }
   .as-langrow:hover .as-circ { transform: none; }

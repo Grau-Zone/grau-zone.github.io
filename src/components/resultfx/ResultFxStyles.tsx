@@ -98,7 +98,7 @@ const CSS = `${RV_TOKEN_CSS}
 .rfx-cta{position:relative;border:0!important;border-radius:999px!important;background:var(--rx-green,#00802f)!important;color:#fff!important;font-family:inherit!important;font-weight:600!important;box-shadow:0 1px 0 rgba(0,0,0,0.08),0 10px 24px -12px rgba(0,128,47,0.55);transition:background-color .25s ease,box-shadow .4s ${EASE},transform .16s ${EASE}}
 .rfx-cta--strong{box-shadow:0 1px 0 rgba(0,0,0,0.08),0 14px 30px -12px rgba(0,128,47,0.6)}
 @media (hover:hover) and (pointer:fine){.rfx-cta:hover{background:var(--rx-green-ink,#006a27)!important;box-shadow:0 1px 0 rgba(0,0,0,0.1),0 16px 30px -12px rgba(0,128,47,0.7)}}
-@media (prefers-reduced-motion:reduce){.rfx-pill,.rfx-cta,.rv-cap{transition-property:color,background-color,box-shadow}}
+@media not all{.rfx-pill,.rfx-cta,.rv-cap{transition-property:color,background-color,box-shadow}}
 `;
 
 export function ResultFxStyles() {

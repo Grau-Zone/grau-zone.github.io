@@ -286,7 +286,8 @@
 .fr-err { font-size: 0.9375rem; color: #b3261e; }
 
 /* ---------- Reduzierte Bewegung: keine Verschiebungen, Linien und Farben bleiben ---------- */
-@media (prefers-reduced-motion: reduce) {
+/* Bewegung-Entscheid 18.11.2026: ausgeschaltet, siehe fx/hooks.ts */
+@media not all {
   .fr-head { transition: background-color 0.3s, border-color 0.3s; }
   .fr-scope .rx-pill:hover svg, .fr-scope .rx-pill--back:hover svg { transform: none; }
   .fr-row:hover .fr-row__t, .fr-row:focus-visible .fr-row__t,
