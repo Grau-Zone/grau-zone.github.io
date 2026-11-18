@@ -32,6 +32,9 @@ jobs:
 
       - name: Build
         run: npm run build
+        env:
+          # Ohne diese Variable schreibt die Seite nichts in die Datenbank (Schutz fuer lokale Builds).
+          VITE_ENABLE_SUBMIT: "true"
 
       - name: SPA fallback (404 -> index)
         run: cp dist/index.html dist/404.html

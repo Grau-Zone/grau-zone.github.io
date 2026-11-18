@@ -590,7 +590,7 @@ export function SovereigntyMatrix({
               fontFamily="inherit" fontSize="14" fontWeight="600" fill={V.ink}
               stroke={V.ground} strokeWidth="4" strokeLinejoin="round" paintOrder="stroke"
               style={{ fontVariantNumeric: "tabular-nums" }}>
-              <tspan ref={xRef} key={xs}>{xs}</tspan>{" / "}<tspan ref={yRef} key={ys}>{ys}</tspan>
+              <tspan ref={xRef} key={"x" + xs}>{xs}</tspan>{" / "}<tspan ref={yRef} key={"y" + ys}>{ys}</tspan>
             </text>
           </>
         )}

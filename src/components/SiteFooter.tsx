@@ -126,7 +126,9 @@ function Wordmark() {
 const SiteFooter = ({ breit = false }: SiteFooterProps) => {
   const footRef = useRef<HTMLElement>(null);
   return (
-    <footer ref={footRef} className={"fr-foot fr-ink fr-scope" + (breit ? " fr-foot--wide" : "")}>
+    // role: Auf der Startseite steht die Fusszeile in einem section-Element (#about); dort wuerde
+    // <footer> sonst nicht als contentinfo gelten.
+    <footer ref={footRef} role="contentinfo" className={"fr-foot fr-ink fr-scope" + (breit ? " fr-foot--wide" : "")}>
       <Horizon targetRef={footRef} />
 
       <div className="rx-wrap">
@@ -136,7 +138,7 @@ const SiteFooter = ({ breit = false }: SiteFooterProps) => {
             <div className="fr-foot__copy">© {new Date().getFullYear()} IWI-HSG, Universität St.Gallen</div>
           </div>
 
-          <nav>
+          <nav aria-label="Fusszeile">
             <ul className="fr-rows">
               {extern.map(({ label, href }) => (
                 <li key={label}>

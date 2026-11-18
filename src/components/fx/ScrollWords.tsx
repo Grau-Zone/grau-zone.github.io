@@ -114,7 +114,7 @@ function ScrollWordsAnimated({
           className="fx-deco pointer-events-none absolute left-0 right-0 top-0 block h-px"
           style={{
             y: lineY,
-            background: "linear-gradient(90deg, transparent, rgba(139,164,255,0.45), transparent)",
+            background: "linear-gradient(90deg, transparent, rgba(0,128,47,0.45), transparent)",
           }}
         />
       ) : null}

@@ -193,7 +193,7 @@ const OrgSovereignty = () => {
                       0{i + 1}
                     </span>
                     <span className="block min-w-0">
-                      <span className="la-tab__tag">{c.tag}</span>
+                      <span lang="en" className="la-tab__tag">{c.tag}</span>
                       <span className="la-tab__title" aria-hidden="true">
                         {c.title}
                       </span>
@@ -222,7 +222,7 @@ const OrgSovereignty = () => {
               >
                 <motion.div {...rise("translate(0px, 6px)")} transition={enter(0)}>
                   <span className="la-cap__no">
-                    Fähigkeit 0{active + 1} · {cap.tag}
+                    Fähigkeit 0{active + 1} · <span lang="en">{cap.tag}</span>
                   </span>
                 </motion.div>
                 <LineReveal as="h3" trigger="mount" lines={[cap.title]} delay={0.04} duration={0.6} className="la-cap__h" />

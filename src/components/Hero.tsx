@@ -1,5 +1,5 @@
 import { motion, useScroll, useTransform } from "framer-motion";
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { Link } from "react-router-dom";
 import {
   CSS_EASE_IN_OUT,
@@ -310,7 +310,10 @@ const STATS = [
 const StatsRow = ({ className }: { className?: string }) => {
   const reduced = useReducedMotionSafe();
   const statsRef = useRef<HTMLDivElement | null>(null);
-  const statsInView = useInViewOnce(statsRef, { amount: 0.6 });
+  // Ohne Randabzug: Die Reihe steht im gepinnten Hero bei 80 bis 90 % der Bildhoehe, der
+  // Standardrand (-12 % unten) loeste erst beim Entpinnen aus und setzte die sichtbaren
+  // Zahlen dann von 70 % auf 0 % zurueck.
+  const statsInView = useInViewOnce(statsRef, { amount: 0.6, margin: "0px" });
   const follow = (delay: number) =>
     reduced
       ? {
@@ -371,13 +374,77 @@ const StatsRow = ({ className }: { className?: string }) => {
 
 type Place = { cx: number; cy: number; w: number; h: number };
 
+/** Handy: Abstand zwischen Text und Radar sowie kleinster Radar, der noch neben den Text passt. */
+const RADAR_GAP = 20;
+const RADAR_MIN = 200;
+/** Gemessene Lage des Textblocks (Handy). flow: Text plus Radar passen nicht in die Hoehe. */
+type Fit = { flow: boolean; text: number; zone: number; size: number; W: number; H: number };
+
 const Hero = () => {
   const reduced = useReducedMotionSafe();
   const lg = useMediaQuery("(min-width: 1024px)");
+  // 1024 bis 1279 px: Das Radar wird kleiner und rueckt nach rechts, damit es den Textblock nicht ueberlagert.
+  const xl = useMediaQuery("(min-width: 1280px)");
   const sectionRef = useRef<HTMLElement | null>(null);
+  const stageRef = useRef<HTMLDivElement | null>(null);
+  const textRef = useRef<HTMLDivElement | null>(null);
+  const probeRef = useRef<HTMLDivElement | null>(null);
   const h1Ref = useRef<HTMLElement | null>(null);
   const ctaRef = useRef<HTMLAnchorElement | null>(null);
   const [place, setPlace] = useState<Place | null>(null);
+  const [fit, setFit] = useState<Fit | null>(null);
+
+  // Handy: Der gepinnte Rahmen ist genau eine Bildschirmhoehe hoch und schneidet ab,
+  // was darueber hinausragt. Auf kurzen Schirmen (360x740, 320x568) laege das Radar
+  // sonst ueber dem Text, oder die Knoepfe waeren abgeschnitten. Dort wird nicht
+  // gepinnt: Der Text steht in voller Hoehe, das Radar bekommt eine eigene Zone
+  // darunter (Partikel sammeln sich beim Scrollen weiterhin dorthin).
+  useLayoutEffect(() => {
+    if (lg) {
+      setFit(null);
+      return;
+    }
+    const stage = stageRef.current;
+    const text = textRef.current;
+    const probe = probeRef.current;
+    if (!stage || !text || !probe) return;
+    const measure = () => {
+      const H = probe.offsetHeight || window.innerHeight;
+      const W = stage.clientWidth;
+      const bottom = Math.ceil(text.getBoundingClientRect().bottom - stage.getBoundingClientRect().top);
+      const flow = bottom + RADAR_GAP + RADAR_MIN + 12 > H;
+      const size = Math.round(Math.min(W * 0.78, 300));
+      const zone = Math.round(Math.max(size + 48, H * 0.6));
+      setFit((prev) =>
+        prev && prev.flow === flow && prev.text === bottom && prev.W === W && prev.H === H
+          ? prev
+          : { flow, text: bottom, zone, size, W, H },
+      );
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(text);
+    ro.observe(stage);
+    window.addEventListener("resize", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [lg]);
+
+  const flow = !lg && !!fit?.flow;
+  const flowH = flow && fit ? fit.text + RADAR_GAP + fit.zone : 0;
+  // Gepinnt auf dem Handy: Radar nie in den Text hinein, kleiner statt ueberlappend.
+  const pinSize = !lg && fit && !fit.flow ? Math.max(120, Math.min(fit.W * 0.78, fit.H * 0.3, fit.H - fit.text - RADAR_GAP - 16)) : null;
+  const pinCy = pinSize && fit ? Math.max(0.8, (fit.text + RADAR_GAP + pinSize / 2) / fit.H) : 0.8;
+  const gatherKey = lg ? (xl ? "xl" : "lg") : flow ? `flow-${flowH}-${fit?.size}` : `sm-${pinSize ?? 0}`;
+  const gatherCenter = lg
+    ? xl
+      ? { x: 0.74, y: 0.54 }
+      : { x: 0.82, y: 0.54 }
+    : flow && fit
+      ? { x: 0.5, y: (fit.text + RADAR_GAP + fit.zone / 2) / flowH }
+      : { x: 0.5, y: pinCy };
 
   // Scroll-Kopplung: Suchstrahl dreht mit dem Scrollen, das Radar erscheint, sobald die Punkte sich sammeln
   const { scrollYProgress: pin } = useScroll({
@@ -413,25 +480,41 @@ const Hero = () => {
       <section
         ref={sectionRef}
         className="relative"
-        style={{ height: lg ? "250vh" : "230vh" }}
+        style={{ height: flow ? "auto" : lg ? "250vh" : "230vh" }}
       >
         <div
-          className="sticky top-0 overflow-hidden"
-          style={{ height: "100svh" }}
+          ref={stageRef}
+          className={flow ? "relative overflow-hidden" : "sticky top-0 overflow-hidden"}
+          style={{ height: flow ? flowH : "100svh" }}
         >
-          {/* Punkte treiben durch ein Strömungsfeld und sammeln sich beim Scrollen zum Radar */}
-          <ParticleGather
-            key={lg ? "lg" : "sm"}
-            className="absolute inset-0 h-full w-full"
-            sectionRef={sectionRef}
-            shapes={[radarShape]}
-            center={lg ? { x: 0.74, y: 0.54 } : { x: 0.5, y: 0.8 }}
-            size={(W, H) =>
-              lg ? Math.min(H * 0.8, W * 0.44) : Math.min(W * 0.78, H * 0.3)
-            }
-            range={0.8}
-            onLayout={(items) => setPlace(items[0] ?? null)}
+          {/* Messfuehler: Hoehe des gepinnten Rahmens (100svh), auch im ungepinnten Zustand */}
+          <div
+            ref={probeRef}
+            aria-hidden="true"
+            className="pointer-events-none invisible absolute left-0 top-0 w-px"
+            style={{ height: "100svh" }}
           />
+          {/* Punkte treiben durch ein Strömungsfeld und sammeln sich beim Scrollen zum Radar */}
+          {(lg || fit) && (
+            <ParticleGather
+              key={gatherKey}
+              className="absolute inset-0 h-full w-full"
+              sectionRef={sectionRef}
+              shapes={[radarShape]}
+              center={gatherCenter}
+              size={(W, H) =>
+                lg
+                  ? xl
+                    ? Math.min(H * 0.8, W * 0.42)
+                    : Math.min(H * 0.7, W * 0.31)
+                  : flow && fit
+                    ? fit.size
+                    : pinSize ?? Math.min(W * 0.78, H * 0.3)
+              }
+              range={0.8}
+              onLayout={(items) => setPlace(items[0] ?? null)}
+            />
+          )}
 
           {/* Suchstrahl: dreht mit dem Scrollen, kein Dauerlauf */}
           {place && (
@@ -462,13 +545,15 @@ const Hero = () => {
             style={{
               background: lg
                 ? "radial-gradient(ellipse 52% 70% at 22% 50%, rgba(255,255,255,0.94) 0%, rgba(255,255,255,0.7) 55%, transparent 100%)"
-                : "linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.88) 46%, transparent 62%)",
+                : flow && fit
+                  ? `linear-gradient(180deg, rgba(255,255,255,0.95) 0px, rgba(255,255,255,0.88) ${Math.round(fit.text * 0.74)}px, transparent ${fit.text + RADAR_GAP}px)`
+                  : "linear-gradient(180deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.88) 46%, transparent 62%)",
             }}
           />
 
           {/* Text */}
           <div className="rx-wrap flex h-full flex-col justify-start pt-[96px] lg:justify-center lg:pt-16">
-            <div className="max-w-[40rem]">
+            <div ref={textRef} className="max-w-[40rem]">
               {/* Headline: Zeilen gleiten aus der Maske, die h1 selbst bleibt sichtbar (LCP) */}
               <LineReveal
                 ref={h1Ref}

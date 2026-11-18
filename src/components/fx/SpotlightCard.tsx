@@ -38,7 +38,7 @@ const RING_MASK: CSSProperties = {
 export const SpotlightCard = forwardRef<HTMLElement, SpotlightCardProps>(function SpotlightCard(
   {
     as = "div",
-    color = "#4B6EFF",
+    color = "#00802f",
     intensity = 0.14,
     radius = 210,
     edge = true,

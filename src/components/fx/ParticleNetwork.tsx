@@ -42,8 +42,8 @@ const PING_MS = 900;
  */
 export function ParticleNetwork({
   className,
-  color = "139,164,255",
-  accent = "75,110,255",
+  color = "0,128,47",
+  accent = "0,128,47",
   areaPerParticle = 16000,
   max = 80,
   link = 120,

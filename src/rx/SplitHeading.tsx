@@ -57,7 +57,9 @@ export function SplitHeading({
               ? undefined
               : {
                   transform: seen ? "none" : "translateY(105%)",
-                  transition: seen ? "transform 1s var(--rx-ease)" : "none",
+                  transitionProperty: seen ? "transform" : "none",
+                  transitionDuration: "1s",
+                  transitionTimingFunction: "var(--rx-ease)",
                   transitionDelay: `${delay + (i % 14) * 38}ms`,
                 }
           }

@@ -28,7 +28,7 @@ const CORNERS = [
  * Reduzierte Bewegung (sanfte Stufe): Die Ecken stehen am Ziel und blenden
  * nur per opacity ein (gleicher Verlauf, ohne Anflug).
  */
-export function LockOn({ color = "#8BA4FF", play = false, size = 8, inset = -6, className, children }: LockOnProps) {
+export function LockOn({ color = "#00802f", play = false, size = 8, inset = -6, className, children }: LockOnProps) {
   const reduced = useReducedMotionSafe();
   const border = `1.5px solid ${color}`;
 

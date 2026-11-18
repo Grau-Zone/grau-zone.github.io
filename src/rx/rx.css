@@ -7,6 +7,7 @@
 .rx-deep { background: var(--rx-deep); color: var(--rx-on-deep); overflow: clip; isolation: isolate; position: relative; }
 .rx-deep .rx-h2, .rx-deep .rx-h1 { color: #fff; }
 .rx-deep .rx-sub { color: var(--rx-on-deep-mute); }
+.rx-deep .text-green { color: var(--rx-mint); }
 .rx-ambient { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; opacity: 0.9; pointer-events: none; }
 .rx-w { display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: 0.12em; margin-bottom: -0.12em; }
 .rx-w > span { display: inline-block; }

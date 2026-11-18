@@ -22,7 +22,7 @@ export interface SectionHeaderProps {
 }
 
 const DEFAULT_EYEBROW_CLASS = "inline-block text-xs font-semibold tracking-[0.2em] uppercase mb-4";
-const DEFAULT_EYEBROW_STYLE: CSSProperties = { color: "rgba(139,164,255,0.6)", fontFamily: "'Space Grotesk', sans-serif" };
+const DEFAULT_EYEBROW_STYLE: CSSProperties = { color: "rgba(0,128,47,0.7)", fontFamily: "'Space Grotesk', sans-serif" };
 const DEFAULT_HEADING_CLASS = "text-4xl lg:text-5xl font-semibold text-white mb-4";
 const DEFAULT_HEADING_STYLE: CSSProperties = { fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.025em" };
 const DEFAULT_LEAD_CLASS = "text-base leading-relaxed";
@@ -64,7 +64,7 @@ export function SectionHeader({
             key={reduced ? "line-r" : "line-m"}
             aria-hidden="true"
             className="fx-deco pointer-events-none mr-3 inline-block align-middle"
-            style={{ width: 20, height: 1, background: "rgba(139,164,255,0.6)", transformOrigin: "left center" }}
+            style={{ width: 20, height: 1, background: "rgba(0,128,47,0.7)", transformOrigin: "left center" }}
             initial={reduced ? { clipPath: "inset(0 100% 0 0)" } : { transform: "scaleX(0)" }}
             animate={inView ? (reduced ? { clipPath: "inset(0 0% 0 0)" } : { transform: "scaleX(1)" }) : undefined}
             transition={{ duration: 0.45, ease: EASE_OUT }}

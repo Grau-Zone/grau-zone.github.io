@@ -288,7 +288,7 @@
     width: 200%;
     aspect-ratio: 1 / 1;
     margin-top: -100%;
-    background: conic-gradient(transparent 0deg 300deg, #8BA4FF 340deg, transparent 360deg);
+    background: conic-gradient(transparent 0deg 300deg, #00802f 340deg, transparent 360deg);
     animation: fx-ring-spin 2.4s linear infinite;
     animation-play-state: paused;
   }
@@ -369,17 +369,15 @@
     clip: auto;
     clip-path: none;
     border-radius: 9999px;
-    background: rgba(10, 13, 26, 0.92);
-    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: #0c1310;
+    border: 1px solid #0c1310;
     color: #fff;
     font-family: 'Switzer', system-ui, sans-serif;
     font-size: 13px;
     font-weight: 500;
     line-height: 1.2;
-    outline: 2px solid rgba(139, 164, 255, 0.8);
+    outline: 2px solid #00802f;
     outline-offset: 3px;
-    -webkit-backdrop-filter: blur(12px);
-    backdrop-filter: blur(12px);
   }
 }
 
@@ -477,6 +475,16 @@ html[data-fx-paused='true'] .glass-blob {
     filter: none !important;
   }
   [data-fx-decode] { color: inherit !important; }
+  /* Tiefgruene und tintenfarbene Flaechen mit heller Schrift: Chrome und Safari lassen
+     Hintergruende im Druck standardmaessig weg (Haken "Hintergrundgrafiken" aus). Ohne diese
+     Zeile stuende dort weisse Schrift auf weissem Papier. */
+  .rx-deep,
+  .fr-foot,
+  .fr-page--deep,
+  .la-ev {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
   *,
   *::before,
   *::after {
@@ -485,150 +493,24 @@ html[data-fx-paused='true'] .glass-blob {
   }
 }
 
-/* ── Global background field (GlassBackground.tsx) ─────────────
-   Desktop keeps the deliberately very dark look. Mobile gets a
-   lifted base + stronger glows via the media query below, because
-   phone OLED panels render near-black navy as pure black, which
-   otherwise collapses the colour glows to invisible.
-   Markup: .glass-bg > .glass-blob.glass-blob--1/2/3, .glass-bg-grid >
-   .glass-bg-grid__lines, .glass-grain.
-   Die drei Farbglows liegen auf eigenen Ebenen (inset -10 %), damit sie auf
-   der Startseite driften koennen. Die Mittelpunkte sind auf die groessere
-   Ebene umgerechnet ((p + 10) / 1.2), Groessen und Farben sind unveraendert,
-   das Startbild bleibt also identisch. */
-.glass-bg {
-  position: fixed;
-  inset: 0;
-  z-index: -2;
-  pointer-events: none;
-  overflow: hidden;
-  background: radial-gradient(140% 120% at 50% 0%, #05070f 0%, #010207 60%);
-}
-.glass-blob {
-  position: absolute;
-  inset: -10%;
-  pointer-events: none;
-}
-/* frueher: at 12% -5% */
-.glass-blob--1 { background: radial-gradient(70vmax 70vmax at 18.333% 4.167%, rgba(58,85,216,0.26), transparent 60%); }
-/* frueher: at 92% 26% */
-.glass-blob--2 { background: radial-gradient(60vmax 60vmax at 85% 30%, rgba(109,63,192,0.18), transparent 60%); }
-/* frueher: at 25% 108% */
-.glass-blob--3 { background: radial-gradient(65vmax 65vmax at 29.167% 98.333%, rgba(10,143,120,0.14), transparent 62%); }
-
-.glass-bg-grid {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  -webkit-mask-image: radial-gradient(120% 80% at 50% 30%, #000 30%, transparent 80%);
-  mask-image: radial-gradient(120% 80% at 50% 30%, #000 30%, transparent 80%);
-}
-.glass-bg-grid__lines {
-  position: absolute;
-  inset: 0 0 -192px 0;
-  background-image:
-    linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
-  background-size: 64px 64px;
-}
-.glass-grain {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  opacity: 0.05;
-  background-size: 180px 180px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-}
-
-/* Mobile: nahezu identisch zum Desktop. Nur die Basis minimal angehoben, damit
-   OLED-Displays das Fast-Schwarz nicht komplett zu Schwarz verschlucken, plus eine
-   Spur mehr Glow-Deckkraft. Bewusst kleiner Unterschied. */
-@media (max-width: 768px) {
-  .glass-bg {
-    background: radial-gradient(140% 120% at 50% 0%, #070a15 0%, #03050b 70%);
-  }
-  .glass-blob--1 { background: radial-gradient(70vmax 70vmax at 18.333% 4.167%, rgba(58,85,216,0.29), transparent 60%); }
-  .glass-blob--2 { background: radial-gradient(60vmax 60vmax at 85% 30%, rgba(109,63,192,0.20), transparent 60%); }
-  .glass-blob--3 { background: radial-gradient(65vmax 65vmax at 29.167% 98.333%, rgba(10,143,120,0.15), transparent 62%); }
-  .glass-grain { opacity: 0.04; }
-}
-
-/* Aurora-Drift nur auf der Startseite (html[data-fx-page='home']), ab 768 px
-   und ohne reduzierte Bewegung. Sie laeuft nur im Hero-Bereich
-   (html[data-fx-aurora='on'], gesetzt von SectionAmbience) und steht sonst
-   still: Eine bildschirmfuellende Dauerbewegung zwingt den Compositor, jede
-   backdrop-filter-Flaeche (Navbar, Glaskarten) in jedem Frame neu
-   weichzuzeichnen. Bis zum ersten Observer-Callback gilt pausiert. */
-@media (min-width: 768px) and (prefers-reduced-motion: no-preference) {
-  html[data-fx-page='home'] .glass-blob--1 { animation: fx-aurora-1 38s ease-in-out infinite alternate; }
-  html[data-fx-page='home'] .glass-blob--2 { animation: fx-aurora-2 46s ease-in-out infinite alternate; }
-  html[data-fx-page='home'] .glass-blob--3 { animation: fx-aurora-3 54s ease-in-out infinite alternate; }
-  html[data-fx-page='home']:not([data-fx-aurora='on']) .glass-blob { animation-play-state: paused; }
-  html[data-fx-page='home'][data-fx-aurora='on'] .glass-blob { will-change: transform; }
-}
-/* Raster-Drift an den Scrollfortschritt gekoppelt (ohne JS) */
-@supports (animation-timeline: scroll()) {
-  @media (min-width: 768px) and (prefers-reduced-motion: no-preference) {
-    html[data-fx-page='home'] .glass-bg-grid__lines {
-      animation: fx-grid-drift linear both;
-      animation-timeline: scroll(root block);
-    }
-  }
-}
-
-/* Lichtkegel auf dem Raster (GridSpotlight in GlassBackground.tsx) */
-.grid-flash {
-  position: fixed;
-  left: 0;
-  top: 0;
-  width: 480px;
-  height: 480px;
-  z-index: -1;
-  overflow: hidden;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 200ms var(--ease-out);
-  will-change: transform;
-  -webkit-mask-image: radial-gradient(circle, #000 0, transparent 70%);
-  mask-image: radial-gradient(circle, #000 0, transparent 70%);
-}
-.grid-flash[data-on='true'] { opacity: 1; }
-.grid-flash__lines {
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 544px;
-  height: 544px;
-  will-change: transform;
-  background-image:
-    linear-gradient(rgba(139,164,255,0.16) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(139,164,255,0.16) 1px, transparent 1px);
-  background-size: 64px 64px;
-}
-@media (prefers-reduced-motion: reduce) {
-  .grid-flash { display: none; }
-}
-
 ::-webkit-scrollbar { width: 5px; }
-::-webkit-scrollbar-track { background: hsl(228 45% 4%); }
-::-webkit-scrollbar-thumb { background: hsl(228 30% 18%); border-radius: 3px; }
+::-webkit-scrollbar-track { background: #ffffff; }
+::-webkit-scrollbar-thumb { background: #b9c6bf; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #00802f; }
 
-/* Chrome faerbt automatisch ausgefuellte Felder hellblau bis weiss und setzt
-   dabei background und color mit hoher Prioritaet. Auf der durchgehend dunklen
-   Seite sticht das als weisser Kasten heraus. Die Hintergrundfarbe selbst laesst
-   sich nicht ueberschreiben, ein einfarbiger innerer Schatten deckt sie ab;
-   die Schriftfarbe braucht -webkit-text-fill-color. Die lange transition
-   verhindert das kurze Aufblitzen der Autofill-Farbe.
-   Das !important ist noetig, weil die Felder ihre Farben inline tragen und ein
-   spaeter gesetzter Inline-Wert die Abdeckung sonst wieder entfernen wuerde.
-   Der Fokusring liegt bewusst auf outline und nicht auf box-shadow, damit er
-   sich mit dieser Abdeckung nicht um dieselbe Eigenschaft streitet. */
+/* Chrome faerbt automatisch ausgefuellte Felder hellblau und setzt dabei background
+   und color mit hoher Prioritaet. Ein einfarbiger innerer Schatten deckt das ab, die
+   Schriftfarbe braucht -webkit-text-fill-color. Auf weissem Grund gilt Weiss und Tinte,
+   in tiefgruenen Abschnitten (.rx-deep) das tiefe Gruen mit heller Schrift. Die lange
+   transition verhindert das Aufblitzen. Der Fokusring liegt auf outline, damit er sich
+   nicht um box-shadow streitet. */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
 input:-webkit-autofill:active {
-  -webkit-box-shadow: 0 0 0 1000px #0d1020 inset !important;
-  -webkit-text-fill-color: #ffffff !important;
-  caret-color: #ffffff;
+  -webkit-box-shadow: 0 0 0 1000px var(--af-bg, #ffffff) inset !important;
+  -webkit-text-fill-color: var(--af-fg, #0c1310) !important;
+  caret-color: var(--af-fg, #0c1310);
   transition: background-color 100000s ease-in-out 0s;
 }
+.rx-deep { --af-bg: #0a3a22; --af-fg: #ffffff; }

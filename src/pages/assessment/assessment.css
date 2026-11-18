@@ -55,8 +55,9 @@ html:has(.as-bar) { scroll-padding-top: 4.25rem; scroll-padding-bottom: 8.5rem; 
 /* ── Pillen: Ergaenzungen ────────────────────────────────────────────── */
 .as-pill-xl { padding: 1.1rem 1.8rem; font-size: 1.0625rem; }
 .as-band .rx-pill:focus-visible { outline-color: var(--rx-mint); }
-.as-pill-light { background: #fff; color: var(--rx-deep); box-shadow: none; }
-.as-pill-light:hover { background: var(--rx-mint); color: var(--rx-deep); box-shadow: none; }
+/* .as-band a { color: inherit } waere spezifischer als .as-pill-light allein: Text bliebe hell auf Weiss. */
+.as-pill-light, .as-band .as-pill-light { background: #fff; color: var(--rx-deep); box-shadow: none; }
+.as-pill-light:hover, .as-band .as-pill-light:hover { background: var(--rx-mint); color: var(--rx-deep); box-shadow: none; }
 
 /* ── Hinweis (die eine Warnnotiz) ────────────────────────────────────── */
 .as-note { margin: 0; padding: 0.9rem 1.1rem; border-radius: 0.75rem; background: var(--as-warn-bg); color: var(--as-warn-ink); box-shadow: inset 0 0 0 1px var(--as-warn-line); font-size: 0.975rem; line-height: 1.5; }
@@ -259,7 +260,9 @@ html:has(.as-bar) { scroll-padding-top: 4.25rem; scroll-padding-bottom: 8.5rem; 
 .as-rhead__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 0.8rem 1.2rem; margin-top: clamp(1.6rem, 3vw, 2.4rem); }
 .as-chipstat { display: inline-flex; align-items: center; gap: 0.5rem; background: rgba(111, 214, 154, 0.14); color: var(--rx-mint); border-radius: 999px; padding: 0.3rem 0.85rem; font-size: 0.875rem; font-weight: 600; }
 .as-chipstat.as-chipstat--paper { background: rgba(0, 128, 47, 0.08); color: var(--rx-green-ink); }
-.as-rhead__fn { margin: 0; font-size: 1.125rem; color: var(--rx-on-deep-mute); line-height: 1.4; }
+/* Funktion und Anbieter sind freie Eingaben: lange Woerter ohne Leerzeichen umbrechen, statt vom Band abgeschnitten zu werden. */
+.as-rhead__meta > * { min-width: 0; max-width: 100%; }
+.as-rhead__fn { margin: 0; font-size: 1.125rem; color: var(--rx-on-deep-mute); line-height: 1.4; overflow-wrap: anywhere; }
 .as-horizon { position: absolute; left: 0; right: 0; bottom: 0; margin: 0 auto; width: min(960px, 100%); height: auto; pointer-events: none; z-index: 0; }
 .as-rbody { padding-block: clamp(2.5rem, 6vw, 4.5rem) clamp(2rem, 5vw, 3.5rem); }
 .as-ctarow { display: flex; flex-wrap: wrap; align-items: center; gap: 1.2rem 2.2rem; margin-bottom: clamp(1.6rem, 3.5vw, 2.4rem); }
@@ -267,7 +270,8 @@ html:has(.as-bar) { scroll-padding-top: 4.25rem; scroll-padding-bottom: 8.5rem; 
 .as-standnote { margin: 0; max-width: 62ch; font-size: 0.9375rem; line-height: 1.6; color: var(--rx-mute); }
 .as-block { margin-top: clamp(2.5rem, 6vw, 4.5rem); }
 .as-block > .as-sec { padding-top: 0; border-top: 0; }
-.as-ansnote { margin: 1rem 0 0; font-size: 0.9375rem; color: var(--rx-mute); max-width: 62ch; }
+/* Steht auch in der tiefgruenen Vergleichskarte (afterCaps): --rv-mute schaltet dort auf Hellgruen um. */
+.as-ansnote { margin: 1rem 0 0; font-size: 0.9375rem; color: var(--rv-mute, var(--rx-mute)); max-width: 62ch; }
 .as-nocmp { margin: 0 0 1.6rem; font-size: 0.9375rem; color: var(--rx-mute); }
 
 .as-caps { border-top: 1px solid var(--rx-line); }
@@ -287,8 +291,9 @@ html:has(.as-bar) { scroll-padding-top: 4.25rem; scroll-padding-bottom: 8.5rem; 
 .as-matrix__side { display: grid; gap: 1.4rem; align-content: start; }
 .as-matrix__fig { display: flex; flex-direction: column; align-items: center; }
 .as-quad { margin: 0; }
-.as-quad__head { margin: 0 0 0.6rem; font-size: 0.875rem; font-weight: 600; color: var(--rx-mute); }
-.as-quad__none { margin: 0; font-style: italic; color: var(--rx-mute); }
+/* Stehen in der tiefgruenen Vergleichskarte (matrixSide) und ohne Vergleich auf Weiss: --rv-mute folgt dem Grund. */
+.as-quad__head { margin: 0 0 0.6rem; font-size: 0.875rem; font-weight: 600; color: var(--rv-mute, var(--rx-mute)); }
+.as-quad__none { margin: 0; font-style: italic; color: var(--rv-mute, var(--rx-mute)); }
 
 .as-ctx { margin-top: clamp(2.5rem, 6vw, 4.5rem); }
 .as-ctx__head { display: grid; gap: 0.7rem; max-width: 62ch; margin-bottom: clamp(1.4rem, 3vw, 2.2rem); }
@@ -343,9 +348,17 @@ html:has(.as-bar) { scroll-padding-top: 4.25rem; scroll-padding-bottom: 8.5rem; 
   .as-consent__detail, .as-consent .as-note { margin-left: 0; }
   .as-path li { grid-template-columns: 3rem minmax(0, 1fr) auto; }
   .as-cap__items { margin-left: 0; width: 100%; }
+  /* Blocktitel: "Internalisierungsfähigkeit" ist 10,8 em breit und bricht auf dem Handy sonst mitten im Wort. */
+  .as-chapter .as-display { font-size: clamp(1.5rem, 7.8vw, 2.2rem); }
 }
 @media (max-width: 22.5rem) {
   .as-bar .rx-pill .as-nudge { display: none; }
+}
+@media (max-width: 21rem) {
+  /* 320 px: "Handlungsspielraum" (Titel) und "Internalisierungsfähigkeit" (Liste) passen bei voller Grösse nicht
+     in die Zeile und brächen mitten im Wort. */
+  .as-display { font-size: clamp(1.75rem, 9.6vw, 2.2rem); }
+  .as-path__t { font-size: 1.05rem; }
 }
 @media (max-height: 520px) {
   .as-bar { position: static; }

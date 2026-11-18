@@ -47,11 +47,14 @@ const NotFound = () => {
               </span>
             </div>
 
-            <Reveal as="p" delay={0.35} className="rx-sub">
+            {/* margin="0px": Absatz und Rueckweg liegen auf dem Handy im unteren Zwoelftel des
+                ersten Bildschirms; mit dem Standardrand (-12 %) blieben sie dort unsichtbar,
+                bis jemand scrollt, und die 404 hat sonst keinen sichtbaren Weg zurueck. */}
+            <Reveal as="p" delay={0.35} margin="0px" className="rx-sub">
               Vielleicht ist der Link veraltet oder hat sich ein Tippfehler eingeschlichen.
             </Reveal>
 
-            <Reveal delay={0.5} className="fr-nf__cta">
+            <Reveal delay={0.5} margin="0px" className="fr-nf__cta">
               <Magnetic>
                 <Link to="/" className="rx-pill fr-pill-light rx-pill--back">
                   <ArrowLeft size={16} aria-hidden="true" /> Zur Startseite

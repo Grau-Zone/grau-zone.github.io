@@ -638,12 +638,14 @@ const SovereigntyModelDiagram = ({ scores, onBuilt }: DiagramProps = {}) => {
         style={{ borderTop: "1px solid var(--rx-line-deep)", borderBottom: "1px solid var(--rx-line-deep)" }}
       >
         {/* Handy: horizontal scrollbar; Desktop: volle Breite */}
-        <div className="overflow-x-auto md:overflow-visible [scrollbar-color:#6fd69a_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-mint/60 [&::-webkit-scrollbar-track]:bg-transparent">
+        {/* Unter 1100 px scrollt das Diagramm waagerecht (Mindestbreite 1040 px): Zwischen 768 und 1100 px
+            schrumpfte es sonst auf 6 bis 11 px Schrift. */}
+        <div className="overflow-x-auto min-[1100px]:overflow-visible [scrollbar-color:#6fd69a_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-mint/60 [&::-webkit-scrollbar-track]:bg-transparent">
           <svg
             ref={svgRef}
             viewBox={`0 0 ${MO_VB_W} ${MO_VB_H}`}
             preserveAspectRatio="xMidYMid meet"
-            className={`w-full h-auto block min-w-[1040px] md:min-w-0${isMobile && inView && !reduced ? " fx-once" : ""}`}
+            className={`w-full h-auto block min-w-[1040px] min-[1100px]:min-w-0${isMobile && inView && !reduced ? " fx-once" : ""}`}
             style={
               isMobile && inView && !reduced
                 ? { animation: "fx-swipe-hint 1.8s var(--ease-in-out) 0.6s 1 both" }
@@ -1005,6 +1007,7 @@ const SovereigntyModelDiagram = ({ scores, onBuilt }: DiagramProps = {}) => {
                     role="button"
                     tabIndex={0}
                     aria-label={isX ? "Interaktion" : moLabelText(n.label)}
+                    lang={isX ? undefined : "en"}
                     className="group/mo"
                     onMouseEnter={() => {
                       setHoverNodeId(n.id);
@@ -1233,7 +1236,7 @@ const SovereigntyModelDiagram = ({ scores, onBuilt }: DiagramProps = {}) => {
         {/* Handy: Verlauf am rechten Rand deutet weiteren Inhalt an */}
         <div
           aria-hidden="true"
-          className="fx-deco pointer-events-none absolute right-0 top-0 w-12 md:hidden"
+          className="fx-deco pointer-events-none absolute right-0 top-0 w-12 min-[1100px]:hidden"
           style={{ bottom: "3.25rem", background: "linear-gradient(90deg, rgba(6,48,29,0), rgba(6,48,29,0.92))" }}
         />
 
@@ -1312,6 +1315,7 @@ const SovereigntyModelDiagram = ({ scores, onBuilt }: DiagramProps = {}) => {
                   style={{ background: activePath.ink }}
                 />
                 <span
+                  lang="en"
                   className="text-[0.8125rem] font-semibold uppercase leading-snug tracking-[0.12em]"
                   style={{ color: activePath.ink }}
                 >
@@ -1322,6 +1326,7 @@ const SovereigntyModelDiagram = ({ scores, onBuilt }: DiagramProps = {}) => {
 
               <motion.h3
                 id={titleId}
+                lang={activeNode.id === "X" ? undefined : "en"}
                 variants={itemVariants}
                 className="mb-4 text-[clamp(1.7rem,3.6vw,2.2rem)] font-medium leading-[1.08] tracking-[-0.03em] text-ink"
               >

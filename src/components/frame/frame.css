@@ -32,6 +32,8 @@
 .fr-scope .rx-pill--back:hover svg { transform: translateX(-4px); }
 @media (max-width: 40rem) {
   .fr-head { height: 4rem; }
+  /* ohne den Namen ist das Signet allein nur 28 px breit: Tippflaeche auf 44 px bringen */
+  .fr-brand { min-width: 2.75rem; }
   .fr-brand__name { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 }
 
@@ -55,6 +57,8 @@
 .fr-meta a { position: relative; }
 .fr-meta { margin-top: clamp(2rem, 4vw, 3rem); display: flex; align-items: center; flex-wrap: wrap; gap: 0.6rem 0.9rem; font-size: 0.975rem; color: var(--rx-on-deep-mute); }
 .fr-meta__sep { opacity: 0.5; }
+/* Auf dem Handy brechen die beiden Eintraege um; der Punkt bliebe sonst allein am Zeilenende stehen */
+@media (max-width: 28rem) { .fr-meta__sep { display: none; } }
 
 /* ---------- Radar als feine Linienzeichnung ---------- */
 .fr-radar { position: relative; aspect-ratio: 1; width: 100%; color: var(--rx-green); }
@@ -100,9 +104,14 @@
 .fr-field:focus-visible { border-bottom-color: var(--rx-mint); box-shadow: 0 1px 0 0 var(--rx-mint); }
 .fr-field[aria-invalid="true"] { border-bottom-color: #d9a559; box-shadow: 0 1px 0 0 #d9a559; }
 .fr-field:disabled { opacity: 0.6; }
+/* 320 px: der Platzhalter "vorname.nachname@unternehmen.ch" wird bei 20 px abgeschnitten (16 px+ bleibt gegen iOS-Zoom). */
+@media (max-width: 22.5rem) { .fr-field { font-size: 1.0625rem; } }
 .fr-field:-webkit-autofill, .fr-field:-webkit-autofill:hover, .fr-field:-webkit-autofill:focus, .fr-field:-webkit-autofill:active { -webkit-box-shadow: 0 0 0 1000px var(--rx-deep) inset !important; -webkit-text-fill-color: #fff !important; caret-color: #fff; }
 .fr-consent { margin-top: 1.4rem; font-size: 0.9375rem; line-height: 1.55; color: var(--rx-on-deep-mute); max-width: 52ch; }
 .fr-consent + .fr-consent { margin-top: 0.7rem; }
+/* Der alleinstehende Link "Impressum und Datenschutz" (kein Satzteil) bekommt eine Tippflaeche von 44 px */
+.fr-consent--link a { position: relative; display: inline-block; }
+.fr-consent--link a::before { content: ""; position: absolute; inset: -0.8rem -0.5rem; }
 .fr-alert { min-height: 0; }
 .fr-alert p { margin-top: 1.2rem; color: #e8b868; font-size: 0.975rem; line-height: 1.5; max-width: 52ch; }
 .fr-actions { margin-top: 1.8rem; display: flex; flex-wrap: wrap; align-items: center; gap: 0.9rem 1rem; }
@@ -234,7 +243,7 @@
 .fr-horizon { position: absolute; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; opacity: 0.5; }
 .fr-horizon > div { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); aspect-ratio: 2 / 1; width: min(150vw, 2200px); }
 .fr-horizon svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-.fr-big { position: relative; z-index: 1; display: block; margin-top: clamp(3.5rem, 7vw, 6rem); font-size: clamp(2.5rem, 10.4vw, 9.4rem); font-weight: 500; letter-spacing: -0.045em; line-height: 0.88; color: rgba(111, 214, 154, 0.16); white-space: nowrap; user-select: none; margin-bottom: -0.05em; }
+.fr-big { position: relative; z-index: 1; display: block; margin-top: clamp(3.5rem, 7vw, 6rem); font-size: clamp(2.5rem, 10.4vw, 9.4rem); font-weight: 500; letter-spacing: -0.045em; line-height: 0.88; color: rgba(111, 214, 154, 0.16); white-space: nowrap; user-select: none; padding-bottom: 0.2em; }
 .fr-big__c { display: inline-block; overflow: hidden; vertical-align: top; padding-bottom: 0.24em; margin-bottom: -0.24em; }
 .fr-big__c > span { display: inline-block; transform: translateY(108%); transition: transform 1.2s var(--rx-ease); }
 .fr-big[data-in="true"] .fr-big__c > span { transform: none; }

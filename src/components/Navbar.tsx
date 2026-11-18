@@ -92,6 +92,16 @@ const Navbar = () => {
   // Bei reduzierter Bewegung schaltet das CSS das Kantenlicht ganz ab.
   usePauseOffscreen(headerRef);
 
+  // Escape schliesst das geoeffnete Menue (WCAG: Einblendung per Tastatur wieder verlassbar).
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMobileOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mobileOpen]);
+
   // ── Gescrollt-Zustand: Observer auf den Sentinel, schreibt direkt ins DOM ──
   useEffect(() => {
     const header = headerRef.current;
@@ -257,16 +267,16 @@ const Navbar = () => {
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 opacity-0 transition-opacity [transition-duration:240ms] ease-fx-out group-data-[scrolled=true]:opacity-100"
         style={{
-          background: "rgba(255, 255, 255, 0.97)",
+          background: "#ffffff",
           borderBottom: "1px solid var(--rx-line)",
         }}
       />
 
-      <div className="relative max-w-[1600px] mx-auto flex items-center justify-between h-16 px-4 sm:px-6 lg:px-10">
+      <div className="relative max-w-[1600px] mx-auto flex items-center justify-between gap-2 h-16 px-4 sm:px-6 lg:px-10">
         {/* Logo */}
         <Link
           to="/"
-          className="flex items-center gap-2.5 group rounded-md"
+          className="flex min-h-11 min-w-0 items-center gap-2.5 group rounded-md"
           style={{ textDecoration: "none" }}
           onPointerEnter={onLogoEnter}
         >
@@ -291,7 +301,7 @@ const Navbar = () => {
         </Link>
 
         {/* Desktop nav (erst ab xl: darunter reicht der Platz nicht fuer Name, fuenf Links und CTA) */}
-        <nav className="hidden xl:flex items-center gap-6 2xl:gap-8">
+        <nav aria-label="Hauptnavigation" className="hidden xl:flex items-center gap-6 2xl:gap-8">
           {navItems.map((item) => {
             const isActive = active === item.href;
             return (
@@ -350,17 +360,20 @@ const Navbar = () => {
         </div>
 
         {/* Kompakt (unter xl): kurzer CTA + Menue */}
-        <div className="flex xl:hidden items-center gap-2">
+        <div className="flex shrink-0 xl:hidden items-center gap-2">
+          {/* rx-pill--sm setzt Padding und Schrift selbst; das ! hebt es fuer die schmale Leiste auf.
+              44 px Mindesthoehe: Haupt-Knopf auf dem Handy. */}
           <Link
             to="/assessment"
-            className={cn(CTA_BASE, "text-xs px-3 py-1.5 whitespace-nowrap")}
+            className={cn(CTA_BASE, "min-h-11 !px-3 !text-[13px] whitespace-nowrap min-[390px]:!px-4 min-[390px]:!text-[14px]")}
             style={FONT}
           >
             Self-Assessment
           </Link>
+          {/* 44 x 44 px Trefferflaeche; das Symbol bleibt an seinem Platz (negativer Rand rechts). */}
           <button
             type="button"
-            className="-m-2 p-2 rounded-md text-ink/70 hover:text-ink transition-colors"
+            className="-mr-3 p-3 rounded-md text-ink/70 hover:text-ink transition-colors"
             onClick={() => setMobileOpen(!mobileOpen)}
             aria-label="Menü"
             aria-expanded={mobileOpen}
@@ -397,7 +410,7 @@ const Navbar = () => {
             initial="hidden"
             animate="shown"
             exit="exit"
-            className="relative xl:hidden px-6 pb-5 pt-2 space-y-3"
+            className="relative xl:hidden px-6 pb-5 pt-2 space-y-0.5"
             style={{ background: "#ffffff", borderTop: "1px solid var(--rx-line)" }}
           >
             {navItems.map((item) => {
@@ -413,7 +426,7 @@ const Navbar = () => {
                   }}
                   aria-current={isActive ? "location" : undefined}
                   className={cn(
-                    "relative block whitespace-nowrap text-sm font-medium py-2 transition-colors",
+                    "relative block whitespace-nowrap text-sm font-medium py-3 transition-colors",
                     isActive ? "text-green" : "text-ink/75 hover:text-ink",
                   )}
                   style={FONT}
@@ -421,7 +434,7 @@ const Navbar = () => {
                   {isActive && (
                     <motion.span
                       aria-hidden="true"
-                      className="pointer-events-none absolute -left-3 top-2 bottom-2 w-[2px] rounded-full origin-top"
+                      className="pointer-events-none absolute -left-3 top-3 bottom-3 w-[2px] rounded-full origin-top"
                       style={{ background: "#00802f" }}
                       // reduzierte Bewegung: Einblenden statt Wachsen
                       initial={reduced ? { opacity: 0 } : { scaleY: 0 }}
@@ -437,7 +450,7 @@ const Navbar = () => {
               <Link
                 to="/assessment"
                 onClick={() => setMobileOpen(false)}
-                className={cn(CTA_BASE, "flex text-center text-sm px-5 py-3 mt-2")}
+                className={cn(CTA_BASE, "flex min-h-11 text-center text-sm px-5 py-3 mt-2")}
                 style={FONT}
               >
                 Organisation Self-Assessment <span className="fx-arrow">→</span>

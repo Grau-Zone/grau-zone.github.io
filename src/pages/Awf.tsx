@@ -200,7 +200,7 @@ const Awf = () => {
                     {mailLink}{" "}
                     widerrufen; Ihre Adresse wird dann gelöscht.
                   </p>
-                  <p className="fr-consent">
+                  <p className="fr-consent fr-consent--link">
                     <Link to="/impressum#kontaktliste" className="rx-link">
                       Impressum und Datenschutz
                     </Link>
@@ -288,7 +288,7 @@ const Awf = () => {
                     <p>
                       {ersetzt ? (
                         <>
-                          Vielen Dank, wir melden uns an <strong>{choice.email}</strong>.
+                          Vielen Dank, wir melden uns an <strong>{choice.email}</strong>.{" "}
                           <span className="fr-small">
                             Die zuvor übermittelte Adresse <strong>{ersetzt}</strong> steht
                             noch in unserer Liste; diese Seite kann sie nicht selbst entfernen. Eine kurze Mail an{" "}

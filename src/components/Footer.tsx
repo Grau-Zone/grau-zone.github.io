@@ -78,7 +78,8 @@ const Footer = () => {
   }, []);
 
   return (
-    <section id="about" className="fr-about fr-scope">
+    // aria-label: macht den Abschnitt zu einer Region, damit er (ausserhalb von main) nicht ohne Landmark steht
+    <section id="about" aria-label="Über das Projekt" className="fr-about fr-scope">
       <div className="fr-about__top">
         <div className="rx-wrap">
           <div className="fr-about__grid">

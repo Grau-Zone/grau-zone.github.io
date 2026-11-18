@@ -49,7 +49,7 @@ export function ScanDivider({ position, alpha = 0.15, className }: ScanDividerPr
         // der OS-Einstellung baut die Linie neu auf (kein scale/clip bleibt haengen).
         key={reduced ? "r" : "m"}
         className="absolute inset-0"
-        style={{ background: `linear-gradient(90deg, transparent, rgba(139,164,255,${alpha}), transparent)` }}
+        style={{ background: `linear-gradient(90deg, transparent, rgba(0,128,47,${alpha}), transparent)` }}
         initial={reduced ? { clipPath: "inset(0 50% 0 50%)" } : { transform: "scaleX(0)" }}
         animate={inView ? (reduced ? { clipPath: "inset(0 0% 0 0%)" } : { transform: "scaleX(1)" }) : undefined}
         transition={{ duration: GROW_MS / 1000, ease: EASE_IN_OUT }}
@@ -61,7 +61,7 @@ export function ScanDivider({ position, alpha = 0.15, className }: ScanDividerPr
           style={{
             width: 160,
             transform: "translateX(-160px)",
-            background: "linear-gradient(90deg, transparent, rgba(139,164,255,0.9), transparent)",
+            background: "linear-gradient(90deg, transparent, rgba(0,128,47,0.9), transparent)",
           }}
         />
       )}

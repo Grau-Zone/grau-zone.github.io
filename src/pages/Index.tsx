@@ -18,12 +18,15 @@ const Index = () => {
       {/* Navbar beobachtet diesen Punkt: liegt er ausserhalb, gilt die Seite als gescrollt. */}
       <div id="fx-top-sentinel" aria-hidden className="absolute top-10 left-0 h-px w-px pointer-events-none" />
       <Navbar />
-      <Hero />
-      <ThreatContext />
-      <SovereigntyRadarSection />
-      <SovereigntyLayers />
-      <SovereigntyModelSection />
-      <OrgSovereignty />
+      {/* Landmark main: Screenreader-Nutzer springen damit an Navbar und Pause-Knopf vorbei. */}
+      <main>
+        <Hero />
+        <ThreatContext />
+        <SovereigntyRadarSection />
+        <SovereigntyLayers />
+        <SovereigntyModelSection />
+        <OrgSovereignty />
+      </main>
       <Footer />
     </div>
   );
