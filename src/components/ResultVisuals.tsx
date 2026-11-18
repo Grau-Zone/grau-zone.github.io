@@ -2,6 +2,10 @@
 //  1) Souveränitäts-Matrix: FTC (x) gegen CTO (y), Punktfarbe = Outcome
 //  2) Wirkkette: die vier Modellspalten als Stufen, schwächste markiert
 //
+// Redesign: feine Linien statt Flaechen. Auf Weiss in Tinte und HSG-Gruen, auf dem tiefen
+// Gruen in Hellgruen und Mint (Farben aus den --rv-* Variablen, siehe resultfx/tokens.tsx).
+// Datenfarben (Punktfarbe aus der Kontinuitaet, Quadrantenfarben) bleiben, sie tragen Bedeutung.
+//
 // Dazu die Einblend-Mechanik der Ergebnisseite (useRevealOnce, useMatrixReveal):
 // Jede Grafik wird immer im Endzustand gerendert. Effekte sind WAAPI-Animationen
 // mit fill 'backwards' (bis zum Sichtkontakt pausiert auf ihrem Startbild) oder
@@ -35,13 +39,13 @@ import {
 } from "./fx";
 import {
   MATRIX_T, MatrixAxesDraw, MatrixInstrument, MatrixPlate, MatrixReticle, instrumentSteps, matrixRegrowSteps,
-  useGroupRegrow, useSvgUid, useValueCount,
+  V, useGroupRegrow, useSvgUid, useValueCount,
 } from "./resultfx";
 
-const AXIS = "rgba(190,210,230,0.30)";
-const LABEL = "rgba(214,230,245,0.55)";
-/** Helle Deko-Kopien (Mittelkreuz, Hilfslinien) beim Einblenden. */
-const AXIS_BRIGHT = "rgba(214,230,245,0.8)";
+const AXIS = V.line2;
+const LABEL = V.mute;
+/** Kraeftige Deko-Kopien (Mittelkreuz, Hilfslinien) beim Einblenden. */
+const AXIS_BRIGHT = V.accent;
 
 // ─── Einblend-Mechanik ───────────────────────────────────────────────────────
 export type RevealStep = {
@@ -383,7 +387,7 @@ export function SovereigntyMatrix({
   // Nach dem Entree: neue Vergleichsgruppen wachsen Raute -> Rahmen -> Buchstabe.
   useGroupRegrow(svgRef, compareKey, matrixRegrowSteps);
   const ownQuad = has ? quads.find((q) => q.key === quadrantKey(ftc, cto)) : undefined;
-  const pointColor = cont !== null ? scoreColor(cont) : "rgba(139,164,255,0.85)";
+  const pointColor = cont !== null ? scoreColor(cont) : V.accent;
 
   // Radarstrahl (einzige Dauerschleife der Seite): startet erst nach dem Entree,
   // pausiert ueber den Wrapper (Pause-Knopf, offscreen, verstecktes Tab).
@@ -416,7 +420,7 @@ export function SovereigntyMatrix({
   const theta = ((Math.atan2(px - x(0.5), -(py - y(0.5))) * 180) / Math.PI + 360) % 360;
 
   return (
-    <div ref={wrapRef} style={{ position: "relative", width: "100%", maxWidth: 460 }}>
+    <div ref={wrapRef} style={{ position: "relative", width: "100%", maxWidth: 520 }}>
       {/* Deko: Radarstrahl hinter dem Plotfeld (fx-contained, im Druck weg). Sein
           Kreis deckt die Diagonale des Feldes; das svg liegt darueber, alle
           Datenmarken bleiben oben. Der Ortungsring am eigenen Punkt ist ein
@@ -432,7 +436,7 @@ export function SovereigntyMatrix({
         }}>
         <div style={{ position: "absolute", inset: 0, overflow: "hidden" }}>
           {sweepOn && (
-            <RadarSweep color="rgba(139,164,255,0.55)" period={8} trail={70} intensity={0.12} style={{ inset: "-20.71%" }} />
+            <RadarSweep color={V.sweep} period={8} trail={70} intensity={0.14} style={{ inset: "-20.71%" }} />
           )}
         </div>
         {/* Gleiche Position wie der Punkt: x(ftc), y(cto) als Anteil der Plotflaeche. */}
@@ -440,15 +444,15 @@ export function SovereigntyMatrix({
           <Blip x={ftc! * 100} y={(1 - cto!) * 100} size={6} color={pointColor} period={8} delay={sweepDelay(theta, 8)} />
         )}
       </div>
-      <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className="w-full h-auto block" style={{ position: "relative" }}
+      <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className="w-full h-auto block" style={{ position: "relative", overflow: "visible" }}
         role={ariaLabel ? "img" : undefined} aria-label={ariaLabel}>
         <MatrixPlate W={W} H={H} P={P} />
         <defs>
-          {/* Souveraener Quadrant: Licht aus der Ecke oben rechts (mittlere Deckkraft wie bisher) */}
+          {/* Souveraener Quadrant: Licht aus der Ecke oben rechts */}
           <radialGradient id={`${uid}sv`} gradientUnits="userSpaceOnUse" cx={x(1)} cy={y(1)} r={(W - 2 * P) * 0.62}>
-            <stop offset="0" stopColor="rgba(108,194,181,0.14)" />
-            <stop offset="0.6" stopColor="rgba(108,194,181,0.06)" />
-            <stop offset="1" stopColor="rgba(108,194,181,0.025)" />
+            <stop offset="0" stopColor={V.accent} stopOpacity="0.2" />
+            <stop offset="0.6" stopColor={V.accent} stopOpacity="0.08" />
+            <stop offset="1" stopColor={V.accent} stopOpacity="0.02" />
           </radialGradient>
           {ownQuad && (
             <radialGradient id={`${uid}og`} gradientUnits="userSpaceOnUse" cx={px} cy={py} r={170}>
@@ -459,14 +463,14 @@ export function SovereigntyMatrix({
           {/* Lichthof unter dem eigenen Punkt (gleiche Farbe, gleiche Mitte) */}
           {has && (
             <radialGradient id={`${uid}pg`}>
-              <stop offset="0" stopColor={pointColor} stopOpacity={0.42} />
+              <stop offset="0" stopColor={pointColor} stopOpacity={0.34} />
               <stop offset="1" stopColor={pointColor} stopOpacity={0} />
             </radialGradient>
           )}
-          {/* Rahmen der mittleren Haelfte: Glas mit Licht von oben */}
+          {/* Rahmen der mittleren Haelfte: zarter Schleier */}
           <linearGradient id={`${uid}fr`} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" stopColor="rgba(255,255,255,0.075)" />
-            <stop offset="1" stopColor="rgba(255,255,255,0.03)" />
+            <stop offset="0" stopColor={V.ink} stopOpacity="0.1" />
+            <stop offset="1" stopColor={V.ink} stopOpacity="0.035" />
           </linearGradient>
         </defs>
         {/* Quadrantenfüllung: nur der "souveräne" leicht betont */}
@@ -493,15 +497,15 @@ export function SovereigntyMatrix({
           const share = quadShares ? quadShares[q.key] : null;
           return (
             <text key={q.label} data-mx="quad-label" x={x(q.qx)} y={y(q.qy) + dy0} textAnchor="middle"
-              fontFamily="'Share Tech Mono', monospace" fontSize="12.5" letterSpacing="1"
-              fill={q.strong ? "rgba(108,194,181,0.75)" : "rgba(214,230,245,0.32)"}
+              fontFamily="inherit" fontWeight="600" fontSize="11.5" letterSpacing="1.1"
+              fill={q.strong ? V.accentText : V.mute}
               style={{ textTransform: "uppercase" }}>
               {lines.map((ln, i) => (
                 <tspan key={i} x={x(q.qx)} dy={i === 0 ? 0 : 15}>{ln}</tspan>
               ))}
               {quadShares && (share === null ? (
-                <tspan x={x(q.qx)} dy={20} fontFamily="'Space Grotesk', sans-serif" fontSize="15"
-                  letterSpacing="0" fill="rgba(255,255,255,0.75)">
+                <tspan x={x(q.qx)} dy={22} fontFamily="inherit" fontWeight="500" fontSize="20"
+                  letterSpacing="0" fill={V.ink}>
                   {"–"}
                 </tspan>
               ) : (
@@ -523,22 +527,22 @@ export function SovereigntyMatrix({
                   data-mx="frame"
                   x={x(c.ftc.p25)} y={y(c.cto.p75)}
                   width={Math.max(2, x(c.ftc.p75) - x(c.ftc.p25))} height={Math.max(2, y(c.cto.p25) - y(c.cto.p75))}
-                  rx={3} fill={`url(#${uid}fr)`} stroke="rgba(255,255,255,0.55)" strokeWidth="1.2"
+                  rx={3} fill={`url(#${uid}fr)`} stroke={V.ink} strokeOpacity={0.9} strokeWidth="1.2"
                   strokeDasharray={i === 1 ? "5 4" : undefined}
                   style={{ transformBox: "view-box", transformOrigin: `${cx}px ${cy}px` }}
                 />
                 <polygon
                   data-mx="diamond"
                   points={`${cx},${cy - s} ${cx + s},${cy} ${cx},${cy + s} ${cx - s},${cy}`}
-                  fill="#0a0d1a" stroke="#fff" strokeWidth="1.6"
+                  fill={V.ground} stroke={V.ink} strokeWidth="1.6"
                   style={{ transformBox: "fill-box", transformOrigin: "center" }}
                 />
                 {/* Erste Gruppe links, zweite rechts beschriften: liegen beide Rauten
                     aufeinander, bleiben so trotzdem beide Buchstaben lesbar. */}
                 {c.tag && (
                   <text data-mx="tag" x={i === 0 ? cx - s - 5 : cx + s + 5} y={cy + 4} textAnchor={i === 0 ? "end" : "start"}
-                    fontFamily="'Space Grotesk', sans-serif" fontSize="12"
-                    fontWeight="600" fill="#fff" stroke="#070a15" strokeWidth="4" strokeLinejoin="round" paintOrder="stroke">
+                    fontFamily="inherit" fontSize="12.5"
+                    fontWeight="600" fill={V.ink} stroke={V.ground} strokeWidth="4" strokeLinejoin="round" paintOrder="stroke">
                     {c.tag}
                   </text>
                 )}
@@ -548,11 +552,11 @@ export function SovereigntyMatrix({
         </AnimatePresence>
 
         {/* Achsenbeschriftung */}
-        <text data-mx="axis-label" x={W / 2} y={H - 12} textAnchor="middle" fontFamily="'Geist','Inter',sans-serif"
+        <text data-mx="axis-label" x={W / 2} y={H - 12} textAnchor="middle" fontFamily="inherit" fontWeight="500"
           fontSize="13" fill={LABEL}>
           Reconfiguration Discretion →
         </text>
-        <text data-mx="axis-label" x={14} y={H / 2} textAnchor="middle" fontFamily="'Geist','Inter',sans-serif"
+        <text data-mx="axis-label" x={14} y={H / 2} textAnchor="middle" fontFamily="inherit" fontWeight="500"
           fontSize="13" fill={LABEL} transform={`rotate(-90 14 ${H / 2})`}>
           Operational Control →
         </text>
@@ -575,23 +579,24 @@ export function SovereigntyMatrix({
             {/* Bewusst statisch: der Datenpunkt darf nicht davon abhaengen, dass eine
                 Animation laeuft (reduzierte Bewegung, gedrosselte Tabs, Druckansicht). */}
             <circle
-              cx={px} cy={py} r={7}
+              cx={px} cy={py} r={7.5}
               fill={pointColor}
-              fillOpacity={0.9} stroke="#fff" strokeWidth="1.4"
+              fillOpacity={1} stroke={V.ground} strokeWidth="2.2"
             />
-            {/* Dunkler Rand um die Zahl: der Punkt kann auf einer Quadranten-
+            <circle cx={px} cy={py} r={9.4} fill="none" stroke={V.ink} strokeWidth="1" />
+            {/* Rand in der Farbe des Grundes um die Zahl: der Punkt kann auf einer Quadranten-
                 beschriftung landen, ohne Rand ueberlagern sich beide unleserlich. */}
-            <text x={px} y={py - 15} textAnchor="middle"
-              fontFamily="'Space Grotesk', sans-serif" fontSize="12.5" fontWeight="600" fill="#fff"
-              stroke="#070a15" strokeWidth="4" strokeLinejoin="round" paintOrder="stroke"
+            <text x={px} y={py - 16} textAnchor="middle"
+              fontFamily="inherit" fontSize="14" fontWeight="600" fill={V.ink}
+              stroke={V.ground} strokeWidth="4" strokeLinejoin="round" paintOrder="stroke"
               style={{ fontVariantNumeric: "tabular-nums" }}>
               <tspan ref={xRef} key={xs}>{xs}</tspan>{" / "}<tspan ref={yRef} key={ys}>{ys}</tspan>
             </text>
           </>
         )}
         {!has && emptyHint && (
-          <text x={W / 2} y={H / 2} textAnchor="middle" fontFamily="'Geist','Inter',sans-serif"
-            fontSize="13" fontStyle="italic" fill="rgba(214,230,245,0.4)">
+          <text x={W / 2} y={H / 2} textAnchor="middle" fontFamily="inherit"
+            fontSize="14" fontStyle="italic" fill={V.mute}>
             {pick(UI.notAnswered, lang)}
           </text>
         )}
@@ -615,8 +620,8 @@ function ShareTspan({ n, i, x }: { n: number; i: number; x: number }) {
     delayMs: MATRIX_T.shares + i * 40, durMs: MATRIX_T.sharesDur,
   });
   return (
-    <tspan ref={ref} key={final} x={x} dy={20} fontFamily="'Space Grotesk', sans-serif" fontSize="15"
-      letterSpacing="0" fill="rgba(255,255,255,0.75)">
+    <tspan ref={ref} key={final} x={x} dy={22} fontFamily="inherit" fontWeight="500" fontSize="20"
+      letterSpacing="0" fill={V.ink}>
       {final}
     </tspan>
   );
@@ -663,49 +668,47 @@ export function CausalChain({
         return (
           <div key={s.key}>
             <div style={{ display: "flex", alignItems: "baseline", gap: "10px", marginBottom: "5px" }}>
-              <span style={{ fontFamily: "'Share Tech Mono', monospace", fontSize: "11px", color: "rgba(255,255,255,0.35)", minWidth: "18px" }}>
+              <span style={{ fontSize: "12px", color: V.mute, minWidth: "18px" }}>
                 {i + 1}
               </span>
-              <span style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "14px", color: "rgba(255,255,255,0.85)", flex: 1 }}>
+              <span style={{ fontSize: "15px", color: V.ink, flex: 1 }}>
                 {s.label}
               </span>
               {weakest && (
                 <span style={{
-                  fontFamily: "Inter, sans-serif", fontSize: "10.5px", padding: "2px 8px", borderRadius: "5px",
-                  background: "rgba(217,165,89,0.18)", color: "#d9a559", whiteSpace: "nowrap",
+                  fontSize: "12px", fontWeight: 600, padding: "2px 10px", borderRadius: "999px",
+                  background: V.veil2, color: V.accentText, whiteSpace: "nowrap",
                 }}>
                   {pick(UI.chainWeakest, lang)}
                 </span>
               )}
               <span style={{
-                fontFamily: has ? "Space Grotesk, sans-serif" : "Inter, sans-serif",
-                fontSize: has ? "15px" : "12px", fontWeight: 600,
+                fontSize: has ? "16px" : "13px", fontWeight: 600,
                 fontStyle: has ? "normal" : "italic",
-                color: has ? s.color : "rgba(255,255,255,0.4)", minWidth: "46px", textAlign: "right",
+                color: has ? V.accentText : V.mute, minWidth: "46px", textAlign: "right",
+                fontVariantNumeric: "tabular-nums",
               }}>
                 {has ? `${Math.round(s.value! * 100)}%` : "—"}
               </span>
             </div>
-            <div style={{ height: "9px", borderRadius: "5px", background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+            <div style={{ height: "2px", background: V.line, overflow: "hidden" }}>
               {has && (
                 // Breite steht fest im DOM; animiert wird nur scaleX (Compositor statt Layout).
-                // Sanfte Stufe: der Balken wird per clip-path von links aufgedeckt, ohne Bewegung.
+                // Sanfte Stufe: der Strich wird per clip-path von links aufgedeckt, ohne Bewegung.
                 <motion.div
                   initial={reduced ? { clipPath: "inset(0 100% 0 0)" } : { scaleX: 0 }}
                   animate={reduced ? { clipPath: "inset(0 0% 0 0)" } : { scaleX: 1 }}
                   transition={{ duration: 0.8, delay: i * 0.08, ease: EASE_OUT }}
                   style={{
                     height: "100%", width: `${s.value! * 100}%`, transformOrigin: "left center",
-                    borderRadius: "5px", background: s.color,
-                    boxShadow: weakest ? "0 0 14px rgba(217,165,89,0.55)" : undefined,
-                    outline: weakest ? "1px solid rgba(217,165,89,0.7)" : undefined,
+                    background: weakest ? V.ink : V.accent,
                   }}
                 />
               )}
             </div>
             {/* Verbindungspfeil zwischen den Stufen */}
             {i < steps.length - 1 && (
-              <div style={{ textAlign: "center", color: "rgba(255,255,255,0.22)", fontSize: "12px", lineHeight: 1, marginTop: "3px" }}>↓</div>
+              <div style={{ textAlign: "center", color: V.line2, fontSize: "12px", lineHeight: 1, marginTop: "3px" }}>↓</div>
             )}
           </div>
         );

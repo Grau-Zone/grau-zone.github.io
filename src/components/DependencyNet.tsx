@@ -3,11 +3,14 @@ import { useMotionValueEvent, useScroll } from "framer-motion";
 import { BREATHE_S, useIsMobile, useMotionTier, usePausedAll, usePauseOffscreen } from "@/components/fx";
 
 /**
- * Abhaengigkeitsnetz hinter der Ausgangslage (#scenarios).
+ * Abhaengigkeitsnetz hinter der Ausgangslage (#scenarios), Mint auf tiefem Gruen.
  *
  * Ein sticky Canvas ueber die Hoehe des Viewports. Knoten liegen frei
  * verteilt und werden beim Lesen der Karten in Ringe um drei Anbieter-Hubs
- * gezogen (Kartenfarben); am Leitsatz loest sich das Netz wieder.
+ * gezogen; jeder Hub ist ein Radar-Fadenkreuz mit zwei Ringen und einem
+ * Suchstrich. Die drei Hubs unterscheiden sich nur im Mint-Ton (Mint, helles
+ * Gruenweiss, gedaempftes Mint), keine Fremdfarbe. Am Leitsatz loest sich das
+ * Netz wieder.
  * Gezeichnet wird nur bei Scroll-Aenderung und, auf starken Geraeten, mit
  * 24 fps Leerlauf-Rauschen, solange der Canvas sichtbar, der Tab aktiv und
  * der Pause-Knopf nicht gedrueckt ist. Kein React-State, kein shadowBlur,
@@ -20,13 +23,13 @@ import { BREATHE_S, useIsMobile, useMotionTier, usePausedAll, usePauseOffscreen 
  * Leerlauf-Schleife einmalig gezeichnet.
  */
 
-const HUB_COLORS = ["#4B6EFF", "#FF3D57", "#FF9F2E"] as const;
+const HUB_COLORS = ["#6fd69a", "#e9f3ed", "#a9c7b5"] as const;
 const HUB_RGB = HUB_COLORS.map((hex) => {
   const h = hex.slice(1);
   return `${parseInt(h.slice(0, 2), 16)},${parseInt(h.slice(2, 4), 16)},${parseInt(h.slice(4, 6), 16)}`;
 });
-const NODE_RGB = "139,164,255";
-const NODE_ALPHA = 0.5;
+const NODE_RGB = "233,243,237";
+const NODE_ALPHA = 0.55;
 const NODE_R = 1.6;
 const WOBBLE = 4;
 const IDLE_FRAME_MS = 1000 / 24;
@@ -34,7 +37,7 @@ const IDLE_FRAME_MS = 1000 / 24;
 const BREATHE_FRAME_MS = 1000 / 15;
 /** Alpha-Faktor beim Atmen: 1 -> 0.55 -> 1 (wie fx-breathe). */
 const BREATHE_MIN = 0.55;
-/** Glow-Sprite: Kantenlaenge in CSS-Pixeln (vor Skalierung). */
+/** Hub-Sprite: Kantenlaenge in CSS-Pixeln (vor Skalierung). */
 const SPRITE_CSS = 96;
 const SCROLL_OFFSET = ["start end", "end start"];
 
@@ -110,6 +113,7 @@ function makeSeeds(count: number): NodeSeed[] {
   return out;
 }
 
+/** Hub als Fadenkreuz: zwei feine Ringe, vier Marken und ein Kern (kein Leuchten). */
 function makeSprite(rgb: string, dpr: number): HTMLCanvasElement | null {
   if (typeof document === "undefined") return null;
   const c = document.createElement("canvas");
@@ -119,18 +123,28 @@ function makeSprite(rgb: string, dpr: number): HTMLCanvasElement | null {
   const g = c.getContext("2d");
   if (!g) return null;
   const m = px / 2;
-  const grad = g.createRadialGradient(m, m, 0, m, m, m);
-  grad.addColorStop(0, `rgba(${rgb},0.55)`);
-  grad.addColorStop(0.18, `rgba(${rgb},0.28)`);
-  grad.addColorStop(0.5, `rgba(${rgb},0.08)`);
-  grad.addColorStop(1, `rgba(${rgb},0)`);
-  g.fillStyle = grad;
-  g.fillRect(0, 0, px, px);
+  g.lineWidth = Math.max(1, dpr);
+  g.strokeStyle = `rgba(${rgb},0.7)`;
+  g.beginPath();
+  g.arc(m, m, 20 * dpr, 0, Math.PI * 2);
+  g.stroke();
+  g.strokeStyle = `rgba(${rgb},0.34)`;
+  g.beginPath();
+  g.arc(m, m, 40 * dpr, 0, Math.PI * 2);
+  g.stroke();
+  g.strokeStyle = `rgba(${rgb},0.7)`;
+  g.beginPath();
+  for (let k = 0; k < 4; k++) {
+    const a = (k * Math.PI) / 2;
+    g.moveTo(m + Math.cos(a) * 14 * dpr, m + Math.sin(a) * 14 * dpr);
+    g.lineTo(m + Math.cos(a) * 26 * dpr, m + Math.sin(a) * 26 * dpr);
+  }
+  g.stroke();
   g.fillStyle = `rgba(${rgb},1)`;
   g.beginPath();
-  g.arc(m, m, 3.2 * dpr, 0, Math.PI * 2);
+  g.arc(m, m, 3.6 * dpr, 0, Math.PI * 2);
   g.fill();
-  g.fillStyle = "rgba(255,255,255,0.85)";
+  g.fillStyle = "rgba(255,255,255,0.9)";
   g.beginPath();
   g.arc(m, m, 1.3 * dpr, 0, Math.PI * 2);
   g.fill();
@@ -203,6 +217,7 @@ const DependencyNet = ({ sectionRef, hubRefs }: DependencyNetProps) => {
     let dpr = 1;
     let sprites: (HTMLCanvasElement | null)[] = [null, null, null];
     let spriteDpr = 0;
+    let ringScaleNow = 1;
 
     let raf = 0;
     let dirty = true;
@@ -247,6 +262,7 @@ const DependencyNet = ({ sectionRef, hubRefs }: DependencyNetProps) => {
         freeX[i] = padX + s.u * (w - padX * 2);
         freeY[i] = padY + s.v * (h - padY * 2);
         const ringScale = wide ? 1 : 0.75;
+        ringScaleNow = ringScale;
         capX[i] = hubX[s.hub] + Math.cos(s.angle) * s.radius * ringScale;
         capY[i] = hubY[s.hub] + Math.sin(s.angle) * s.radius * ringScale;
       }
@@ -284,7 +300,7 @@ const DependencyNet = ({ sectionRef, hubRefs }: DependencyNetProps) => {
         ctx.stroke();
       }
 
-      // Hubs: vorgerenderte Glow-Sprites
+      // Hubs: vorgerenderte Fadenkreuz-Sprites
       const scale = 1 + c * 0.4;
       const size = SPRITE_CSS * scale;
       for (let k = 0; k < 3; k++) {
@@ -294,6 +310,30 @@ const DependencyNet = ({ sectionRef, hubRefs }: DependencyNetProps) => {
         ctx.drawImage(sp, hubX[k] - size / 2, hubY[k] - size / 2, size, size);
       }
       ctx.globalAlpha = 1;
+
+      // Umlaufbahnen und Suchstrich: je Hub zwei feine Ringe, die mit dem Fang
+      // sichtbar werden, dazu ein kurzer Strich, der langsam kreist (reduziert: steht)
+      if (c > 0.02) {
+        ctx.lineWidth = 0.8;
+        for (let k = 0; k < 3; k++) {
+          ctx.strokeStyle = `rgba(${HUB_RGB[k]},${(0.16 * c * breath[k]).toFixed(3)})`;
+          ctx.beginPath();
+          ctx.arc(hubX[k], hubY[k], 76 * ringScaleNow, 0, Math.PI * 2);
+          ctx.moveTo(hubX[k] + 112 * ringScaleNow, hubY[k]);
+          ctx.arc(hubX[k], hubY[k], 112 * ringScaleNow, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+      ctx.lineWidth = 1.2;
+      for (let k = 0; k < 3; k++) {
+        const ang = (reduced ? 0 : t * 0.45) + (k * Math.PI * 2) / 3;
+        const rr = 38 * (1 + c * 0.4);
+        ctx.strokeStyle = `rgba(${HUB_RGB[k]},${(0.7 * breath[k]).toFixed(3)})`;
+        ctx.beginPath();
+        ctx.moveTo(hubX[k], hubY[k]);
+        ctx.lineTo(hubX[k] + Math.cos(ang) * rr, hubY[k] + Math.sin(ang) * rr);
+        ctx.stroke();
+      }
 
       // Knoten: ein Pfad und ein fill je Hubfarbe (Atem-Phase)
       for (let k = 0; k < 3; k++) {

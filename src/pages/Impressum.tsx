@@ -1,25 +1,36 @@
-import { Link } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
-import { motion } from "framer-motion";
-import RadarMark from "../components/RadarMark";
+// Impressum und Datenschutz.
+//
+// Der Text ist die rechtliche Grundlage der Datenverarbeitung und steht hier
+// wortgleich wie vorher; geaendert sind nur Typografie und Layout. Jeder
+// Abschnitt ist eine Zeile mit Haarlinie: links der Titel (bleibt beim Lesen
+// stehen), rechts der Text. Die Linie zeichnet sich beim Hineinscrollen.
+// Die ids vergleichswerte, ergebnis-code und kontaktliste und der Abstand
+// fuer Spruenge von aussen (siehe ScrollToHash in App.tsx) sind erhalten.
+import { useRef } from "react";
+import { useInViewOnce } from "@/components/fx";
+import { SplitHeading } from "@/rx/SplitHeading";
+import SubHeader from "../components/frame/SubHeader";
+import RadarLines from "../components/frame/RadarLines";
 import SiteFooter from "../components/SiteFooter";
 import { IWI_URL } from "../components/IwiLogo";
+import "../components/frame/frame.css";
 
 const mail = (
-  <a href="mailto:adrian.bohrer@unisg.ch" style={{ color: "#8ba4ff", textDecoration: "none" }}>
+  <a href="mailto:adrian.bohrer@unisg.ch" className="rx-link">
     adrian.bohrer@unisg.ch
   </a>
 );
 
 // Im Genitiv, weil der Link nur an einer Stelle steht: "ein Projekt des ...".
 const iwi = (
-  <a href={IWI_URL} style={{ color: "#8ba4ff", textDecoration: "none" }}>
+  <a href={IWI_URL} className="rx-link">
     Instituts für Wirtschaftsinformatik der Universität St.Gallen
   </a>
 );
 
 // id nur dort, wo von aussen hingesprungen wird (siehe ScrollToHash in App.tsx).
-const sections: { title: string; id?: string; lines: React.ReactNode[] }[] = [
+// tight: kurze Zeilen (Anschrift, Kontakt) stehen dicht untereinander, Fliesstext mit Abstand.
+const sections: { title: string; id?: string; tight?: boolean; lines: React.ReactNode[] }[] = [
   {
     title: "Herausgeber",
     lines: [
@@ -29,25 +40,30 @@ const sections: { title: string; id?: string; lines: React.ReactNode[] }[] = [
   },
   {
     title: "Angaben zum Anbieter",
+    tight: true,
     lines: ["Adrian Bohrer", "Universität St.Gallen", "Müller-Friedberg-Strasse 8", "CH-9000 St.Gallen"],
   },
   {
     title: "Kontakt",
+    tight: true,
     lines: [
-      <>Telefon: <a href="tel:+491723266222" style={{ color: "#8ba4ff", textDecoration: "none" }}>+49 172 3266222</a></>,
-      <>E-Mail: <a href="mailto:adrian.bohrer@unisg.ch" style={{ color: "#8ba4ff", textDecoration: "none" }}>adrian.bohrer@unisg.ch</a></>,
+      <>Telefon: <a href="tel:+491723266222" className="rx-link">+49 172 3266222</a></>,
+      <>E-Mail: <a href="mailto:adrian.bohrer@unisg.ch" className="rx-link">adrian.bohrer@unisg.ch</a></>,
     ],
   },
   {
     title: "Vertreten durch",
+    tight: true,
     lines: ["Adrian Bohrer"],
   },
   {
     title: "Verantwortlich für den Inhalt",
+    tight: true,
     lines: ["Adrian Bohrer, Müller-Friedberg-Strasse 8, CH-9000 St.Gallen"],
   },
   {
     title: "Förderung",
+    tight: true,
     lines: ["Dieses Forschungsprojekt wird durch die Schwarz Stiftung gefördert."],
   },
   {
@@ -67,7 +83,7 @@ const sections: { title: string; id?: string; lines: React.ReactNode[] }[] = [
       "Erhebungssprache, Zeitpunkt der Übermittlung und eine zufällig erzeugte Antwort-Kennung.",
       "Nicht erhoben werden Name, E-Mail-Adresse und IP-Adresse.",
       <>
-        <strong style={{ color: "rgba(255,255,255,0.85)" }}>Hinweis:</strong> Die Kombination
+        <strong>Hinweis:</strong> Die Kombination
         aus Branche, Größenklasse, Hauptsitz und Anbietername kann in kleinen Märkten Rückschlüsse auf
         eine bestimmte Organisation zulassen. Berücksichtigen Sie das bei Freitextangaben.
       </>,
@@ -155,86 +171,59 @@ const sections: { title: string; id?: string; lines: React.ReactNode[] }[] = [
   },
 ];
 
+type Section = (typeof sections)[number];
+
+function LegalSection({ section }: { section: Section }) {
+  const ref = useRef<HTMLElement>(null);
+  const seen = useInViewOnce(ref, { amount: 0.05, margin: "0px 0px -12% 0px" });
+  return (
+    <section
+      ref={ref}
+      id={section.id}
+      data-in={seen ? "true" : "false"}
+      className="fr-legal__sec"
+      // sonst verschwindet die Ueberschrift beim Sprung hinter der fixierten Kopfzeile
+      style={{ scrollMarginTop: "96px" }}
+    >
+      <h2 className="fr-legal__h">{section.title}</h2>
+      <div className={"fr-legal__body" + (section.tight ? " fr-legal__body--tight" : "")}>
+        {section.lines.map((line, i) => (
+          <p key={i}>{line}</p>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 const Impressum = () => {
   return (
-    <div style={{ minHeight: "100vh", background: "hsl(228 45% 4%)" }}>
-      {/* Top bar */}
-      <div
-        className="fixed top-0 left-0 right-0 z-50"
-        style={{ background: "rgba(5,6,18,0.92)", backdropFilter: "blur(16px)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
-      >
-        <div className="max-w-3xl mx-auto flex items-center justify-between h-16 px-6">
-          <Link to="/" className="flex items-center gap-2.5" style={{ textDecoration: "none" }}>
-            <RadarMark size={28} />
-            <span className="text-sm font-semibold text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-              Sovereignty Radar
-            </span>
-          </Link>
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 text-sm font-medium text-white/60 hover:text-white transition-colors"
-            style={{ fontFamily: "'Space Grotesk', sans-serif", textDecoration: "none" }}
-          >
-            <ArrowLeft size={15} /> Zurück zur Startseite
-          </Link>
-        </div>
-      </div>
+    <div className="fr-page fr-scope">
+      <SubHeader back="Zurück zur Startseite" />
 
-      {/* Content */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="max-w-3xl mx-auto px-6"
-        style={{ paddingTop: "128px", paddingBottom: "96px" }}
-      >
-        <span
-          className="inline-block text-xs font-semibold tracking-[0.2em] uppercase mb-4"
-          style={{ color: "rgba(139,164,255,0.6)", fontFamily: "'Space Grotesk', sans-serif" }}
-        >
-          Rechtliches
-        </span>
-        <h1
-          className="text-4xl lg:text-5xl font-semibold text-white mb-12"
-          style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.025em" }}
-        >
-          Impressum
-        </h1>
-
-        <div className="space-y-8">
-          {sections.map((section) => (
-            <div
-              key={section.title}
-              id={section.id}
-              className="rounded-2xl p-6 lg:p-7"
-              style={{
-                background: "rgba(255,255,255,0.025)",
-                border: "1px solid rgba(255,255,255,0.07)",
-                // sonst verschwindet die Ueberschrift beim Sprung hinter der fixierten Kopfzeile
-                scrollMarginTop: "96px",
-              }}
-            >
-              <h2
-                className="text-xs font-semibold uppercase tracking-widest mb-4"
-                style={{ color: "rgba(139,164,255,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}
-              >
-                {section.title}
-              </h2>
-              <div className="space-y-1.5">
-                {section.lines.map((line, i) => (
-                  <p
-                    key={i}
-                    className="text-sm leading-relaxed"
-                    style={{ color: "rgba(255,255,255,0.7)", fontFamily: "'Inter', sans-serif" }}
-                  >
-                    {line}
-                  </p>
-                ))}
+      <main>
+        <section className="fr-hero">
+          <div className="rx-wrap fr-hero__grid">
+            <div>
+              <SplitHeading as="h1" className="rx-h1">
+                Impressum
+              </SplitHeading>
+              <div className="fr-meta-row">
+                <span className="fr-chip">
+                  <i className="rx-dot rx-dot--done" aria-hidden="true" />
+                  Rechtliches
+                </span>
               </div>
             </div>
+            <RadarLines tone="light" rings={4} className="fr-hero__radar--legal" />
+          </div>
+        </section>
+
+        <div className="rx-wrap fr-legal">
+          {sections.map((section) => (
+            <LegalSection key={section.title} section={section} />
           ))}
         </div>
-      </motion.div>
+      </main>
 
       <SiteFooter />
     </div>

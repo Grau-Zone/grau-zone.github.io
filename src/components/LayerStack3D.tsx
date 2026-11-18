@@ -1,8 +1,7 @@
-import { useEffect, useRef, type ReactNode, type RefObject } from "react";
+import { useEffect, useMemo, useRef, type RefObject } from "react";
 import {
   animate,
   motion,
-  useMotionTemplate,
   useMotionValue,
   useMotionValueEvent,
   useScroll,
@@ -14,18 +13,17 @@ import {
   DUR,
   EASE_IN_OUT,
   EASE_OUT,
-  useInViewOnce,
   useIsMobile,
   useMediaQuery,
+  usePauseOffscreen,
   useReducedMotionSafe,
-  withAlpha,
 } from "@/components/fx";
+import { useSeen } from "./landing-a/useSeen";
+import "./landing-a/landing-a.css";
 
 export interface LayerStackItem {
   id: string;
   number: string;
-  color: string;
-  icon: ReactNode;
 }
 
 export interface LayerStack3DProps {
@@ -40,35 +38,80 @@ export interface LayerStack3DProps {
   className?: string;
 }
 
-/** Projektion der Z-Achse auf die Bildschirm-Y-Achse bei rotateX(58deg). */
+/* ---------- Geometrie: isometrische Linienzeichnung ---------- */
+
+const ROT = (-40 * Math.PI) / 180;
+const COS = Math.cos(ROT);
+const SIN = Math.sin(ROT);
+/** rotateX(58deg): Stauchung der Flaeche und Projektion der Z-Achse auf Bildschirm-Y */
+const SQUASH = Math.cos((58 * Math.PI) / 180);
 const Z_TO_Y = Math.sin((58 * Math.PI) / 180);
 
+const GREEN = "#00802f";
+
 const SIZES = {
-  large: { plane: 220, height: 360, gapMin: 6, gapMax: 70, lift: 36, reducedGap: 50, grid: 22 },
-  compact: { plane: 150, height: 170, gapMin: 4, gapMax: 22, lift: 18, reducedGap: 22, grid: 15 },
+  large: { w: 400, h: 420, half: 90, gapMin: 6, gapMax: 64, lift: 28, reducedGap: 46, div: 6 },
+  compact: { w: 340, h: 280, half: 74, gapMin: 4, gapMax: 28, lift: 12, reducedGap: 22, div: 5 },
 } as const;
 
+type SizeSpec = (typeof SIZES)[keyof typeof SIZES];
+
 const ACTIVE_SPRING = { stiffness: 220, damping: 24 };
-const SCAN_COLOR = "#8BA4FF";
+
+/** Punkt der Ebene (u, v) auf den Bildschirm, Ursprung in der Mitte der Ebene. */
+function proj(u: number, v: number): [number, number] {
+  return [u * COS - v * SIN, (u * SIN + v * COS) * SQUASH];
+}
+const f1 = (n: number) => n.toFixed(1);
+const pt = (p: [number, number]) => `${f1(p[0])} ${f1(p[1])}`;
+
+function buildGeometry(half: number, div: number) {
+  const left = proj(-half, -half);
+  const top = proj(half, -half);
+  const right = proj(half, half);
+  const bottom = proj(-half, half);
+  const outline = `M${pt(left)}L${pt(top)}L${pt(right)}L${pt(bottom)}Z`;
+  let grid = "";
+  for (let k = 1; k < div; k++) {
+    const t = -half + (2 * half * k) / div;
+    grid += `M${pt(proj(t, -half))}L${pt(proj(t, half))}M${pt(proj(-half, t))}L${pt(proj(half, t))}`;
+  }
+  const cross = `M${pt(proj(-7, 0))}L${pt(proj(7, 0))}M${pt(proj(0, -7))}L${pt(proj(0, 7))}`;
+  // Radarscheibe auf dem Boden: drei Ringe, drei Achsen (wie im Radar), Sweep
+  const rings = [0.55, 1, 1.58].map((k) => half * k);
+  const R = rings[2];
+  const axes = [-90, 30, 150]
+    .map((deg) => {
+      const a = (deg * Math.PI) / 180;
+      return `M0 0L${f1(R * Math.cos(a))} ${f1(R * Math.sin(a) * SQUASH)}`;
+    })
+    .join("");
+  const a0 = (-34 * Math.PI) / 180;
+  const sweepWedge = `M0 0L${f1(R * Math.cos(a0))} ${f1(R * Math.sin(a0))}A${f1(R)} ${f1(R)} 0 0 1 ${f1(R)} 0Z`;
+  return { outline, grid, cross, rings, R, axes, sweepWedge, corners: [left, top, right, bottom], labelAt: right };
+}
 
 /**
- * Dekorativer 3D-Schichtstapel der drei Bereiche. Die Explosion haengt am
- * Scroll (nur MotionValues, kein React-State pro Frame), die aktive Ebene
- * hebt sich ab. Handy: einmaliges Auseinanderfahren bei Sichtkontakt.
- * Reduziert (sanfte Stufe): Stapel steht im Endzustand (auseinander, ohne
- * Scroll-Kopplung, Feder und Anheben); die aktive Ebene, ihr Lichtstrahl und
- * der Rand blenden per opacity (DUR.fade) um, die Scan-Ebene steht ueber der
- * obersten Ebene und leuchtet bei Sichtkontakt einmal per opacity auf.
+ * Dekorativer Schichtstapel der drei Bereiche als feine gruene Linienzeichnung.
+ * Die Explosion haengt am Scroll (nur MotionValues, kein React-State pro Bild), die aktive Ebene
+ * hebt sich ab und bekommt Rand und Lichtstrahl. Auf der Bodenscheibe laeuft ein Radar-Strahl
+ * (Schleife mit Pause-Knopf, offscreen und Tab-Wechsel). Handy: einmaliges Auseinanderfahren bei
+ * Sichtkontakt, Ebenen antippbar.
+ * Reduziert (sanfte Stufe): Stapel steht im Endzustand (auseinander, ohne Scroll-Kopplung, Feder
+ * und Anheben); die aktive Ebene, ihr Strahl und der Rand blenden per opacity um (DUR.fade),
+ * die Scan-Ebene steht ueber der obersten Ebene und leuchtet bei Sichtkontakt einmal auf,
+ * der Radar-Strahl steht.
  */
 export default function LayerStack3D({ layers, active, explodeTarget, onSelect, className }: LayerStack3DProps) {
   const reduced = useReducedMotionSafe();
   const isMobile = useIsMobile();
-  const isLarge = useMediaQuery("(min-width: 1024px)");
-  const size = isLarge ? SIZES.large : SIZES.compact;
+  const isLarge = useMediaQuery("(min-width: 62rem)");
+  const size: SizeSpec = isLarge ? SIZES.large : SIZES.compact;
   const scrollCoupled = !reduced && !isMobile;
+  const geo = useMemo(() => buildGeometry(size.half, size.div), [size.half, size.div]);
 
-  const hostRef = useRef<HTMLDivElement | null>(null);
-  const inView = useInViewOnce(hostRef, { amount: 0.5 });
+  const [hostRef, inView] = useSeen<HTMLDivElement>({ threshold: 0.5, rootMargin: "0px" });
+  usePauseOffscreen(hostRef);
 
   // Abstand zwischen den Ebenen (latcht: steigt nur).
   const gap = useMotionValue<number>(reduced ? size.reducedGap : size.gapMin);
@@ -156,96 +199,110 @@ export default function LayerStack3D({ layers, active, explodeTarget, onSelect, 
     else lift.set(target);
   }, [activeIndex, liftTarget, reduced, lift]);
   const offsetY = useTransform<number, number>([gap, lift], ([g, l]) => (((n - 1) * g + l) / 2) * Z_TO_Y);
-  const wrapperTransform = useMotionTemplate`translateY(${offsetY}px) rotateX(58deg) rotateZ(-40deg)`;
 
-  // Scan-Ebene: von translateZ(0) bis ueber die oberste Ebene, dann aus.
+  // Scan-Ebene: von z = 0 bis ueber die oberste Ebene, dann aus.
   // Reduziert steht sie knapp ueber der obersten Ebene, nur die opacity laeuft.
-  const scanZ = useTransform<number, number>([scan, gap, scanFixed], ([s, g, f]) =>
-    f ? (n - 1) * g + 8 : s * (n * g + 20),
+  const scanY = useTransform<number, number>([scan, gap, scanFixed], ([s, g, f]) =>
+    -(f ? (n - 1) * g + 8 : s * (n * g + 20)) * Z_TO_Y,
   );
-  const scanTransform = useMotionTemplate`translateZ(${scanZ}px)`;
   const scanOpacity = useTransform(scan, [0, 0.08, 0.8, 1], [0, 1, 1, 0]);
 
   const tappable = isMobile && !!onSelect;
+  const cx = size.w / 2;
+  const cy = size.h / 2;
+  const baseDrop = 10; // Bodenscheibe liegt knapp unter der untersten Ebene
 
   return (
     <div
       ref={hostRef}
       aria-hidden="true"
-      className={["fx-deco relative mx-auto w-full select-none", className].filter(Boolean).join(" ")}
-      style={{
-        height: size.height,
-        maxWidth: isLarge ? 380 : 320,
-        perspective: 1400,
-        pointerEvents: tappable ? "auto" : "none",
-      }}
+      data-in={inView}
+      className={["fx-deco la-stk", className].filter(Boolean).join(" ")}
+      style={{ pointerEvents: tappable ? "auto" : "none", maxWidth: isLarge ? 440 : 320 }}
     >
-      <motion.div
-        className="absolute left-1/2 top-1/2"
-        style={{
-          width: size.plane,
-          height: size.plane,
-          marginLeft: -size.plane / 2,
-          marginTop: -size.plane / 2,
-          transformStyle: "preserve-3d",
-          transform: wrapperTransform,
-        }}
-      >
-        {/* Sockel */}
-        <div
-          className="absolute inset-0 rounded-[18px]"
-          style={{
-            transform: "translateZ(-8px) scale(1.12)",
-            background: "radial-gradient(closest-side, rgba(139,164,255,0.16), rgba(139,164,255,0.04) 70%, transparent)",
-            border: "1px dashed rgba(139,164,255,0.18)",
-          }}
-        />
+      <svg viewBox={`0 0 ${size.w} ${size.h}`} focusable="false">
+        <g transform={`translate(${cx} ${cy})`}>
+          <motion.g style={{ y: offsetY }}>
+            {/* Bodenscheibe: das Radar in der Draufsicht, drei Ringe, drei Achsen, Strahl */}
+            <g transform={`translate(0 ${baseDrop})`}>
+              {geo.rings.map((r, i) => (
+                <ellipse
+                  key={i}
+                  className={i === 1 ? undefined : "la-draw"}
+                  pathLength={i === 1 ? undefined : 1}
+                  rx={r}
+                  ry={r * SQUASH}
+                  fill="none"
+                  stroke={GREEN}
+                  strokeOpacity={i === 2 ? 0.28 : 0.2}
+                  strokeWidth={1}
+                  strokeDasharray={i === 1 ? "2 5" : undefined}
+                  style={{ ["--d" as string]: `${0.1 + i * 0.2}s` }}
+                />
+              ))}
+              <path
+                className="la-draw"
+                pathLength={1}
+                d={geo.axes}
+                fill="none"
+                stroke={GREEN}
+                strokeOpacity={0.22}
+                strokeWidth={1}
+                style={{ ["--d" as string]: "0.5s" }}
+              />
+              <g transform={`scale(1 ${SQUASH})`}>
+                <g className="la-stk__sweep fx-loop">
+                  <path d={geo.sweepWedge} fill={GREEN} fillOpacity={0.1} />
+                  <line x1={0} y1={0} x2={geo.R} y2={0} stroke={GREEN} strokeOpacity={0.6} strokeWidth={1.2} />
+                </g>
+              </g>
+              <circle r={2.2} fill={GREEN} />
+            </g>
 
-        {layers.map((layer, i) => (
-          <Plane
-            key={layer.id}
-            layer={layer}
-            index={i}
-            gap={gap}
-            isActive={layer.id === active}
-            anyActive={activeIndex >= 0}
-            liftPx={liftTarget}
-            reduced={reduced}
-            grid={size.grid}
-            planeSize={size.plane}
-            onSelect={tappable ? onSelect : undefined}
-          />
-        ))}
+            {/* Lichtstrahlen vom Boden zu den Ebenen */}
+            {layers.map((layer, i) => (
+              <Beam
+                key={`b-${layer.id}`}
+                index={i}
+                gap={gap}
+                active={layer.id === active}
+                anyActive={activeIndex >= 0}
+                liftPx={liftTarget}
+                reduced={reduced}
+                baseDrop={baseDrop}
+              />
+            ))}
 
-        <motion.div
-          className="pointer-events-none absolute inset-0 rounded-[18px]"
-          style={{
-            transform: scanTransform,
-            opacity: scanOpacity,
-            background: withAlpha(SCAN_COLOR, 0.06),
-            border: `1px solid ${withAlpha(SCAN_COLOR, 0.5)}`,
-            boxShadow: `0 0 24px ${withAlpha(SCAN_COLOR, 0.25)}`,
-          }}
-        />
-      </motion.div>
+            {layers.map((layer, i) => (
+              <Plane
+                key={layer.id}
+                layer={layer}
+                index={i}
+                gap={gap}
+                isActive={layer.id === active}
+                anyActive={activeIndex >= 0}
+                liftPx={liftTarget}
+                reduced={reduced}
+                geo={geo}
+                showNumber
+                onSelect={tappable ? onSelect : undefined}
+              />
+            ))}
+
+            {/* Scan-Ebene */}
+            <motion.g style={{ y: scanY, opacity: scanOpacity }}>
+              <path d={geo.outline} fill={GREEN} fillOpacity={0.05} stroke={GREEN} strokeOpacity={0.85} strokeWidth={1.2} />
+            </motion.g>
+          </motion.g>
+        </g>
+      </svg>
     </div>
   );
 }
 
-interface PlaneProps {
-  layer: LayerStackItem;
-  index: number;
-  gap: MotionValue<number>;
-  isActive: boolean;
-  anyActive: boolean;
-  liftPx: number;
-  reduced: boolean;
-  grid: number;
-  planeSize: number;
-  onSelect?: (id: string) => void;
-}
+/* ---------- gemeinsame Zustandswerte je Ebene ---------- */
 
-function Plane({ layer, index, gap, isActive, anyActive, liftPx, reduced, grid, planeSize, onSelect }: PlaneProps) {
+function usePlaneState(index: number, gap: MotionValue<number>, isActive: boolean, anyActive: boolean, liftPx: number, reduced: boolean) {
   const opacityTarget = !anyActive || isActive ? 1 : 0.35;
   const glowTarget = isActive ? 1 : 0;
 
@@ -283,103 +340,111 @@ function Plane({ layer, index, gap, isActive, anyActive, liftPx, reduced, grid, 
       }
     }
     return () => running.forEach((c) => c.stop());
-  }, [
-    isActive,
-    liftPx,
-    reduced,
-    opacityTarget,
-    glowTarget,
-    lift,
-    springOpacity,
-    springEdge,
-    springBeam,
-    softOpacity,
-    softEdge,
-    softBeam,
-  ]);
+  }, [isActive, liftPx, reduced, opacityTarget, glowTarget, lift, springOpacity, springEdge, springBeam, softOpacity, softEdge, softBeam]);
 
   const z = useTransform<number, number>([gap, lift], ([g, l]) => index * g + l);
-  const planeTransform = useMotionTemplate`translateZ(${z}px)`;
+  const y = useTransform(z, (v) => -v * Z_TO_Y);
+  return { opacity, edge, beam, y };
+}
 
-  // Lichtstrahl vom Sockel (z = 0) zur Ebene, als 1-px-Linie entlang Z.
-  // Reduziert steht die Ebene fest (z konstant), der Strahl blendet nur per opacity.
-  const BEAM_MAX = 400;
-  const beamScale = useTransform(z, (v) => Math.max(0, v) / BEAM_MAX);
-  const beamTransform = useMotionTemplate`rotateX(-90deg) scaleY(${beamScale})`;
+interface BeamProps {
+  index: number;
+  gap: MotionValue<number>;
+  active: boolean;
+  anyActive: boolean;
+  liftPx: number;
+  reduced: boolean;
+  baseDrop: number;
+}
 
-  const c = layer.color;
-  const surface = [
-    `repeating-linear-gradient(0deg, ${withAlpha(c, 0.14)} 0 1px, transparent 1px ${grid}px)`,
-    `repeating-linear-gradient(90deg, ${withAlpha(c, 0.14)} 0 1px, transparent 1px ${grid}px)`,
-    `linear-gradient(${withAlpha(c, 0x14 / 255)}, ${withAlpha(c, 0x14 / 255)})`,
-  ].join(", ");
+/** Lichtstrahl vom Boden zur Ebene. Steht die Ebene fest (reduce), blendet er nur per opacity. */
+function Beam({ index, gap, active, anyActive, liftPx, reduced, baseDrop }: BeamProps) {
+  const { beam, y } = usePlaneState(index, gap, active, anyActive, liftPx, reduced);
+  return (
+    <motion.line
+      x1={0}
+      x2={0}
+      y1={baseDrop}
+      y2={y}
+      stroke={GREEN}
+      strokeWidth={1}
+      strokeDasharray="2 4"
+      style={{ opacity: beam }}
+    />
+  );
+}
 
-  const small = planeSize < 200;
+interface PlaneProps {
+  layer: LayerStackItem;
+  index: number;
+  gap: MotionValue<number>;
+  isActive: boolean;
+  anyActive: boolean;
+  liftPx: number;
+  reduced: boolean;
+  geo: ReturnType<typeof buildGeometry>;
+  showNumber: boolean;
+  onSelect?: (id: string) => void;
+}
+
+function Plane({ layer, index, gap, isActive, anyActive, liftPx, reduced, geo, showNumber, onSelect }: PlaneProps) {
+  const { opacity, edge, y } = usePlaneState(index, gap, isActive, anyActive, liftPx, reduced);
+  const [lx, ly] = geo.labelAt;
+  const delay = `${0.15 + index * 0.25}s`;
 
   return (
-    <>
-      <motion.div
-        className="pointer-events-none absolute"
-        style={{
-          left: "50%",
-          bottom: "50%",
-          width: 1,
-          height: BEAM_MAX,
-          marginLeft: -0.5,
-          transformOrigin: "50% 100%",
-          transform: beamTransform,
-          opacity: beam,
-          background: `linear-gradient(to top, ${withAlpha(c, 0.05)}, ${withAlpha(c, 0.9)})`,
-        }}
+    <motion.g
+      onClick={onSelect ? () => onSelect(layer.id) : undefined}
+      style={{ y, opacity, cursor: onSelect ? "pointer" : undefined, pointerEvents: onSelect ? "auto" : "none" }}
+    >
+      {/* Blatt: leicht weiss hinterlegt, damit untere Linien etwas zurueckweichen */}
+      <path d={geo.outline} fill="rgba(255,255,255,0.4)" stroke="none" />
+      <path
+        className="la-draw"
+        pathLength={1}
+        d={geo.grid}
+        fill="none"
+        stroke={GREEN}
+        strokeOpacity={0.2}
+        strokeWidth={1}
+        style={{ ["--d" as string]: delay }}
       />
-      <motion.div
-        className="absolute inset-0 rounded-[18px]"
-        onClick={onSelect ? () => onSelect(layer.id) : undefined}
-        style={{
-          transform: planeTransform,
-          opacity,
-          background: surface,
-          border: `1px solid ${withAlpha(c, 0x66 / 255)}`,
-          boxShadow: `inset 0 0 ${small ? 18 : 28}px ${withAlpha(c, 0.22)}`,
-          cursor: onSelect ? "pointer" : undefined,
-          pointerEvents: onSelect ? "auto" : "none",
-        }}
-      >
-        {/* volle Randdeckkraft + Glow der aktiven Ebene (gestapelt, nur opacity) */}
-        <motion.div
-          className="pointer-events-none absolute -inset-px rounded-[18px]"
-          style={{
-            opacity: edge,
-            border: `1px solid ${c}`,
-            boxShadow: `0 0 26px ${withAlpha(c, 0.35)}, inset 0 0 22px ${withAlpha(c, 0.18)}`,
-          }}
-        />
-        <div
-          className="absolute flex items-center justify-center"
-          style={{
-            left: small ? 12 : 18,
-            top: small ? 12 : 18,
-            color: c,
-            transform: small ? "scale(0.85)" : undefined,
-            transformOrigin: "0 0",
-          }}
-        >
-          {layer.icon}
-        </div>
-        <span
-          className="absolute"
-          style={{
-            right: small ? 12 : 18,
-            bottom: small ? 10 : 14,
-            color: withAlpha(c, 0.85),
-            fontFamily: "'Share Tech Mono', monospace",
-            fontSize: small ? 13 : 16,
-            letterSpacing: "0.08em",
-          }}
-        >
-          {layer.number}
-        </span>
-      </motion.div>
-    </>
+      <path
+        className="la-draw"
+        pathLength={1}
+        d={geo.outline}
+        fill="none"
+        stroke={GREEN}
+        strokeOpacity={0.6}
+        strokeWidth={1}
+        strokeLinejoin="round"
+        style={{ ["--d" as string]: delay }}
+      />
+      {geo.corners.map((c, k) => (
+        <circle key={k} cx={c[0]} cy={c[1]} r={2} fill="#fff" stroke={GREEN} strokeOpacity={0.6} strokeWidth={1} />
+      ))}
+      <path d={geo.cross} fill="none" stroke={GREEN} strokeOpacity={0.5} strokeWidth={1} />
+
+      {/* aktive Ebene: voller Rand und leichte Fuellung (gestapelt, nur opacity) */}
+      <motion.g style={{ opacity: edge }}>
+        <path d={geo.outline} fill={GREEN} fillOpacity={0.07} stroke={GREEN} strokeWidth={1.6} strokeLinejoin="round" />
+        {geo.corners.map((c, k) => (
+          <circle key={k} cx={c[0]} cy={c[1]} r={3} fill={GREEN} />
+        ))}
+      </motion.g>
+
+      {/* Fuehrungslinie mit Nummer */}
+      {showNumber ? (
+        <g>
+          <line x1={lx + 6} y1={ly} x2={lx + 22} y2={ly} stroke={GREEN} strokeOpacity={0.5} strokeWidth={1} />
+          <text className="la-stk__no" data-on={isActive} x={lx + 27} y={ly + 4}>
+            {layer.number}
+          </text>
+        </g>
+      ) : null}
+
+      {/* Trefferflaeche fuer das Antippen (Handy) */}
+      {onSelect ? <path d={geo.outline} fill="rgba(0,0,0,0.001)" /> : null}
+    </motion.g>
   );
 }

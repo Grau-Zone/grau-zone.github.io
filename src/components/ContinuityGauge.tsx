@@ -2,9 +2,11 @@
 // Kodierung (unveraendert): Halbkreis mit drei Zonen (Grenzen 1/3, 2/3), Nadel = eigener
 // Wert (Spitze exakt bei point(value, R - 10), Winkel clamp01(value) * 180), duenne Boegen =
 // mittlere Haelfte der Vergleichsgruppen (A durchgezogen, B gestrichelt), Raute = ihr Median.
-// Material (alles aria-hidden, fx-deco, ohne Text und Zahl): Zifferblatt-Verlauf, Rille,
-// Glanz auf dem Zonenband, Gravur (verfeinert nur die vorhandenen Teilungen 0/50/100 %),
-// konische Nadel mit Gegengewicht und Nabe.
+// Redesign: feine Linienzeichnung. Die drei Zonen sind schmale Bogenstuecke (Zonenfarben bleiben,
+// sie tragen Bedeutung), dazu Teilstriche (Gravur verfeinert nur die vorhandenen Teilungen
+// 0/50/100 %), eine schlanke Nadel mit Nabe und die Auslesung gross in der Akzentfarbe (mint
+// auf dem tiefen Gruen, gruen auf Weiss). Alle Linien und Texte kommen aus den --rv-* Variablen.
+// Deko (aria-hidden, fx-deco, ohne Text und Zahl): Zifferblatt-Schleier, Gravur, Spur.
 //
 // Entree als Messlauf (useRevealOnce, ResultVisuals.tsx; WAAPI mit fill 'backwards'):
 //   0-0,9 s   Skala: Zonen zeichnen sich in einer Fahrt, Gravur und Skalentexte mit.
@@ -23,19 +25,20 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { Quant } from "../data/benchmarkCore";
 import { CSS_EASE_IN_OUT, CSS_EASE_OUT, EASE_OUT, SvgPing } from "./fx";
-import { useGroupRegrow, useSvgUid, useValueCount, type FxStep } from "./resultfx";
+import { V, useGroupRegrow, useSvgUid, useValueCount, type FxStep } from "./resultfx";
 import { quantKey, useRevealOnce, type RevealStep } from "./ResultVisuals";
 
-const W = 320, H = 206, CX = 160, CY = 172, R = 128;
+const W = 320, H = 236, CX = 160, CY = 172, R = 128;
+const BAND = 8;
 const ZONES = [
-  { from: 0, to: 1 / 3, color: "rgba(207,107,107,0.55)" },
-  { from: 1 / 3, to: 2 / 3, color: "rgba(217,165,89,0.55)" },
-  { from: 2 / 3, to: 1, color: "rgba(108,194,181,0.6)" },
+  { from: 0, to: 1 / 3, color: "rgba(207,107,107,0.92)" },
+  { from: 1 / 3, to: 2 / 3, color: "rgba(217,165,89,0.92)" },
+  { from: 2 / 3, to: 1, color: "rgba(108,194,181,0.95)" },
 ];
 /** Deckende Zonenfarben fuer den kurzen Zonentreffer bei Ankunft (Deko). */
 const ZONE_HIT = ["rgb(207,107,107)", "rgb(217,165,89)", "rgb(108,194,181)"];
-const LABEL = "rgba(214,230,245,0.55)";
-const PLATE = "#0a0d1a";
+const LABEL = V.mute;
+const PLATE = V.ground;
 
 /** Zeitplan des Entrees (ms). */
 const ZONE_MS = 300;
@@ -64,8 +67,8 @@ const arc = (from: number, to: number, r: number) => {
 // Lang bei 0/50/100 % (die beschrifteten Teilungen), mittel alle 10 %, sonst kurz.
 const ENGRAVE_D = Array.from({ length: 21 }, (_, i) => {
   const v = i / 20;
-  const r1 = i % 10 === 0 ? 119 : i % 2 === 0 ? 126 : 131;
-  const a = point(v, r1), b = point(v, 137);
+  const r1 = i % 10 === 0 ? 108 : i % 2 === 0 ? 113 : 117;
+  const a = point(v, r1), b = point(v, 120);
   return `M ${a.x} ${a.y} L ${b.x} ${b.y}`;
 }).join(" ");
 // Zeichenmaske der Gravur: ein durchgehender Bogen ueber das Band (unten kurz
@@ -195,39 +198,36 @@ export default function ContinuityGauge({
   const deco = { "aria-hidden": true, className: "fx-deco", pointerEvents: "none" } as const;
 
   return (
-    <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className="w-full h-auto block" style={{ maxWidth: 420 }}
+    <svg ref={svgRef} viewBox={`0 0 ${W} ${H}`} className="w-full h-auto block" style={{ maxWidth: 460, overflow: "visible" }}
       role={ariaLabel ? "img" : undefined} aria-label={ariaLabel}>
       <defs>
         <radialGradient id={`${uid}dial`} gradientUnits="userSpaceOnUse" cx={CX} cy={CY} r={R}>
-          <stop offset="0" stopColor="rgb(139,164,255)" stopOpacity="0.08" />
-          <stop offset="1" stopColor="rgb(139,164,255)" stopOpacity="0" />
+          <stop offset="0" stopColor={V.accent} stopOpacity="0.1" />
+          <stop offset="1" stopColor={V.accent} stopOpacity="0" />
         </radialGradient>
-        <linearGradient id={`${uid}gl`} gradientUnits="userSpaceOnUse" x1={CX} y1={CY - R - 9} x2={CX} y2={CY}>
-          <stop offset="0" stopColor="#fff" stopOpacity="0.14" />
-          <stop offset="1" stopColor="#fff" stopOpacity="0" />
-        </linearGradient>
         <mask id={`${uid}em`} maskUnits="userSpaceOnUse" x={0} y={0} width={W} height={H}>
-          <path data-gc="engrave-mask" d={ENGRAVE_MASK_D} pathLength={1} fill="none" stroke="#fff" strokeWidth="22" />
+          <path data-gc="engrave-mask" d={ENGRAVE_MASK_D} pathLength={1} fill="none" stroke="#fff" strokeWidth="40" />
         </mask>
       </defs>
 
-      {/* Zifferblatt und Rille (Deko) */}
+      {/* Zifferblatt: Schleier, Grundlinie und zwei Haarlinienbogen (Deko) */}
       <path {...deco} d={`M ${CX - (R - 9)} ${CY} A ${R - 9} ${R - 9} 0 0 1 ${CX + (R - 9)} ${CY} Z`} fill={`url(#${uid}dial)`} />
-      <path {...deco} d={arc(0, 1, R)} fill="none" stroke="rgba(255,255,255,0.04)" strokeWidth="24" />
+      <path {...deco} d={`M ${CX - R - 12} ${CY} L ${CX + R + 12} ${CY}`} fill="none" stroke={V.line} strokeWidth="1" />
+      <path {...deco} d={arc(0, 1, R + 11)} fill="none" stroke={V.line} strokeWidth="1" />
 
       {ZONES.map((z) => (
-        <path key={z.from} data-gc="zone" d={arc(z.from, z.to, R)} pathLength={1} fill="none" stroke={z.color} strokeWidth="18" />
+        <path key={z.from} data-gc="zone" d={arc(z.from, z.to, R)} pathLength={1} fill="none" stroke={z.color} strokeWidth={BAND}
+          strokeLinecap="butt" />
       ))}
 
-      {/* Glanz und Gravur auf dem Zonenband (Deko) */}
-      <path {...deco} d={arc(0, 1, R)} fill="none" stroke={`url(#${uid}gl)`} strokeWidth="18" />
+      {/* Gravur: Teilstriche innen am Zonenband (Deko) */}
       <path {...deco} data-gc="engrave" d={ENGRAVE_D} mask={`url(#${uid}em)`} fill="none"
-        stroke="rgba(7,10,21,0.55)" strokeWidth="1.2" />
+        stroke={V.line2} strokeWidth="1" />
 
       {/* Skala */}
-      <text data-gc="lab" data-at="0" x={CX - R} y={CY + 22} textAnchor="middle" fontFamily="'Geist','Inter',sans-serif" fontSize="11" fill={LABEL}>0 %</text>
-      <text data-gc="lab" data-at="0.5" x={CX} y={CY - R - 16} textAnchor="middle" fontFamily="'Geist','Inter',sans-serif" fontSize="11" fill={LABEL}>50 %</text>
-      <text data-gc="lab" data-at="1" x={CX + R} y={CY + 22} textAnchor="middle" fontFamily="'Geist','Inter',sans-serif" fontSize="11" fill={LABEL}>100 %</text>
+      <text data-gc="lab" data-at="0" x={CX - R} y={CY + 22} textAnchor="middle" fontFamily="inherit" fontWeight="500" fontSize="11.5" fill={LABEL}>0 %</text>
+      <text data-gc="lab" data-at="0.5" x={CX} y={CY - R - 16} textAnchor="middle" fontFamily="inherit" fontWeight="500" fontSize="11.5" fill={LABEL}>50 %</text>
+      <text data-gc="lab" data-at="1" x={CX + R} y={CY + 22} textAnchor="middle" fontFamily="inherit" fontWeight="500" fontSize="11.5" fill={LABEL}>100 %</text>
 
       {needleTip && (
         <>
@@ -235,26 +235,27 @@ export default function ContinuityGauge({
           {trailD && (
             <g data-gc="trail" {...deco} style={{ opacity: 0 }}>
               <path data-gc="trail-path" d={trailD} pathLength={1} strokeDasharray="1 1" strokeDashoffset={0}
-                fill="none" strokeLinecap="round" stroke="rgba(255,255,255,0.18)" strokeWidth="9" />
+                fill="none" strokeLinecap="round" stroke={V.accent} strokeOpacity="0.28" strokeWidth="9" />
               <path data-gc="trail-path" d={trailD} pathLength={1} strokeDasharray="1 1" strokeDashoffset={0}
-                fill="none" strokeLinecap="round" stroke="rgba(255,255,255,0.85)" strokeWidth="3" />
+                fill="none" strokeLinecap="round" stroke={V.accent} strokeWidth="2.6" />
             </g>
           )}
           {/* Zonentreffer: die getroffene Zone leuchtet bei Ankunft kurz auf (Deko, endet unsichtbar) */}
           <path {...deco} data-gc="zonehit" d={arc(ZONES[hitZone].from, ZONES[hitZone].to, R)} fill="none"
-            stroke={ZONE_HIT[hitZone]} strokeWidth="18" style={{ opacity: 0 }} />
+            stroke={ZONE_HIT[hitZone]} strokeWidth="16" style={{ opacity: 0 }} />
 
           {/* Nadel = eigener Wert. Waagrecht nach links gezeichnet und um den Wert
               gedreht: Spitze geometrisch identisch zu point(value, R - 10). */}
           <g data-gc="needle" style={{ transformBox: "view-box", transformOrigin: `${CX}px ${CY}px`, transform: `rotate(${angle}deg)` }}>
-            <polygon points={`${CX},${CY - 3.4} ${CX - (R - 10)},${CY - 0.6} ${CX - (R - 10)},${CY + 0.6} ${CX},${CY + 3.4}`} fill="#fff" />
-            <polygon points={`${CX},${CY - 2} ${CX + 10},${CY - 1.2} ${CX + 10},${CY + 1.2} ${CX},${CY + 2}`} fill="rgba(255,255,255,0.5)" />
-            <circle cx={CX} cy={CY} r={9} fill={PLATE} stroke="rgba(255,255,255,0.55)" strokeWidth="1.2" />
-            <circle cx={CX} cy={CY} r={4} fill="#fff" />
+            <polygon points={`${CX},${CY - 2.6} ${CX - (R - 10)},${CY - 0.5} ${CX - (R - 10)},${CY + 0.5} ${CX},${CY + 2.6}`} fill={V.ink} />
+            <circle cx={CX - (R - 10)} cy={CY} r={3.4} fill={V.accent} stroke={V.ground} strokeWidth="1.4" />
+            <polygon points={`${CX},${CY - 2} ${CX + 12},${CY - 1.1} ${CX + 12},${CY + 1.1} ${CX},${CY + 2}`} fill={V.mute} />
+            <circle cx={CX} cy={CY} r={9} fill={PLATE} stroke={V.ink} strokeWidth="1.2" />
+            <circle cx={CX} cy={CY} r={3.6} fill={V.ink} />
           </g>
-          <SvgPing cx={needleTip.x} cy={needleTip.y} r={4} color="#fff" play={ping} scale={3.5} duration={0.7} />
-          <text key={label} ref={textRef} x={CX} y={CY + 28} textAnchor="middle" fontFamily="'Space Grotesk', sans-serif" fontSize="22"
-            fontWeight="600" fill="#fff" letterSpacing="-0.01em" style={{ fontVariantNumeric: "tabular-nums" }}>
+          <SvgPing cx={needleTip.x} cy={needleTip.y} r={4} color={V.accent} play={ping} scale={3.5} duration={0.7} />
+          <text key={label} ref={textRef} x={CX} y={CY + 56} textAnchor="middle" fontFamily="inherit" fontSize="38"
+            fontWeight="500" fill={V.accentText} letterSpacing="-0.03em" style={{ fontVariantNumeric: "tabular-nums" }}>
             {label}
           </text>
         </>
@@ -272,7 +273,7 @@ export default function ContinuityGauge({
           const halfMask = dash ? `${uid}hm${i}${key.replace(/[^a-zA-Z0-9_-]/g, "_")}` : undefined;
           const halfProps = {
             ...deco, "data-gc": "half", pathLength: 1, strokeDasharray: "1 1", strokeDashoffset: 0,
-            stroke: "#fff", strokeWidth: 4, strokeLinecap: "round", fill: "none", style: { opacity: 0 },
+            stroke: V.accent, strokeWidth: 4, strokeLinecap: "round", fill: "none", style: { opacity: 0 },
           } as const;
           return (
             <motion.g key={key} data-rfx-group={key}
@@ -280,7 +281,7 @@ export default function ContinuityGauge({
               transition={{ duration: 0.25, delay: i * 0.08, ease: EASE_OUT }}>
               {/* Unterlage: dunkle Fassung des Bogens (Deko, gleiche Spanne) */}
               <path data-gc="cmp-arc" aria-hidden="true" d={bandD} fill="none" stroke={PLATE} strokeWidth="7" strokeLinecap="round" />
-              <path data-gc="cmp-arc" d={bandD} fill="none" stroke="rgba(255,255,255,0.75)"
+              <path data-gc="cmp-arc" d={bandD} fill="none" stroke={V.ink}
                 strokeWidth="4" strokeLinecap="round" strokeDasharray={dash} />
               {/* Bogen waechst aus dem Median nach beiden Seiten (Deko, endet unsichtbar).
                   Gestrichelte Gruppe: Maske mit exakt der Geometrie des echten Bogens (gleicher
@@ -297,10 +298,10 @@ export default function ContinuityGauge({
               {/* Raute wie in den Matrizen; nach der Nadel gezeichnet und dunkel gefuellt,
                   damit sie auch sichtbar bleibt, wenn die Nadel genau auf dem Median steht */}
               <polygon data-gc="cmp-dia" points={`${m.x},${m.y - s} ${m.x + s},${m.y} ${m.x},${m.y + s} ${m.x - s},${m.y}`}
-                fill={PLATE} stroke="#fff" strokeWidth="1.6" />
+                fill={PLATE} stroke={V.ink} strokeWidth="1.6" />
               {c.tag && (
-                <text data-gc="cmp-tag" x={lab.x - 8} y={lab.y + 4} textAnchor="end" fontFamily="'Space Grotesk', sans-serif" fontSize="11"
-                  fontWeight="600" fill="#fff" stroke="#070a15" strokeWidth="4" strokeLinejoin="round" paintOrder="stroke">
+                <text data-gc="cmp-tag" x={lab.x - 8} y={lab.y + 4} textAnchor="end" fontFamily="inherit" fontSize="12"
+                  fontWeight="600" fill={V.ink} stroke={V.ground} strokeWidth="4" strokeLinejoin="round" paintOrder="stroke">
                   {c.tag}
                 </text>
               )}

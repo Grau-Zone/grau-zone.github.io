@@ -13,6 +13,9 @@ import { SvgPing } from "@/components/fx";
 //
 // Ohne sweep und ping rendert das Signet statisch (Footer, Impressum, Awf,
 // NotFound). Nur die Navbar gibt beides mit.
+//
+// Farben: feine gruene Linienzeichnung auf hellem Grund ("light", Standard),
+// Mint auf tiefem Gruen und auf Tinte ("deep"). Mint steht nie auf Weiss.
 interface RadarMarkProps {
   /** Kantenlaenge in Pixeln. */
   size?: number;
@@ -24,31 +27,37 @@ interface RadarMarkProps {
   sweep?: MotionValue<number>;
   /** Jede Aenderung loest einen Ortungs-Ring am Zentrum aus. */
   ping?: number;
+  /** Grund, auf dem das Signet steht: hell (gruen) oder tief/dunkel (mint). */
+  tone?: "light" | "deep";
 }
 
-const POINTER = <line x1="14" y1="14" x2="14" y2="2" stroke="#4B6EFF" strokeWidth="1.5" strokeLinecap="round" />;
+const COLOR = { light: "#00802f", deep: "#6fd69a" } as const;
 
-const RadarMark = ({ size = 28, className, sweep, ping }: RadarMarkProps) => (
-  <svg
-    viewBox="0 0 28 28"
-    width={size}
-    height={size}
-    fill="none"
-    className={className}
-    aria-hidden="true"
-    focusable="false"
-    style={{ display: "block", flexShrink: 0 }}
-  >
-    <circle cx="14" cy="14" r="12" stroke="rgba(75,110,255,0.3)" strokeWidth="1" />
-    <circle cx="14" cy="14" r="7" stroke="rgba(75,110,255,0.5)" strokeWidth="1" />
-    {ping !== undefined && <SvgPing cx={14} cy={14} r={2.5} color="#8BA4FF" play={ping} scale={3.2} duration={0.7} />}
-    <circle cx="14" cy="14" r="2.5" fill="#4B6EFF" />
-    {sweep ? (
-      <motion.g style={{ rotate: sweep, transformBox: "view-box", transformOrigin: "14px 14px" }}>{POINTER}</motion.g>
-    ) : (
-      POINTER
-    )}
-  </svg>
-);
+const RadarMark = ({ size = 28, className, sweep, ping, tone = "light" }: RadarMarkProps) => {
+  const c = COLOR[tone];
+  const pointer = <line x1="14" y1="14" x2="14" y2="2" stroke={c} strokeWidth="1.5" strokeLinecap="round" />;
+  return (
+    <svg
+      viewBox="0 0 28 28"
+      width={size}
+      height={size}
+      fill="none"
+      className={className}
+      aria-hidden="true"
+      focusable="false"
+      style={{ display: "block", flexShrink: 0 }}
+    >
+      <circle cx="14" cy="14" r="12" stroke={c} strokeOpacity={0.4} strokeWidth="1" />
+      <circle cx="14" cy="14" r="7" stroke={c} strokeOpacity={0.7} strokeWidth="1" />
+      {ping !== undefined && <SvgPing cx={14} cy={14} r={2.5} color={c} play={ping} scale={3.2} duration={0.7} />}
+      <circle cx="14" cy="14" r="2.5" fill={c} />
+      {sweep ? (
+        <motion.g style={{ rotate: sweep, transformBox: "view-box", transformOrigin: "14px 14px" }}>{pointer}</motion.g>
+      ) : (
+        pointer
+      )}
+    </svg>
+  );
+};
 
 export default RadarMark;

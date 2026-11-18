@@ -1,14 +1,24 @@
-import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
+// Radar der vier organisationalen Faehigkeiten (Startseite). Redesign: feine Linienzeichnung im
+// Look des Reportings. Vier Kreisringe, vier Achsen und eine Randteilung wie im Hero-Radar, das
+// Profil als gruene Linie mit zartem Schleier, Wertpunkte mit Ring in der Farbe des Grundes,
+// Prozentwerte als Zahlen. Auf Weiss in Tinte und HSG-Gruen; steht der Radar in einem Abschnitt
+// mit rx-deep, schalten die Linien ueber die --rv-* Variablen auf Hellgruen um (dann color auf
+// Mint setzen). Beim ersten Sichtkontakt zeichnen sich Ringe und Achsen einmal (Strichlaenge),
+// Endzustand ist die volle Zeichnung. Keine Schleife.
+import { useEffect, useId, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { motion, useMotionValue, useTransform, type MotionValue, type Transition } from "framer-motion";
 import {
   CSS_EASE_IN_OUT,
+  CSS_EASE_OUT,
   EASE_IN_OUT,
   SvgPing,
+  safeAnimate,
   useAnimatedColor,
-  useIsMobile,
   useRadarMorph,
   useReducedMotionSafe,
 } from "@/components/fx";
+import { canRunFx } from "./resultfx/play";
+import { RvTokens, V } from "./resultfx/tokens";
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 const CX = 220;
@@ -46,15 +56,17 @@ export interface Capacity {
   actions: string[];   // "Beispiele organisationaler Maßnahmen" (4)
 }
 
+// Redesign: alle vier Faehigkeiten tragen die eine Akzentfarbe (HSG-Gruen). Die Unterscheidung
+// tragen Name, Reihenfolge und Position, nicht der Farbton.
 export const CAPACITIES: Capacity[] = [
   {
     key: "sw",
     tag: "Switching",
     title: "Wechselfähigkeit",
     keyQuestion: "Können wir den Anbieter wechseln?",
-    color: "#4B6EFF",
-    colorBg: "rgba(75,110,255,0.08)",
-    colorBorder: "rgba(75,110,255,0.25)",
+    color: "#00802f",
+    colorBg: "rgba(0,128,47,0.08)",
+    colorBorder: "rgba(0,128,47,0.25)",
     definition:
       "Fähigkeit einer Organisation, einen bestehenden Anbieter innerhalb vertretbarer Zeit, Kosten und Risiken durch einen anderen Anbieter zu ersetzen.",
     drivers: [
@@ -75,9 +87,9 @@ export const CAPACITIES: Capacity[] = [
     tag: "Internalization",
     title: "Internalisierungsfähigkeit",
     keyQuestion: "Können wir es selbst betreiben?",
-    color: "#A855F7",
-    colorBg: "rgba(168,85,247,0.08)",
-    colorBorder: "rgba(168,85,247,0.25)",
+    color: "#00802f",
+    colorBg: "rgba(0,128,47,0.08)",
+    colorBorder: "rgba(0,128,47,0.25)",
     definition:
       "Fähigkeit einer Organisation, eine extern bezogene digitale Leistung bei Bedarf intern bereitzustellen.",
     drivers: [
@@ -98,9 +110,9 @@ export const CAPACITIES: Capacity[] = [
     tag: "Multi-Sourcing",
     title: "Multi-Sourcing-Fähigkeit",
     keyQuestion: "Können wir mehrere Anbieter parallel nutzen?",
-    color: "#00C4A0",
-    colorBg: "rgba(0,196,160,0.08)",
-    colorBorder: "rgba(0,196,160,0.25)",
+    color: "#00802f",
+    colorBg: "rgba(0,128,47,0.08)",
+    colorBorder: "rgba(0,128,47,0.25)",
     definition:
       "Fähigkeit einer Organisation, eine digitale Leistung auf mehrere Anbieter zu verteilen oder zwischen mehreren Anbietern zu verlagern.",
     drivers: [
@@ -121,9 +133,9 @@ export const CAPACITIES: Capacity[] = [
     tag: "Negotiation",
     title: "Verhandlungsfähigkeit",
     keyQuestion: "Können wir Konditionen beeinflussen?",
-    color: "#FF9F2E",
-    colorBg: "rgba(255,159,46,0.08)",
-    colorBorder: "rgba(255,159,46,0.25)",
+    color: "#00802f",
+    colorBg: "rgba(0,128,47,0.08)",
+    colorBorder: "rgba(0,128,47,0.25)",
     definition:
       "Fähigkeit einer Organisation, gegenüber einem Anbieter vorteilhafte Vertrags- und Leistungsbedingungen auszuhandeln.",
     drivers: [
@@ -195,12 +207,82 @@ function polar(angleDeg: number, r: number) {
   return { x: CX + r * Math.cos(rad), y: CY + r * Math.sin(rad) };
 }
 
-function buildRingPath(fraction: number): string {
-  const pts = AXES.map((ax) => {
-    const { x, y } = polar(ax.angle, MAX_R * fraction);
-    return `${x},${y}`;
-  });
-  return `M ${pts.join(" L ")} Z`;
+/** Randteilung wie im Hero-Radar: alle 5 Grad ein Strich, alle 15 Grad ein langer; um die vier
+ *  Achsen herum frei, damit die Namen der Faehigkeiten Platz haben. */
+const RIM_TICKS = (() => {
+  let d = "";
+  for (let k = 0; k < 72; k++) {
+    const ang = k * 5;
+    const m = ang % 90;
+    if (m < 20 || m > 70) continue;
+    const a = ((ang - 90) * Math.PI) / 180;
+    const r0 = MAX_R + 7;
+    const r1 = r0 + (ang % 15 === 0 ? 10 : 5);
+    d += `M ${(CX + r0 * Math.cos(a)).toFixed(2)} ${(CY + r0 * Math.sin(a)).toFixed(2)} L ${(CX + r1 * Math.cos(a)).toFixed(2)} ${(CY + r1 * Math.sin(a)).toFixed(2)} `;
+  }
+  return d;
+})();
+
+/**
+ * Einmaliges Zeichnen von Ringen, Achsen und Randteilung beim ersten Sichtkontakt. Die Elemente
+ * stehen immer voll gezeichnet im DOM; die Animationen (WAAPI, fill 'backwards', bis zum
+ * Sichtkontakt pausiert) laufen nur, wenn WAAPI und IntersectionObserver da sind und der Tab
+ * sichtbar ist. Zeichnen per Strichlaenge ist auch in der sanften Stufe erlaubt, es gibt keine
+ * Transformation. Im Druck steht sofort der Endzustand.
+ */
+function useRadarDraw(svgRef: RefObject<SVGSVGElement | null>) {
+  useLayoutEffect(() => {
+    const svg = svgRef.current;
+    if (!svg || !canRunFx()) return;
+    const anims: Animation[] = [];
+    const add = (el: Element, keyframes: Keyframe[], duration: number, delay: number, easing = CSS_EASE_OUT) => {
+      const a = safeAnimate(el, keyframes, { duration, delay, easing, fill: "backwards" });
+      if (a) {
+        a.pause();
+        anims.push(a);
+      }
+    };
+    const draw: Keyframe[] = [{ strokeDashoffset: 1 }, { strokeDashoffset: 0 }];
+    svg.querySelectorAll('[data-cr-draw="ring"]').forEach((el, i) => add(el, draw, 1100, 120 + i * 150));
+    svg.querySelectorAll('[data-cr-draw="spoke"]').forEach((el, i) => add(el, draw, 800, 60 + i * 70));
+    svg.querySelectorAll('[data-cr-draw="fade"]').forEach((el) => add(el, [{ opacity: 0 }, { opacity: 1 }], 700, 650));
+    if (!anims.length) return;
+    let played = false;
+    const play = () => {
+      if (played) return;
+      played = true;
+      anims.forEach((a) => a.play());
+    };
+    const io =
+      typeof IntersectionObserver !== "undefined"
+        ? new IntersectionObserver(
+            (es) => {
+              if (es.some((e) => e.isIntersecting)) {
+                play();
+                io?.disconnect();
+              }
+            },
+            { threshold: 0.25 },
+          )
+        : null;
+    io?.observe(svg);
+    const onPrint = () => {
+      played = true;
+      anims.forEach((a) => {
+        try {
+          a.finish();
+        } catch {
+          a.cancel();
+        }
+      });
+    };
+    window.addEventListener("beforeprint", onPrint);
+    return () => {
+      io?.disconnect();
+      window.removeEventListener("beforeprint", onPrint);
+      anims.forEach((a) => a.cancel());
+    };
+  }, [svgRef]);
 }
 
 function anchorFor(angle: number): "start" | "middle" | "end" {
@@ -283,10 +365,10 @@ const RadarBadge = ({ index, angle, target, value, vx, vy, fill, dim }: BadgePro
       y={y}
       textAnchor={badgeAnchor}
       fill={fill}
-      fontSize="14"
-      fontFamily="Space Grotesk, sans-serif"
+      fontSize="15"
+      fontFamily="inherit"
       fontWeight="600"
-      style={{ opacity: dim ? 0.6 : 1, transition: OPACITY_FADE }}
+      style={{ opacity: dim ? 0.6 : 1, transition: OPACITY_FADE, fontVariantNumeric: "tabular-nums" }}
     >
       {label}
     </motion.text>
@@ -302,7 +384,6 @@ interface PrevVertexProps {
   vy: MotionValue<number>;
   fill: MotionValue<string>;
   dim: boolean;
-  glowFilter?: string;
 }
 
 /** Achsen liegen auf 0/90/180/270 Grad: Abstand zum Zentrum = |dx| + |dy|. */
@@ -312,7 +393,7 @@ const readVertex = (vx: MotionValue<number>, vy: MotionValue<number>) => {
   return { x, y, v: (Math.abs(x - CX) + Math.abs(y - CY)) / MAX_R };
 };
 
-const PrevVertex = ({ angle, vx, vy, fill, dim, glowFilter }: PrevVertexProps) => {
+const PrevVertex = ({ angle, vx, vy, fill, dim }: PrevVertexProps) => {
   const [pt, setPt] = useState(() => readVertex(vx, vy));
   useEffect(() => {
     const sync = () => setPt(readVertex(vx, vy));
@@ -332,7 +413,8 @@ const PrevVertex = ({ angle, vx, vy, fill, dim, glowFilter }: PrevVertexProps) =
         cy={pt.y}
         r={5}
         fill={fill}
-        filter={glowFilter}
+        stroke={V.ground}
+        strokeWidth={2}
         style={{ opacity: dim ? 0.45 : 1, scale: dim ? 0.7 : 1, transformBox: "fill-box", transformOrigin: "center" }}
       />
       <motion.text
@@ -340,10 +422,10 @@ const PrevVertex = ({ angle, vx, vy, fill, dim, glowFilter }: PrevVertexProps) =
         y={pt.y + by}
         textAnchor={anchor}
         fill={fill}
-        fontSize="14"
-        fontFamily="Space Grotesk, sans-serif"
+        fontSize="15"
+        fontFamily="inherit"
         fontWeight="600"
-        style={{ opacity: dim ? 0.6 : 1 }}
+        style={{ opacity: dim ? 0.6 : 1, fontVariantNumeric: "tabular-nums" }}
       >
         {`${Math.round(pt.v * 100)}%`}
       </motion.text>
@@ -360,13 +442,12 @@ interface CapacityRadarProps {
   showSweep?: boolean;
 }
 
-const CapacityRadar = ({ values, color = "#4B6EFF", activeIndex, size = 440 }: CapacityRadarProps) => {
+const CapacityRadar = ({ values, color = "#00802f", activeIndex, size = 440 }: CapacityRadarProps) => {
   const vals = values ?? BASELINE_VALUES;
   // SVG-defs-IDs haengen nie vom Zustand ab
   const uid = `cr-${useId().replace(/[^a-zA-Z0-9_-]/g, "")}`;
   const hasHighlight = typeof activeIndex === "number";
   const reduced = useReducedMotionSafe();
-  const mobile = useIsMobile();
 
   const morph = useRadarMorph(vals, projectAxis, { transition: MORPH_SPRING });
   const colorMv = useAnimatedColor(color);
@@ -378,6 +459,7 @@ const CapacityRadar = ({ values, color = "#4B6EFF", activeIndex, size = 440 }: C
   // waehrend des Drucks (OrgSovereignty schaltet per beforeprint scharf), zieht
   // der Layout-Effekt im selben Commit nach.
   const svgRef = useRef<SVGSVGElement | null>(null);
+  useRadarDraw(svgRef);
   const printingRef = useRef(false);
   const snapRef = useRef<() => void>(() => {});
   useLayoutEffect(() => {
@@ -471,12 +553,10 @@ const CapacityRadar = ({ values, color = "#4B6EFF", activeIndex, size = 440 }: C
   }, [activeIndex]);
 
   const pingPt = polar(AXES[pingShot.axis].angle, MAX_R * (vals[pingShot.axis] ?? 0));
-  const glow = !mobile;
-  const glowFilter = glow ? `url(#glow-${uid})` : undefined;
-  const dotGlowFilter = glow ? `url(#dot-glow-${uid})` : undefined;
 
   return (
     <div style={{ width: size, maxWidth: "100%", aspectRatio: `${VB_W} / ${VB_H}` }}>
+      <RvTokens />
       <svg
         ref={svgRef}
         viewBox={`${VB_X} ${VB_Y} ${VB_W} ${VB_H}`}
@@ -485,40 +565,31 @@ const CapacityRadar = ({ values, color = "#4B6EFF", activeIndex, size = 440 }: C
         style={{ overflow: "visible" }}
       >
         <defs>
-          {glow ? (
-            <>
-              <filter id={`glow-${uid}`} x="-40%" y="-40%" width="180%" height="180%">
-                <feGaussianBlur stdDeviation="5" result="blur" />
-                <feMerge>
-                  <feMergeNode in="blur" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-              <filter id={`dot-glow-${uid}`} x="-100%" y="-100%" width="300%" height="300%">
-                <feGaussianBlur stdDeviation="3" result="blur" />
-                <feMerge>
-                  <feMergeNode in="blur" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-            </>
-          ) : null}
           <linearGradient id={`poly-fill-${uid}`} x1="0" y1="0" x2="0" y2="1">
-            <motion.stop offset="0%" stopColor={colorMv} stopOpacity="0.25" />
-            <motion.stop offset="100%" stopColor={colorMv} stopOpacity="0.05" />
+            <motion.stop offset="0%" stopColor={colorMv} stopOpacity="0.22" />
+            <motion.stop offset="100%" stopColor={colorMv} stopOpacity="0.04" />
           </linearGradient>
         </defs>
 
-        {/* Ring backgrounds */}
+        {/* Ringe: vier Kreise, der aeussere kraeftiger; die Werte liegen auf 25/50/75/100 % */}
         {Array.from({ length: RINGS }).map((_, i) => (
-          <path
+          <circle
             key={i}
-            d={buildRingPath((i + 1) / RINGS)}
+            data-cr-draw="ring"
+            cx={CX}
+            cy={CY}
+            r={(MAX_R * (i + 1)) / RINGS}
+            pathLength={1}
+            strokeDasharray="1 1"
+            strokeDashoffset={0}
             fill="none"
-            stroke="rgba(139,164,255,0.18)"
+            stroke={i === RINGS - 1 ? V.line2 : V.line}
             strokeWidth="1"
           />
         ))}
+
+        {/* Randteilung (Deko) */}
+        <path data-cr-draw="fade" aria-hidden="true" className="fx-deco" d={RIM_TICKS} fill="none" stroke={V.line2} strokeWidth="1" strokeLinecap="round" />
 
         {/* Axis lines */}
         {AXES.map((ax, i) => {
@@ -527,11 +598,15 @@ const CapacityRadar = ({ values, color = "#4B6EFF", activeIndex, size = 440 }: C
           return (
             <line
               key={ax.label}
+              data-cr-draw="spoke"
               x1={CX}
               y1={CY}
               x2={end.x}
               y2={end.y}
-              stroke={dim ? "rgba(139,164,255,0.06)" : "rgba(139,164,255,0.14)"}
+              pathLength={1}
+              strokeDasharray="1 1"
+              strokeDashoffset={0}
+              stroke={dim ? V.faint : V.line2}
               strokeWidth="1"
             />
           );
@@ -545,22 +620,12 @@ const CapacityRadar = ({ values, color = "#4B6EFF", activeIndex, size = 440 }: C
             pointerEvents="none"
             style={{ opacity: morph.fadeOut, visibility: prevVisibility }}
           >
-            {glow ? null : (
-              <motion.polygon
-                points={morph.prevPoints}
-                fill="none"
-                stroke={colorMv}
-                strokeOpacity="0.2"
-                strokeWidth="6"
-                strokeLinejoin="round"
-              />
-            )}
             <motion.polygon
               points={morph.prevPoints}
               fill={`url(#poly-fill-${uid})`}
               stroke={colorMv}
-              strokeWidth="1.5"
-              filter={glowFilter}
+              strokeWidth="1.8"
+              strokeLinejoin="round"
             />
             {AXES.map((ax, i) => (
               <PrevVertex
@@ -570,35 +635,20 @@ const CapacityRadar = ({ values, color = "#4B6EFF", activeIndex, size = 440 }: C
                 vy={morph.prevVertices[i].y}
                 fill={colorMv}
                 dim={typeof prevActiveIdx === "number" && i !== prevActiveIdx}
-                glowFilter={dotGlowFilter}
               />
             ))}
           </motion.g>
         ) : null}
 
         <motion.g data-cr-fade="" style={{ opacity: morph.fade }}>
-          {/* Mobil: Unterlage-Strich statt feGaussianBlur */}
-          {glow ? null : (
-            <motion.polygon
-              data-cr-poly=""
-              aria-hidden="true"
-              points={morph.points}
-              fill="none"
-              stroke={colorMv}
-              strokeOpacity="0.2"
-              strokeWidth="6"
-              strokeLinejoin="round"
-            />
-          )}
-
           {/* Profile polygon: ein einziger Knoten, morpht per MotionValue (kein Remount) */}
           <motion.polygon
             data-cr-poly=""
             points={morph.points}
             fill={`url(#poly-fill-${uid})`}
             stroke={colorMv}
-            strokeWidth="1.5"
-            filter={glowFilter}
+            strokeWidth="1.8"
+            strokeLinejoin="round"
           />
         </motion.g>
 
@@ -617,10 +667,11 @@ const CapacityRadar = ({ values, color = "#4B6EFF", activeIndex, size = 440 }: C
                 y={labelPt.y}
                 textAnchor={anchor}
                 dominantBaseline="middle"
-                fill="rgba(255,255,255,0.85)"
+                fill={V.ink}
                 fontSize="18"
-                fontFamily="Space Grotesk, sans-serif"
-                fontWeight={dim ? 500 : 600}
+                fontFamily="inherit"
+                fontWeight={dim ? 400 : 500}
+                letterSpacing="-0.01em"
                 style={{ opacity: dim ? 0.7 : 1, transition: fade }}
               >
                 {ax.label}
@@ -635,7 +686,8 @@ const CapacityRadar = ({ values, color = "#4B6EFF", activeIndex, size = 440 }: C
                   cy={morph.vertices[i].y}
                   r={5}
                   fill={colorMv}
-                  filter={dotGlowFilter}
+                  stroke={V.ground}
+                  strokeWidth={2}
                   initial={false}
                   animate={{ scale: dim ? 0.7 : 1, opacity: dim ? 0.45 : 1 }}
                   transition={
@@ -673,7 +725,7 @@ const CapacityRadar = ({ values, color = "#4B6EFF", activeIndex, size = 440 }: C
         />
 
         {/* Center */}
-        <circle cx={CX} cy={CY} r={3} fill="rgba(139,164,255,0.5)" />
+        <circle cx={CX} cy={CY} r={3} fill={V.line2} />
       </svg>
     </div>
   );

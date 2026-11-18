@@ -1,14 +1,17 @@
 // Instrumenten-Deko fuer beide Matrizen (Souveraenitaets- und
 // Transparenz-Matrix): Grundplatte, feines Raster, Lineale ohne Zahlen,
-// Luenetten-Ecken, sich zeichnende Achsen, Fadenkreuz und Spur. Alles ist
+// Eckmarken, sich zeichnende Achsen, Fadenkreuz und Spur. Alles ist
 // aria-hidden, nicht klickbar (fx-deco) und traegt keine Werte: Positionen,
 // Skalen und die Teilung bei 0.5 bleiben allein Sache der Matrix selbst.
 // Reine Deko-Overlays (Achsen, Fadenkreuz, Spur) enden unsichtbar.
+// Farben: feine Linien aus den --rv-* Variablen (Tinte und HSG-Gruen auf Weiss, helles
+// Gruen und Mint auf dem tiefen Gruen), siehe tokens.tsx.
 
 import { useId } from "react";
 import { CSS_EASE_IN_OUT, CSS_EASE_OUT } from "../fx";
 import type { FxStep } from "./play";
 import { MATRIX_T } from "./timeline";
+import { V } from "./tokens";
 
 /** Eindeutige, in SVG-ids zulaessige Kennung. */
 export function useSvgUid(): string {
@@ -26,8 +29,8 @@ export function MatrixPlate({ W, H, P }: Box) {
     <g aria-hidden="true" className="fx-deco" pointerEvents="none" data-mx="plate">
       <defs>
         <radialGradient id={`${uid}pl`} gradientUnits="userSpaceOnUse" cx={W / 2} cy={H / 2} r={(W - 2 * P) * 0.75}>
-          <stop offset="0" stopColor="#8BA4FF" stopOpacity="0.075" />
-          <stop offset="1" stopColor="#8BA4FF" stopOpacity="0" />
+          <stop offset="0" stopColor={V.accent} stopOpacity="0.07" />
+          <stop offset="1" stopColor={V.accent} stopOpacity="0" />
         </radialGradient>
       </defs>
       <rect x={P} y={P} width={W - 2 * P} height={H - 2 * P} fill={`url(#${uid}pl)`} />
@@ -82,16 +85,17 @@ export function MatrixInstrument({ W, H, P, xGrid, yGrid, xMajor, xMinor, yMajor
           data-mx="grid"
           d={grid}
           fill="none"
-          stroke="rgba(190,210,230,0.05)"
+          stroke={V.line}
+          strokeOpacity={0.5}
           strokeWidth={0.75}
           vectorEffect={NS}
         />
       )}
       {major && (
-        <path data-mx="ruler" d={major} fill="none" stroke="rgba(190,210,230,0.35)" strokeWidth={1} vectorEffect={NS} />
+        <path data-mx="ruler" d={major} fill="none" stroke={V.line2} strokeWidth={1} vectorEffect={NS} />
       )}
       {minor && (
-        <path data-mx="ruler" d={minor} fill="none" stroke="rgba(190,210,230,0.18)" strokeWidth={1} vectorEffect={NS} />
+        <path data-mx="ruler" d={minor} fill="none" stroke={V.line} strokeWidth={1} vectorEffect={NS} />
       )}
       {corners.map(([sx, sy]) => {
         const cx = sx < 0 ? P : W - P;
@@ -104,7 +108,8 @@ export function MatrixInstrument({ W, H, P, xGrid, yGrid, xMajor, xMinor, yMajor
             data-sy={sy}
             d={`M ${cx} ${cy - sy * 12} L ${cx} ${cy} L ${cx - sx * 12} ${cy}`}
             fill="none"
-            stroke="rgba(139,164,255,0.42)"
+            stroke={V.accent}
+            strokeOpacity={0.85}
             strokeWidth={1.4}
             strokeLinecap="square"
             vectorEffect={NS}
@@ -133,8 +138,8 @@ export function MatrixAxesDraw({ W, H, P }: Box) {
           strokeDasharray="1 1"
           strokeDashoffset={0}
           fill="none"
-          stroke="rgba(214,230,245,0.8)"
-          strokeWidth="1.2"
+          stroke={V.accent}
+          strokeWidth="1.4"
           style={{ opacity: 0 }}
         />
       ))}
@@ -159,7 +164,7 @@ export function MatrixReticle({ cx, cy, color }: { cx: number; cy: number; color
       style={{ opacity: 0, transformBox: "fill-box", transformOrigin: "center" }}
     >
       <circle cx={cx} cy={cy} r={13} fill="none" stroke={color} strokeWidth={1.2} />
-      <path d={arms} fill="none" stroke="rgba(214,230,245,0.8)" strokeWidth={1} />
+      <path d={arms} fill="none" stroke={V.ink} strokeWidth={1} />
     </g>
   );
 }

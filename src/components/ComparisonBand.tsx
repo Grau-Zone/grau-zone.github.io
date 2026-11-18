@@ -1,14 +1,16 @@
 // Vergleichsband: Verteilung einer Vergleichsgruppe auf einer Skala, optional mit
 // dem eigenen Wert. Fuer die Ergebnisseite.
 //
-//   Band   = mittlere Haelfte (p25 bis p75), als Flaeche in der Farbe der Faehigkeit
-//   Strich = Median, in Textfarbe
-//   Punkt  = eigener Wert, kraeftig in der Farbe, mit Ring in Hintergrundfarbe
+//   Band   = mittlere Haelfte (p25 bis p75), als Kapsel mit feiner Kontur in der Farbe
+//   Strich = Median, in Tintenfarbe
+//   Punkt  = eigener Wert, voll in der Farbe, mit Ring in der Farbe des Grundes
 //
-// Material (aria-hidden; Rille und Lineal bleiben im Druck, der Rest ist fx-deco): Rille statt Grundlinie, Messlineal
-// mit Feinstrichen an den Mittelpunkten der vorhandenen Teilung (ohne Beschriftung),
-// Glaskapsel-Band mit rein vertikalem Verlauf (horizontal gleichfoermig, damit keine
-// Dichte am Median behauptet wird). Hover/Fokus/Tippen hebt nur vorhandene Marken hervor.
+// Redesign: feine Linienzeichnung. Die Farbe kommt vom Aufrufer (ComparisonView uebergibt
+// die Akzentfarbe: HSG-Gruen auf Weiss, Mint auf dem tiefen Gruen), alle uebrigen Linien aus
+// den --rv-* Variablen. Material (aria-hidden; Haarlinie und Lineal bleiben im Druck, der
+// Rest ist fx-deco): Haarlinie als Grundlinie, Messlineal mit Feinstrichen an den Mittelpunkten
+// der vorhandenen Teilung (ohne Beschriftung), Kapselband mit gleichfoermiger Flaeche (keine
+// Dichte am Median behauptet). Hover/Fokus/Tippen hebt nur vorhandene Marken hervor.
 //
 // Die Zahlen stehen im Tooltip und im aria-label, nicht auf dem Band. Tooltip:
 // Maus, Fokus oder Tippen oeffnet, Escape oder Verlassen schliesst.
@@ -26,10 +28,10 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Quant } from "../data/benchmarkCore";
 import { CSS_EASE_IN_OUT, CSS_EASE_OUT, safeAnimate, useReducedMotionSafe, withAlpha } from "./fx";
-import { BAND_T } from "./resultfx";
+import { BAND_T, V } from "./resultfx";
 import { useRevealOnce, type RevealStep } from "./ResultVisuals";
 
-const SURFACE = "#0a0d1a";
+const SURFACE = V.ground;
 /** Tooltip: Einblenden in ms; Ausblenden mit rund 60 % davon. */
 const TIP_IN = 140;
 const TIP_OUT = 90;
@@ -252,18 +254,18 @@ const ComparisonBand = ({ min, max, ticks = [], q, own = null, color, describe, 
       onKeyDown={(e) => { if (e.key === "Escape") setOpen(false); }}
       style={{
         position: "relative", height: scale ? "40px" : "26px", cursor: "default", borderRadius: "6px",
-        outline: focusVisible ? "2px solid rgba(139,164,255,0.8)" : "none", outlineOffset: "3px",
+        outline: focusVisible ? `2px solid ${V.accent}` : "none", outlineOffset: "3px",
       }}
     >
       {scale && (
-        <div style={{ position: "absolute", left: 0, right: 0, top: "26px", display: "flex", justifyContent: "space-between", fontFamily: "Inter, sans-serif", fontSize: "11px", color: "rgba(255,255,255,0.55)" }}>
+        <div style={{ position: "absolute", left: 0, right: 0, top: "26px", display: "flex", justifyContent: "space-between", fontSize: "12px", fontWeight: 500, color: V.mute, fontVariantNumeric: "tabular-nums" }}>
           <span ref={scaleARef}>{scale[0]}</span><span ref={scaleBRef}>{scale[1]}</span>
         </div>
       )}
-      {/* Rille (statt Grundlinie, gleiche Mitte bei 13 px); bleibt auch im Druck */}
+      {/* Haarlinie als Grundlinie (Mitte bei 13 px); bleibt auch im Druck */}
       <div aria-hidden="true" style={{
-        position: "absolute", left: 0, right: 0, top: "11px", height: "4px", borderRadius: "2px",
-        background: "rgba(255,255,255,0.045)", boxShadow: "inset 0 1px 1px rgba(0,0,0,0.45)", pointerEvents: "none",
+        position: "absolute", left: 0, right: 0, top: "12.5px", height: "1px",
+        background: V.line2, pointerEvents: "none",
       }} />
       {/* Messlineal: vorhandene Skalenstriche, Enden betont, Feinstriche an den Mittelpunkten (ohne Beschriftung) */}
       <div ref={rulerRef} aria-hidden="true" style={{
@@ -271,14 +273,14 @@ const ComparisonBand = ({ min, max, ticks = [], q, own = null, color, describe, 
         opacity: open ? 1 : 0.8, transition: "opacity 200ms ease",
       }}>
         {ticks.slice(0, -1).map((t, i) => (
-          <div key={`m${t}`} className="fx-deco" style={{ position: "absolute", left: x((t + ticks[i + 1]) / 2), top: "10.5px", width: "1px", height: "5px", background: "rgba(255,255,255,0.07)" }} />
+          <div key={`m${t}`} className="fx-deco" style={{ position: "absolute", left: x((t + ticks[i + 1]) / 2), top: "10.5px", width: "1px", height: "5px", background: V.line }} />
         ))}
         {ticks.map((t, i) => {
           const end = i === 0 || i === ticks.length - 1;
           return (
             <div key={t} style={{
               position: "absolute", left: x(t), top: end ? "8px" : "9px", width: "1px", height: end ? "10px" : "8px",
-              background: end ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,0.16)",
+              background: end ? V.line2 : V.line,
             }} />
           );
         })}
@@ -288,7 +290,7 @@ const ComparisonBand = ({ min, max, ticks = [], q, own = null, color, describe, 
         <div aria-hidden="true" className="fx-deco" style={{ position: "absolute", left: 0, right: 0, top: 0, height: "26px", overflow: "hidden", pointerEvents: "none" }}>
           <div ref={layerRef} style={{ position: "absolute", inset: 0 }}>
             <div ref={headRef} style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: "44px", opacity: 0 }}>
-              <span style={{ position: "absolute", right: 0, top: "2px", bottom: "2px", width: "2px", borderRadius: "1px", background: withAlpha(color, 0.95) }} />
+              <span style={{ position: "absolute", right: 0, top: "2px", bottom: "2px", width: "2px", borderRadius: "1px", background: color }} />
               <span style={{ position: "absolute", right: "2px", top: "7px", height: "12px", width: "42px", background: `linear-gradient(90deg, transparent, ${withAlpha(color, 0.28)})` }} />
             </div>
           </div>
@@ -301,26 +303,26 @@ const ComparisonBand = ({ min, max, ticks = [], q, own = null, color, describe, 
             ref={bandRef}
             style={{
               position: "absolute", left: x(q.p25), width: w(q.p25, q.p75),
-              top: "7px", height: "12px", borderRadius: "4px",
-              // Glaskapsel: Verlauf nur vertikal, horizontal gleichfoermig.
-              background: `linear-gradient(180deg, ${withAlpha(color, 0.62)}, ${withAlpha(color, 0.36)})`,
-              boxShadow: `inset 0 1px 0 rgba(255,255,255,0.22), inset 0 0 0 1px ${withAlpha(color, 0.5)}, 0 0 12px ${withAlpha(color, 0.2)}`,
+              top: "7px", height: "12px", borderRadius: "6px",
+              // Kapsel: gleichfoermige Flaeche mit feiner Kontur, keine Dichte am Median.
+              background: withAlpha(color, 0.22),
+              boxShadow: `inset 0 0 0 1px ${color}`,
               transformOrigin: `${bandOrigin} 50%`,
             }}
           >
             {/* Deko: Hover-Glanz, gleichmaessig ueber das ganze Band */}
             <span aria-hidden="true" className="fx-deco" style={{
-              position: "absolute", inset: 0, borderRadius: "inherit", background: "rgba(255,255,255,0.10)",
+              position: "absolute", inset: 0, borderRadius: "inherit", background: withAlpha(color, 0.2),
               opacity: open ? 1 : 0, transition: "opacity 160ms ease", pointerEvents: "none",
             }} />
           </div>
           <div ref={medianRef} style={{
             position: "absolute", left: x(q.p50), top: "4px", width: "2px", height: "18px", marginLeft: "-1px", borderRadius: "1px",
-            background: "rgba(255,255,255,0.95)", boxShadow: "0 0 0 1px rgba(10,13,26,0.55), 0 0 6px rgba(255,255,255,0.4)",
+            background: V.ink, boxShadow: `0 0 0 1px ${V.ground}`,
           }}>
             {/* Deko: Hover-Leuchten am Strich */}
             <span aria-hidden="true" className="fx-deco" style={{
-              position: "absolute", inset: "-2px -3px", borderRadius: "3px", boxShadow: "0 0 10px rgba(255,255,255,0.5)",
+              position: "absolute", inset: "-2px -3px", borderRadius: "3px", boxShadow: `0 0 0 1px ${V.ink}`,
               opacity: open ? 1 : 0, transition: "opacity 160ms ease", pointerEvents: "none",
             }} />
           </div>
@@ -334,8 +336,8 @@ const ComparisonBand = ({ min, max, ticks = [], q, own = null, color, describe, 
             style={{
               position: "absolute", left: x(own), top: "7px", width: "12px", height: "12px", marginLeft: "-6px",
               borderRadius: "50%",
-              background: `radial-gradient(circle at 35% 30%, rgba(255,255,255,0.55) 0, ${color} 45%, ${color} 100%)`,
-              boxShadow: `0 0 0 2px ${SURFACE}, 0 0 10px ${withAlpha(color, 0.5)}`,
+              background: color,
+              boxShadow: `0 0 0 2px ${SURFACE}`,
             }}
           >
             {/* Deko: Hover-Halo um den Punkt */}
@@ -368,10 +370,9 @@ const ComparisonBand = ({ min, max, ticks = [], q, own = null, color, describe, 
           style={{
             position: "absolute", bottom: "30px", left: x(anchor),
             transform: openTransform, transformOrigin: tipOrigin, zIndex: 5, pointerEvents: "none",
-            background: "linear-gradient(180deg, rgba(20,27,48,0.97), rgba(12,17,32,0.97))", border: "1px solid rgba(255,255,255,0.14)",
-            borderRadius: "8px", padding: "7px 10px", maxWidth: "min(300px, 80vw)",
-            fontFamily: "Inter, sans-serif", fontSize: "12px", lineHeight: 1.5, color: "rgba(255,255,255,0.88)",
-            boxShadow: "inset 0 1px 0 rgba(255,255,255,0.08), 0 10px 28px rgba(0,0,0,0.45)",
+            background: V.tipBg, border: `1px solid ${V.line2}`,
+            borderRadius: "10px", padding: "8px 12px", maxWidth: "min(300px, 80vw)",
+            fontSize: "13px", lineHeight: 1.5, color: V.tipInk, fontVariantNumeric: "tabular-nums",
           }}
         >
           {describe.map((d) => <div key={d} style={{ whiteSpace: "nowrap" }}>{d}</div>)}

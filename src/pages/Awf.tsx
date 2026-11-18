@@ -6,18 +6,25 @@
 //
 // Bewusst ohne AnimatePresence: mit Wrapper-Komponenten als Kindern meldet die
 // Exit-Animation nie "fertig" (siehe Kommentar in Assessment.tsx).
+//
+// Gestaltung: weisser Einstieg mit der Zahl 55 im Radar, darunter eine tiefgruene
+// Buehne fuer Frage und Ergebnis. Die Logik ist unveraendert; Formular, Texte,
+// Zustaende, Speicherschluessel und Fokusfuehrung stehen wie vorher da.
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import {
-  ArrowLeft, ArrowRight, Radar, ClipboardCheck, FileDown, Mail, Check, Loader2,
-} from "lucide-react";
+import { ArrowRight, Mail, Loader2 } from "lucide-react";
 import {
   readChoice, writeChoice, normalizeEmail, isValidEmail, submitAwfContact,
   AWF_CONSENT_VERSION, type AwfChoice,
 } from "../data/awfContacts";
-import RadarMark from "../components/RadarMark";
+import { CountUp, Magnetic, PauseToggle, Reveal, RevealGroup, RevealItem } from "@/components/fx";
+import { AmbientField } from "@/rx/AmbientField";
+import { SplitHeading } from "@/rx/SplitHeading";
+import SubHeader from "../components/frame/SubHeader";
+import RadarLines from "../components/frame/RadarLines";
 import SiteFooter from "../components/SiteFooter";
+import "../components/frame/frame.css";
 
 const PDF = import.meta.env.BASE_URL + "anwenderforum-55-iwi-hsg-2026.pdf";
 const WIDERRUF = "adrian.bohrer@unisg.ch";
@@ -25,35 +32,9 @@ const WIDERRUF = "adrian.bohrer@unisg.ch";
 type Phase = "ask" | "done" | "edit";
 type Status = "idle" | "sending" | "invalid" | "rejected" | "network";
 
-const AKZENT = "#8ba4ff";
-
-const RAND_RUHE = "rgba(255,255,255,0.12)";
-const RAND_FEHLER = "rgba(217,165,89,0.65)";
-
-const feldStil: React.CSSProperties = {
-  width: "100%", padding: "13px 16px", borderRadius: "10px",
-  background: "rgba(255,255,255,0.04)", border: "1px solid " + RAND_RUHE,
-  color: "white", fontFamily: "'Inter', sans-serif", fontSize: "15px",
-  // Der Fokusring wird in onFocus/onBlur am Feld selbst gesetzt, und zwar ueber
-  // outline: box-shadow gehoert der Autofill-Abdeckung in index.css. Ohne den
-  // Ring sieht niemand, der mit der Tastatur bedient, wo er gerade steht:
-  // ausgerechnet in dem Feld, ueber das die Einwilligung erteilt wird.
-  outline: "none", transition: "border-color 0.15s",
-};
-
-const karteStil: React.CSSProperties = {
-  background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.07)",
-};
-
-// Inline-Styles schlagen Tailwinds hover:-Klassen, deshalb wie in Hero.tsx und
-// Footer.tsx ueber currentTarget. onFocus/onBlur zusaetzlich, damit die Karten
-// auch bei Tastaturbedienung sichtbar reagieren.
-const setzeKarte = (el: HTMLElement, an: boolean) => {
-  el.style.background = an ? "rgba(255,255,255,0.05)" : "rgba(255,255,255,0.025)";
-  el.style.borderColor = an ? "rgba(139,164,255,0.3)" : "rgba(255,255,255,0.07)";
-};
-const karteAn = (e: React.SyntheticEvent<HTMLElement>) => setzeKarte(e.currentTarget, true);
-const karteAus = (e: React.SyntheticEvent<HTMLElement>) => setzeKarte(e.currentTarget, false);
+const mailLink = (
+  <a href={"mailto:" + WIDERRUF} className="rx-link">{WIDERRUF}</a>
+);
 
 const Awf = () => {
   const gespeichert = useRef<AwfChoice | null>(null);
@@ -144,294 +125,234 @@ const Awf = () => {
   const hatBereitsJa = choice?.choice === "yes";
 
   return (
-    <div style={{ minHeight: "100vh", background: "hsl(228 45% 4%)" }}>
-      {/* Kopfzeile, wie auf der Impressumsseite */}
-      <div
-        className="fixed top-0 left-0 right-0 z-50"
-        style={{ background: "rgba(5,6,18,0.92)", backdropFilter: "blur(16px)", borderBottom: "1px solid rgba(255,255,255,0.06)" }}
-      >
-        <div className="max-w-3xl mx-auto flex items-center justify-between h-16 px-6">
-          <Link to="/" className="flex items-center gap-2.5" style={{ textDecoration: "none" }}>
-            <RadarMark size={28} />
-            <span className="text-sm font-semibold text-white" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-              Sovereignty Radar
-            </span>
-          </Link>
-          <Link
-            to="/"
-            className="inline-flex items-center gap-2 text-sm font-medium text-white/60 hover:text-white transition-colors"
-            style={{ fontFamily: "'Space Grotesk', sans-serif", textDecoration: "none" }}
-          >
-            <ArrowLeft size={15} /> Zur Startseite
-          </Link>
-        </div>
-      </div>
+    <div className="fr-page fr-scope">
+      {/* Pause-Knopf (WCAG 2.2.2): erster Tab-Stopp, sichtbar erst mit Fokus */}
+      <PauseToggle />
+      <SubHeader back="Zur Startseite" />
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
-        className="max-w-3xl mx-auto px-6"
-        style={{ paddingTop: "128px", paddingBottom: "96px" }}
-      >
-        <span
-          className="inline-block text-xs font-semibold tracking-[0.2em] uppercase mb-4"
-          style={{ color: "rgba(139,164,255,0.6)", fontFamily: "'Space Grotesk', sans-serif" }}
-        >
-          55. Anwenderforum des IWI-HSG
-        </span>
-        <h1
-          className="text-4xl lg:text-5xl font-semibold text-white mb-5"
-          style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.025em" }}
-        >
-          Danke für Ihre Teilnahme.
-        </h1>
-        <p
-          className="text-base leading-relaxed mb-12"
-          style={{ color: "rgba(255,255,255,0.65)", fontFamily: "'Inter', sans-serif", maxWidth: "62ch" }}
-        >
-          Wir haben uns über den Austausch beim 55. Anwenderforum gefreut. Auf dieser Seite finden
-          Sie die Präsentation zum Nachlesen und die beiden Werkzeuge, die wir vorgestellt haben.
-        </p>
-
-        {/* ── Kontaktfrage ── */}
-        {(phase === "ask" || phase === "edit") && (
-          <form noValidate onSubmit={absenden} className="rounded-2xl p-6 lg:p-7 mb-10" style={karteStil}>
-            <h2
-              className="text-xs font-semibold uppercase tracking-widest mb-4"
-              style={{ color: "rgba(139,164,255,0.7)", fontFamily: "'Space Grotesk', sans-serif" }}
-            >
-              Dürfen wir Sie kontaktieren?
-            </h2>
-
-            <label
-              htmlFor="awf-email"
-              className="block text-sm mb-2"
-              style={{ color: "rgba(255,255,255,0.75)", fontFamily: "'Inter', sans-serif" }}
-            >
-              E-Mail-Adresse
-            </label>
-            <input
-              id="awf-email"
-              type="email"
-              value={email}
-              onChange={(e) => { setEmail(e.target.value); if (status !== "sending") setStatus("idle"); }}
-              placeholder="vorname.nachname@unternehmen.ch"
-              inputMode="email"
-              autoComplete="email"
-              autoCapitalize="none"
-              autoCorrect="off"
-              spellCheck={false}
-              disabled={status === "sending"}
-              aria-invalid={status === "invalid" || status === "rejected"}
-              aria-describedby="awf-einwilligung awf-meldung"
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = "rgba(139,164,255,0.75)";
-                e.currentTarget.style.outline = "3px solid rgba(75,110,255,0.4)";
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = status === "invalid" ? RAND_FEHLER : RAND_RUHE;
-                e.currentTarget.style.outline = "none";
-              }}
-              style={{ ...feldStil, borderColor: status === "invalid" ? RAND_FEHLER : RAND_RUHE }}
-            />
-
-            <p
-              id="awf-einwilligung"
-              className="text-xs leading-relaxed mt-4"
-              style={{ color: "rgba(255,255,255,0.55)", fontFamily: "'Inter', sans-serif" }}
-            >
-              Mit „Ja“ willigen Sie ein, dass das Institut für Wirtschaftsinformatik der
-              Universität St.Gallen Sie per E-Mail zu seinen Themen, Veranstaltungen und
-              Forschungsergebnissen kontaktiert. Ihre Adresse wird dafür in einer Datenbank in
-              Frankfurt am Main gespeichert und nicht an Dritte weitergegeben. Sie können die
-              Einwilligung jederzeit per E-Mail an{" "}
-              <a href={"mailto:" + WIDERRUF} style={{ color: AKZENT, textDecoration: "none" }}>{WIDERRUF}</a>{" "}
-              widerrufen; Ihre Adresse wird dann gelöscht.
-            </p>
-            <p className="text-xs mt-2" style={{ fontFamily: "'Inter', sans-serif" }}>
-              <Link to="/impressum#kontaktliste" style={{ color: "rgba(139,164,255,0.85)", textDecoration: "none" }}>
-                Impressum und Datenschutz
-              </Link>
-            </p>
-
-            {/* Der Behaelter steht immer im Baum, damit role="alert" die spaeter
-                eingesetzte Meldung auch vorliest. */}
-            <div id="awf-meldung" role="alert">
-              {status === "invalid" && (
-                <p className="text-sm mt-4" style={{ color: "#d9a559", fontFamily: "'Inter', sans-serif" }}>
-                  Bitte geben Sie eine gültige E-Mail-Adresse ein.
-                </p>
-              )}
-              {status === "rejected" && (
-                <p className="text-sm mt-4 leading-relaxed" style={{ color: "#d9a559", fontFamily: "'Inter', sans-serif" }}>
-                  Die Adresse wurde nicht angenommen. Bitte prüfen Sie die Schreibweise, oder
-                  schreiben Sie uns kurz an{" "}
-                  <a href={"mailto:" + WIDERRUF} style={{ color: AKZENT, textDecoration: "none" }}>{WIDERRUF}</a>.
-                </p>
-              )}
-              {status === "network" && (
-                <p className="text-sm mt-4 leading-relaxed" style={{ color: "#d9a559", fontFamily: "'Inter', sans-serif" }}>
-                  Die Übermittlung hat nicht geklappt. Bitte versuchen Sie es noch einmal, oder
-                  schreiben Sie uns an{" "}
-                  <a href={"mailto:" + WIDERRUF} style={{ color: AKZENT, textDecoration: "none" }}>{WIDERRUF}</a>.
-                </p>
-              )}
+      <main>
+        {/* ── Einstieg: Dank, Lead und die 55 im Radar ── */}
+        <section className="fr-hero">
+          <div className="rx-wrap fr-hero__grid">
+            <div>
+              <SplitHeading as="h1" className="rx-h1" em="Teilnahme">
+                Danke für Ihre Teilnahme.
+              </SplitHeading>
+              <Reveal as="p" delay={0.3} className="rx-sub">
+                Wir haben uns über den Austausch beim 55. Anwenderforum gefreut. Auf dieser Seite finden
+                Sie die Präsentation zum Nachlesen und die beiden Werkzeuge, die wir vorgestellt haben.
+              </Reveal>
             </div>
 
-            <div className="flex flex-wrap gap-3 mt-6">
-              <button
-                type="submit"
-                disabled={status === "sending"}
-                className="inline-flex items-center gap-2"
-                style={{
-                  fontFamily: "'Space Grotesk', sans-serif", fontSize: "15px", fontWeight: 500,
-                  padding: "13px 24px", borderRadius: "10px",
-                  border: "1px solid rgba(75,110,255,0.45)", background: "rgba(75,110,255,0.18)",
-                  color: "#a8bcff", cursor: status === "sending" ? "default" : "pointer",
-                  opacity: status === "sending" ? 0.6 : 1,
-                }}
-              >
-                {status === "sending"
-                  ? (<><Loader2 size={16} className="animate-spin" /> Wird übermittelt …</>)
-                  : (<><Mail size={16} /> Ja, kontaktieren Sie mich</>)}
-              </button>
-              <button
-                type="button"
-                onClick={ablehnen}
-                disabled={status === "sending"}
-                style={{
-                  fontFamily: "'Space Grotesk', sans-serif", fontSize: "15px",
-                  padding: "13px 22px", borderRadius: "10px",
-                  border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.04)",
-                  color: "rgba(255,255,255,0.7)", cursor: "pointer",
-                }}
-              >
-                Nein, danke
-              </button>
-              {phase === "edit" && (
-                <button
-                  type="button"
-                  onClick={() => { setPhase("done"); setStatus("idle"); }}
-                  className="text-sm"
-                  style={{
-                    background: "none", border: "none", cursor: "pointer",
-                    color: "rgba(255,255,255,0.5)", fontFamily: "'Inter', sans-serif",
-                  }}
-                >
-                  Abbrechen
-                </button>
-              )}
-            </div>
-
-            {phase === "edit" && hatBereitsJa && (
-              <p className="text-xs mt-4 leading-relaxed" style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Inter', sans-serif" }}>
-                Ein „Nein, danke“ hält nur diese Seite fest, dass wir Sie nicht mehr fragen sollen.
-                Ihre bereits übermittelte Adresse löschen wir auf Zuruf: eine kurze Mail an{" "}
-                <a href={"mailto:" + WIDERRUF} style={{ color: AKZENT, textDecoration: "none" }}>{WIDERRUF}</a>{" "}
-                genügt.
+            <div className="fr-hero__fig">
+              <RadarLines tone="light" rings={4} sweep blips={[{ x: 71, y: 27 }, { x: 27, y: 67 }]} />
+              <p className="fr-big55">
+                <span className="fr-big55__n">
+                  <CountUp value="55" duration={2.2} />
+                  <span>.</span>
+                </span>{" "}
+                <span className="fr-big55__t">Anwenderforum des IWI-HSG</span>
               </p>
-            )}
-          </form>
-        )}
-
-        {/* ── Die drei Funktionen ── */}
-        {phase === "done" && (
-          <motion.div
-            ref={ergebnisRef}
-            tabIndex={-1}
-            style={{ outline: "none" }}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35 }}
-          >
-            {choice?.choice === "yes" && (
-              <div
-                className="rounded-2xl px-5 py-4 mb-8 flex items-start gap-3"
-                style={{ background: "rgba(108,194,181,0.07)", border: "1px solid rgba(108,194,181,0.22)" }}
-              >
-                <Check size={17} style={{ color: "#6cc2b5", marginTop: "2px", flexShrink: 0 }} />
-                <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.75)", fontFamily: "'Inter', sans-serif" }}>
-                  {ersetzt ? (
-                    <>
-                      Vielen Dank, wir melden uns an <strong style={{ color: "white" }}>{choice.email}</strong>.
-                      Die zuvor übermittelte Adresse <strong style={{ color: "white" }}>{ersetzt}</strong> steht
-                      noch in unserer Liste; diese Seite kann sie nicht selbst entfernen. Eine kurze Mail an{" "}
-                      <a href={"mailto:" + WIDERRUF} style={{ color: AKZENT, textDecoration: "none" }}>{WIDERRUF}</a>{" "}
-                      genügt, dann löschen wir sie.
-                    </>
-                  ) : (
-                    <>Vielen Dank, wir melden uns. Notiert ist <strong style={{ color: "white" }}>{choice.email}</strong>.</>
-                  )}
-                </p>
-              </div>
-            )}
-
-            <div className="space-y-4">
-              <Link to="/" className="block rounded-2xl p-6 lg:p-7 transition-colors" style={karteStil} onMouseEnter={karteAn} onMouseLeave={karteAus} onFocus={karteAn} onBlur={karteAus}>
-                <div className="flex items-start gap-4">
-                  <Radar size={22} style={{ color: AKZENT, marginTop: "3px", flexShrink: 0 }} />
-                  <div className="flex-1">
-                    <div className="text-lg font-semibold text-white mb-1.5" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                      Sovereignty Radar
-                    </div>
-                    <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.65)", fontFamily: "'Inter', sans-serif" }}>
-                      Digitale Abhängigkeiten in Europa, drei Szenarien bis 2030 und das Modell
-                      dahinter.
-                    </p>
-                  </div>
-                  <ArrowRight size={17} style={{ color: "rgba(255,255,255,0.35)", marginTop: "5px", flexShrink: 0 }} />
-                </div>
-              </Link>
-
-              <Link to="/assessment" className="block rounded-2xl p-6 lg:p-7 transition-colors" style={karteStil} onMouseEnter={karteAn} onMouseLeave={karteAus} onFocus={karteAn} onBlur={karteAus}>
-                <div className="flex items-start gap-4">
-                  <ClipboardCheck size={22} style={{ color: "#6cc2b5", marginTop: "3px", flexShrink: 0 }} />
-                  <div className="flex-1">
-                    <div className="text-lg font-semibold text-white mb-1.5" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                      Organisation Self-Assessment
-                    </div>
-                    <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.65)", fontFamily: "'Inter', sans-serif" }}>
-                      Wie gross ist Ihr Handlungsspielraum bei einer kritischen digitalen
-                      Abhängigkeit? Vier Fähigkeiten, eine Funktion, ein Anbieter.
-                    </p>
-                  </div>
-                  <ArrowRight size={17} style={{ color: "rgba(255,255,255,0.35)", marginTop: "5px", flexShrink: 0 }} />
-                </div>
-              </Link>
-
-              <a href={PDF} download className="block rounded-2xl p-6 lg:p-7 transition-colors" style={{ ...karteStil, textDecoration: "none" }} onMouseEnter={karteAn} onMouseLeave={karteAus} onFocus={karteAn} onBlur={karteAus}>
-                <div className="flex items-start gap-4">
-                  <FileDown size={22} style={{ color: "#d9a559", marginTop: "3px", flexShrink: 0 }} />
-                  <div className="flex-1">
-                    <div className="text-lg font-semibold text-white mb-1.5" style={{ fontFamily: "'Space Grotesk', sans-serif" }}>
-                      Präsentation herunterladen
-                    </div>
-                    <p className="text-sm leading-relaxed" style={{ color: "rgba(255,255,255,0.65)", fontFamily: "'Inter', sans-serif" }}>
-                      Die Folien des Anwenderforums. PDF, 121 Seiten, rund 9 MB.
-                    </p>
-                  </div>
-                  <ArrowRight size={17} style={{ color: "rgba(255,255,255,0.35)", marginTop: "5px", flexShrink: 0 }} />
-                </div>
-              </a>
             </div>
+          </div>
+        </section>
 
-            <p className="text-xs mt-8" style={{ fontFamily: "'Inter', sans-serif" }}>
-              <button
-                type="button"
-                onClick={() => { setPhase("edit"); setStatus("idle"); }}
-                style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "rgba(255,255,255,0.55)", fontFamily: "'Inter', sans-serif" }}
+        {/* ── Buehne: Kontaktfrage oder die drei Funktionen ── */}
+        <section className="rx-deep fr-scope fr-stage">
+          <AmbientField className="rx-ambient" />
+          <div className="rx-wrap">
+            {/* ── Kontaktfrage ── */}
+            {(phase === "ask" || phase === "edit") && (
+              <form noValidate onSubmit={absenden} className="fr-form">
+                <div className="fr-form__head">
+                  <SplitHeading as="h2" className="rx-h2" em="kontaktieren">
+                    Dürfen wir Sie kontaktieren?
+                  </SplitHeading>
+                </div>
+
+                <div>
+                  <label htmlFor="awf-email" className="fr-label">
+                    E-Mail-Adresse
+                  </label>
+                  <input
+                    id="awf-email"
+                    className="fr-field"
+                    type="email"
+                    value={email}
+                    onChange={(e) => { setEmail(e.target.value); if (status !== "sending") setStatus("idle"); }}
+                    placeholder="vorname.nachname@unternehmen.ch"
+                    inputMode="email"
+                    autoComplete="email"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                    disabled={status === "sending"}
+                    aria-invalid={status === "invalid" || status === "rejected"}
+                    aria-describedby="awf-einwilligung awf-meldung"
+                  />
+
+                  <p id="awf-einwilligung" className="fr-consent">
+                    Mit „Ja“ willigen Sie ein, dass das Institut für Wirtschaftsinformatik der
+                    Universität St.Gallen Sie per E-Mail zu seinen Themen, Veranstaltungen und
+                    Forschungsergebnissen kontaktiert. Ihre Adresse wird dafür in einer Datenbank in
+                    Frankfurt am Main gespeichert und nicht an Dritte weitergegeben. Sie können die
+                    Einwilligung jederzeit per E-Mail an{" "}
+                    {mailLink}{" "}
+                    widerrufen; Ihre Adresse wird dann gelöscht.
+                  </p>
+                  <p className="fr-consent">
+                    <Link to="/impressum#kontaktliste" className="rx-link">
+                      Impressum und Datenschutz
+                    </Link>
+                  </p>
+
+                  {/* Der Behaelter steht immer im Baum, damit role="alert" die spaeter
+                      eingesetzte Meldung auch vorliest. */}
+                  <div id="awf-meldung" role="alert" className="fr-alert">
+                    {status === "invalid" && (
+                      <p>
+                        Bitte geben Sie eine gültige E-Mail-Adresse ein.
+                      </p>
+                    )}
+                    {status === "rejected" && (
+                      <p>
+                        Die Adresse wurde nicht angenommen. Bitte prüfen Sie die Schreibweise, oder
+                        schreiben Sie uns kurz an{" "}
+                        {mailLink}.
+                      </p>
+                    )}
+                    {status === "network" && (
+                      <p>
+                        Die Übermittlung hat nicht geklappt. Bitte versuchen Sie es noch einmal, oder
+                        schreiben Sie uns an{" "}
+                        {mailLink}.
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="fr-actions">
+                    <Magnetic>
+                      <button type="submit" disabled={status === "sending"} className="rx-pill fr-pill-light">
+                        {status === "sending"
+                          ? (<><Loader2 size={16} className="animate-spin" aria-hidden="true" /> Wird übermittelt …</>)
+                          : (<><Mail size={16} aria-hidden="true" /> Ja, kontaktieren Sie mich</>)}
+                      </button>
+                    </Magnetic>
+                    <button
+                      type="button"
+                      onClick={ablehnen}
+                      disabled={status === "sending"}
+                      className="rx-pill rx-pill--ghost"
+                    >
+                      Nein, danke
+                    </button>
+                    {phase === "edit" && (
+                      <button
+                        type="button"
+                        onClick={() => { setPhase("done"); setStatus("idle"); }}
+                        className="fr-textbtn"
+                      >
+                        Abbrechen
+                      </button>
+                    )}
+                  </div>
+
+                  {phase === "edit" && hatBereitsJa && (
+                    <p className="fr-consent">
+                      Ein „Nein, danke“ hält nur diese Seite fest, dass wir Sie nicht mehr fragen sollen.
+                      Ihre bereits übermittelte Adresse löschen wir auf Zuruf: eine kurze Mail an{" "}
+                      {mailLink}{" "}
+                      genügt.
+                    </p>
+                  )}
+                </div>
+              </form>
+            )}
+
+            {/* ── Die drei Funktionen ── */}
+            {phase === "done" && (
+              <motion.div
+                ref={ergebnisRef}
+                tabIndex={-1}
+                style={{ outline: "none" }}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35 }}
               >
-                Kontaktwunsch ändern
-              </button>
-              <span style={{ color: "rgba(255,255,255,0.25)" }}> · </span>
-              <Link to="/impressum#kontaktliste" style={{ color: "rgba(255,255,255,0.55)", textDecoration: "none" }}>
-                Impressum und Datenschutz
-              </Link>
-            </p>
-          </motion.div>
-        )}
-      </motion.div>
+                {choice?.choice === "yes" && (
+                  <div className="fr-banner">
+                    <svg className="fr-check" viewBox="0 0 48 48" aria-hidden="true" focusable="false">
+                      <circle cx="24" cy="24" r="22" pathLength={1} />
+                      <path d="M14.5 25l6.5 6.5L34 17" pathLength={1} />
+                    </svg>
+                    <p>
+                      {ersetzt ? (
+                        <>
+                          Vielen Dank, wir melden uns an <strong>{choice.email}</strong>.
+                          <span className="fr-small">
+                            Die zuvor übermittelte Adresse <strong>{ersetzt}</strong> steht
+                            noch in unserer Liste; diese Seite kann sie nicht selbst entfernen. Eine kurze Mail an{" "}
+                            {mailLink}{" "}
+                            genügt, dann löschen wir sie.
+                          </span>
+                        </>
+                      ) : (
+                        <>Vielen Dank, wir melden uns. Notiert ist <strong>{choice.email}</strong>.</>
+                      )}
+                    </p>
+                  </div>
+                )}
+
+                <RevealGroup as="ul" stagger={0.09} className="fr-rows">
+                  <RevealItem as="li">
+                    <Link to="/" className="fr-row fr-row--d">
+                      <span className="fr-row__t">Sovereignty Radar</span>
+                      <span className="fr-row__go" aria-hidden="true"><ArrowRight size={18} /></span>
+                      <span className="fr-row__d">
+                        Digitale Abhängigkeiten in Europa, drei Szenarien bis 2030 und das Modell
+                        dahinter.
+                      </span>
+                    </Link>
+                  </RevealItem>
+                  <RevealItem as="li">
+                    <Link to="/assessment" className="fr-row fr-row--d">
+                      <span className="fr-row__t">Organisation Self-Assessment</span>
+                      <span className="fr-row__go" aria-hidden="true"><ArrowRight size={18} /></span>
+                      <span className="fr-row__d">
+                        Wie gross ist Ihr Handlungsspielraum bei einer kritischen digitalen
+                        Abhängigkeit? Vier Fähigkeiten, eine Funktion, ein Anbieter.
+                      </span>
+                    </Link>
+                  </RevealItem>
+                  <RevealItem as="li">
+                    <a href={PDF} download className="fr-row fr-row--d">
+                      <span className="fr-row__t">Präsentation herunterladen</span>
+                      <span className="fr-row__go" aria-hidden="true"><ArrowRight size={18} /></span>
+                      <span className="fr-row__d">
+                        Die Folien des Anwenderforums. PDF, 121 Seiten, rund 9 MB.
+                      </span>
+                    </a>
+                  </RevealItem>
+                </RevealGroup>
+
+                <p className="fr-meta">
+                  <button
+                    type="button"
+                    onClick={() => { setPhase("edit"); setStatus("idle"); }}
+                    className="rx-link fr-textbtn"
+                  >
+                    Kontaktwunsch ändern
+                  </button>
+                  <span className="fr-meta__sep"> · </span>
+                  <Link to="/impressum#kontaktliste" className="rx-link">
+                    Impressum und Datenschutz
+                  </Link>
+                </p>
+              </motion.div>
+            )}
+          </div>
+        </section>
+      </main>
 
       <SiteFooter />
     </div>

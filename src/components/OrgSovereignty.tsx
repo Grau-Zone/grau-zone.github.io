@@ -1,32 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { flushSync } from "react-dom";
-import { motion, AnimatePresence, type Transition } from "framer-motion";
+import { motion, AnimatePresence, useScroll, useTransform, type Transition } from "framer-motion";
 import CapacityRadar, { CAPACITIES, BASELINE_VALUES } from "./CapacityRadar";
-import {
-  DotNav,
-  EASE_OUT,
-  GlowCrossfade,
-  LineReveal,
-  Reveal,
-  ScanDivider,
-  SectionHeader,
-  SegmentedPills,
-  useInViewOnce,
-  useReducedMotionSafe,
-} from "@/components/fx";
-
-const BG_LAYERS = CAPACITIES.map(
-  (c) => `radial-gradient(ellipse 60% 50% at 50% 50%, ${c.color}08 0%, transparent 70%)`,
-);
-const SHADOW_LAYERS = CAPACITIES.map((c) => `0 0 60px ${c.color}15, 0 0 120px ${c.color}08`);
-const PILL_ITEMS = CAPACITIES.map((c, i) => ({
-  id: i,
-  label: c.tag,
-  color: c.color,
-  colorBg: c.colorBg,
-  colorBorder: c.colorBorder,
-}));
-const DOT_ITEMS = CAPACITIES.map((c, i) => ({ id: i, label: c.tag, color: c.color }));
+import { EASE_OUT, LineReveal, useInViewOnce, useMotionTier, useReducedMotionSafe } from "@/components/fx";
+import "./landing-a/landing-a.css";
 
 /** Erster Sichtkontakt: so lange nach dem inView, bis Switching aufzieht. */
 const ARM_DELAY_MS = 400;
@@ -38,10 +15,54 @@ const T_DEF_TEXT = T_BAR + BAR_S;
 const T_LIST = 0.22;
 const LIST_STAGGER = 0.045;
 
+/**
+ * Laufband mit den vier Faehigkeiten: wandert mit dem Scrollen, nie von selbst (keine Schleife).
+ * Ruhige Stufe: steht still und umbricht, damit alle vier Namen lesbar sind. Reine Zierde,
+ * die Namen stehen ohnehin in der Liste darunter.
+ */
+function Marquee() {
+  const still = useMotionTier() === "off";
+  const boxRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
+  const halfRef = useRef(0);
+  const { scrollYProgress } = useScroll({ target: boxRef, offset: ["start end", "end start"] });
+  const x = useTransform(scrollYProgress, (p) => -(0.04 + 0.5 * p) * halfRef.current);
+
+  useEffect(() => {
+    const el = trackRef.current;
+    if (!el) return;
+    const measure = () => {
+      halfRef.current = el.scrollWidth / 2;
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  return (
+    <div ref={boxRef} className="la-mq" data-still={still} aria-hidden="true">
+      <motion.div ref={trackRef} className="la-mq__track" style={still ? undefined : { x }}>
+        {[1, 2].map((s) => (
+          <div key={s} className={`la-mq__set la-mq__set--${s}`}>
+            {CAPACITIES.map((c) => (
+              <span key={c.key} className="la-mq__item">
+                {c.tag}
+              </span>
+            ))}
+          </div>
+        ))}
+      </motion.div>
+    </div>
+  );
+}
+
 const OrgSovereignty = () => {
   const reduced = useReducedMotionSafe();
   const [active, setActive] = useState(0);
   const cap = CAPACITIES[active];
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   // Bis zum ersten Sichtkontakt steht das Radar komplett auf der Baseline;
   // danach zieht die aktive Faehigkeit als Gummiband auf 80 %. Sanfte Stufe
@@ -71,6 +92,20 @@ const OrgSovereignty = () => {
     setArmed(true);
   };
 
+  // Pfeiltasten, Home und End wie bei jeder Tab-Leiste (Roving Tabindex)
+  const onTabKeyDown = (e: KeyboardEvent<HTMLButtonElement>, idx: number) => {
+    const len = CAPACITIES.length;
+    let next = -1;
+    if (e.key === "ArrowRight" || e.key === "ArrowDown") next = (idx + 1) % len;
+    else if (e.key === "ArrowLeft" || e.key === "ArrowUp") next = (idx - 1 + len) % len;
+    else if (e.key === "Home") next = 0;
+    else if (e.key === "End") next = len - 1;
+    if (next < 0) return;
+    e.preventDefault();
+    select(next);
+    tabRefs.current[next]?.focus();
+  };
+
   // selected capacity rises to 80%, the others sit at their baseline
   const radarValues = armed ? BASELINE_VALUES.map((b, i) => (i === active ? 0.8 : b)) : BASELINE_VALUES;
 
@@ -86,66 +121,92 @@ const OrgSovereignty = () => {
   });
 
   return (
-    <section
-      id="organisationen"
-      className="relative py-24 lg:py-36 overflow-hidden"
-      style={{ background: "transparent" }}
-    >
-      {/* Divider top */}
-      <ScanDivider position="top" />
+    <section id="organisationen" className="la-or bg-background">
+      <div className="rx-wrap la-or__in">
+        <div className="la-or__intro">
+          <LineReveal
+            as="h2"
+            className="rx-h2"
+            lines={[
+              "Vier Fähigkeiten bestimmen den",
+              <>
+                organisationalen <span className="text-green">Handlungsspielraum</span>
+              </>,
+            ]}
+          />
+          <p className="rx-sub la-or__lead">
+            Digitale Souveränität bezeichnet den Handlungsspielraum einer Organisation im Umgang mit kritischen digitalen
+            Abhängigkeiten. Wir erfassen diesen Handlungsspielraum anhand von vier organisationalen Fähigkeiten:
+            Switching, Internalization, Multi-Sourcing und Negotiation.
+          </p>
+        </div>
+      </div>
 
-      {/* Subtle background glow that follows the active capacity */}
-      <GlowCrossfade layers={BG_LAYERS} active={active} duration={0.8} />
+      <Marquee />
 
-      <div className="max-w-[1600px] mx-auto px-6 lg:px-10 relative z-10">
-        {/* Section header */}
-        <SectionHeader
-          eyebrow="Digitale Souveränität von Organisationen"
-          lines={["Vier Fähigkeiten bestimmen den", "organisationalen Handlungsspielraum"]}
-          lead={
-            <>
-              Digitale Souveränität bezeichnet den Handlungsspielraum einer Organisation im Umgang
-              mit kritischen digitalen Abhängigkeiten. Wir erfassen diesen Handlungsspielraum anhand
-              von vier organisationalen Fähigkeiten: Switching, Internalization, Multi-Sourcing und
-              Negotiation.
-            </>
-          }
-          className="mb-16 lg:mb-20 max-w-3xl"
-          leadClassName="text-base leading-relaxed"
-        />
-
-        {/* Main grid: Radar + Info */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
-          {/* Left: Radar */}
-          <Reveal y={24} className="flex justify-center min-w-0">
-            <div
-              ref={radarRef}
-              className="fx-glass-card relative p-6 lg:p-8 rounded-2xl min-w-0 max-w-full"
-              style={{ border: "1px solid rgba(255,255,255,0.14)" }}
-            >
-              <GlowCrossfade layers={SHADOW_LAYERS} active={active} kind="shadow" duration={0.6} />
-              <div className="relative">
-                <CapacityRadar
-                  values={radarValues}
-                  color={cap.color}
-                  activeIndex={armed ? active : undefined}
-                  size={560}
-                />
-              </div>
+      <div className="rx-wrap la-or__in la-or__in--main">
+        <div className="la-or__main">
+          {/* Links: das Radar bleibt beim Lesen der Faehigkeit im Bild */}
+          <div className="la-or__fig">
+            <div ref={radarRef} className="la-or__radar">
+              <CapacityRadar
+                values={radarValues}
+                color="#00802f"
+                activeIndex={armed ? active : undefined}
+                size={560}
+              />
             </div>
-          </Reveal>
+            <p className="la-or__cap">Digitale Souveränität von Organisationen</p>
 
-          {/* Right: Capacity info */}
-          <Reveal y={24}>
-            {/* Capacity selector tabs */}
-            <SegmentedPills
-              items={PILL_ITEMS}
-              value={active}
-              onChange={select}
-              layoutId="capacity-pill"
-              panelId="capacity-panel"
-              className="mb-8"
-            />
+            {/* Punktnavigation */}
+            <div className="la-dots">
+              {CAPACITIES.map((c, i) => (
+                <button key={c.key} type="button" aria-label={c.tag} aria-pressed={i === active} onClick={() => select(i)}>
+                  <span aria-hidden="true" />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Rechts: vier Faehigkeiten als Liste, darunter die gewaehlte im Detail */}
+          <div className="la-or__side">
+            <div role="tablist" aria-orientation="vertical" className="la-tabs">
+              {CAPACITIES.map((c, i) => {
+                const on = i === active;
+                return (
+                  <button
+                    key={c.key}
+                    ref={(n) => {
+                      tabRefs.current[i] = n;
+                    }}
+                    type="button"
+                    role="tab"
+                    id={`capacity-pill-tab-${i}`}
+                    aria-selected={on}
+                    aria-controls="capacity-panel"
+                    tabIndex={on ? 0 : -1}
+                    onClick={() => select(i)}
+                    onKeyDown={(e) => onTabKeyDown(e, i)}
+                    className="la-tab"
+                  >
+                    <span className="la-tab__n" aria-hidden="true">
+                      0{i + 1}
+                    </span>
+                    <span className="block min-w-0">
+                      <span className="la-tab__tag">{c.tag}</span>
+                      <span className="la-tab__title" aria-hidden="true">
+                        {c.title}
+                      </span>
+                    </span>
+                    <span aria-hidden="true" className="la-tab__c">
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+                        <path d="M1 7h12M8 2l5 5-5 5" />
+                      </svg>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
 
             {/* Capacity content */}
             <AnimatePresence mode="wait" initial={false}>
@@ -154,126 +215,63 @@ const OrgSovereignty = () => {
                 id="capacity-panel"
                 role="tabpanel"
                 aria-labelledby={`capacity-pill-tab-${active}`}
+                className="la-cap"
                 initial={false}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0, transition: { duration: 0.18, ease: EASE_OUT } }}
               >
-                <motion.div
-                  className="mb-2 flex items-center gap-3"
-                  {...rise("translate(0px, 6px)")}
-                  transition={enter(0)}
-                >
-                  <span
-                    className="text-xs font-bold tracking-widest uppercase"
-                    style={{ color: cap.color, fontFamily: "'Space Grotesk', sans-serif" }}
-                  >
+                <motion.div {...rise("translate(0px, 6px)")} transition={enter(0)}>
+                  <span className="la-cap__no">
                     Fähigkeit 0{active + 1} · {cap.tag}
                   </span>
                 </motion.div>
-                <LineReveal
-                  as="h3"
-                  trigger="mount"
-                  lines={[cap.title]}
-                  delay={0.04}
-                  duration={0.6}
-                  className="text-3xl font-semibold text-white mb-2"
-                  style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.02em" }}
-                />
-                <motion.p
-                  className="text-base mb-5 italic"
-                  style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Space Grotesk', sans-serif" }}
-                  {...rise("translate(0px, 6px)")}
-                  transition={enter(T_QUESTION)}
-                >
+                <LineReveal as="h3" trigger="mount" lines={[cap.title]} delay={0.04} duration={0.6} className="la-cap__h" />
+                <motion.p className="la-cap__q" {...rise("translate(0px, 6px)")} transition={enter(T_QUESTION)}>
                   {cap.keyQuestion}
                 </motion.p>
 
-                {/* Definition: eigener 2-px-Balken statt borderLeft (zeichnet sich von oben;
-                    sanfte Stufe: clip-path-Wipe statt scaleY) */}
-                <div className="relative mb-7" style={{ paddingLeft: 18 }}>
-                  <motion.span
+                {/* Definition: eigener 2-px-Balken (zeichnet sich von oben; sanfte Stufe: clip-path-Wipe statt scaleY) */}
+                <div className="la-cap__def">
+                  <motion.i
                     aria-hidden="true"
-                    className="fx-deco pointer-events-none absolute left-0 top-0 bottom-0"
-                    style={{ width: 2, background: cap.color, transformOrigin: "top center" }}
+                    className="fx-deco"
+                    style={{ transformOrigin: "top center" }}
                     initial={reduced ? { clipPath: "inset(0% 0% 100% 0%)" } : { transform: "scaleY(0)" }}
                     animate={reduced ? { clipPath: "inset(0% 0% 0% 0%)" } : { transform: "scaleY(1)" }}
                     transition={enter(T_BAR, BAR_S)}
                   />
-                  <motion.p
-                    className="text-sm font-medium leading-relaxed"
-                    style={{ color: "rgba(255,255,255,0.7)", fontFamily: "'Inter', sans-serif" }}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={enter(T_DEF_TEXT, 0.15)}
-                  >
+                  <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={enter(T_DEF_TEXT, 0.15)}>
                     {cap.definition}
                   </motion.p>
                 </div>
 
-                {/* Relevante Einflussfaktoren: plain list, identical form on all four cards */}
-                <div className="rounded-xl p-5 mb-7" style={{ background: cap.colorBg, border: `1px solid ${cap.colorBorder}` }}>
-                  <div
-                    className="text-xs font-semibold uppercase tracking-widest mb-4"
-                    style={{ color: cap.color, fontFamily: "'Space Grotesk', sans-serif" }}
-                  >
-                    Relevante Einflussfaktoren
+                <div className="la-cap__cols">
+                  <div>
+                    <h4 className="la-cap__h4">Relevante Einflussfaktoren</h4>
+                    <ul className="la-cap__list">
+                      {cap.drivers.map((d, j) => (
+                        <motion.li key={d} {...listItem(j)}>
+                          {d}
+                        </motion.li>
+                      ))}
+                    </ul>
                   </div>
-                  <ul className="space-y-2">
-                    {cap.drivers.map((d, j) => (
-                      <motion.li
-                        key={d}
-                        className="flex gap-3 items-start text-sm"
-                        style={{ color: "rgba(255,255,255,0.8)", fontFamily: "'Inter', sans-serif" }}
-                        {...listItem(j)}
-                      >
-                        <span className="shrink-0 mt-1.5 w-1.5 h-1.5 rounded-full" style={{ background: cap.color }} />
-                        {d}
-                      </motion.li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* Beispiele organisationaler Maßnahmen */}
-                <div>
-                  <div
-                    className="text-xs font-semibold uppercase tracking-widest mb-3"
-                    style={{ color: cap.color, fontFamily: "'Space Grotesk', sans-serif" }}
-                  >
-                    Beispiele organisationaler Maßnahmen
+                  <div>
+                    <h4 className="la-cap__h4">Beispiele organisationaler Maßnahmen</h4>
+                    <ul className="la-cap__list">
+                      {cap.actions.map((action, j) => (
+                        <motion.li key={j} {...listItem(cap.drivers.length + j)}>
+                          {action}
+                        </motion.li>
+                      ))}
+                    </ul>
                   </div>
-                  <ul className="space-y-2">
-                    {cap.actions.map((action, j) => (
-                      <motion.li
-                        key={j}
-                        className="flex gap-3 items-start text-sm"
-                        style={{ color: "rgba(255,255,255,0.55)", fontFamily: "'Inter', sans-serif" }}
-                        {...listItem(cap.drivers.length + j)}
-                      >
-                        <span className="shrink-0 mt-1.5 w-1.5 h-1.5 rounded-full" style={{ background: cap.color }} />
-                        {action}
-                      </motion.li>
-                    ))}
-                  </ul>
                 </div>
               </motion.div>
             </AnimatePresence>
-          </Reveal>
+          </div>
         </div>
-
-        {/* Bottom dot navigation */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ delay: 0.3 }}
-          className="mt-16"
-        >
-          <DotNav items={DOT_ITEMS} value={active} onChange={select} />
-        </motion.div>
       </div>
-
-      {/* Divider bottom */}
-      <ScanDivider position="bottom" />
     </section>
   );
 };

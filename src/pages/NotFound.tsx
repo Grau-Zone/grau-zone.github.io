@@ -4,11 +4,20 @@
 // Der Ruecksprung war ein rohes <a href="/">. Der Router laeuft mit
 // basename={import.meta.env.BASE_URL}; ein solcher Link umgeht ihn und landet
 // bei einem Deployment unter einem Unterpfad im Leeren.
+//
+// Gestaltung: tiefes Gruen mit ruhig treibenden Linien, ein leerer Radar, dessen
+// Keil nichts findet, und die 404 in Mint, die von null hochzaehlt. Der Radar
+// dreht sich nur ohne reduzierte Bewegung; der Pause-Knopf haelt ihn an.
 import { useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
-import RadarMark from "../components/RadarMark";
+import { CountUp, Magnetic, PauseToggle, Reveal } from "@/components/fx";
+import { AmbientField } from "@/rx/AmbientField";
+import { SplitHeading } from "@/rx/SplitHeading";
+import SubHeader from "../components/frame/SubHeader";
+import RadarLines from "../components/frame/RadarLines";
 import SiteFooter from "../components/SiteFooter";
+import "../components/frame/frame.css";
 
 const NotFound = () => {
   const location = useLocation();
@@ -18,56 +27,47 @@ const NotFound = () => {
   }, [location.pathname]);
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "hsl(228 45% 4%)",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-        <RadarMark size={44} />
+    <div className="fr-page fr-scope">
+      {/* Pause-Knopf (WCAG 2.2.2): erster Tab-Stopp, sichtbar erst mit Fokus */}
+      <PauseToggle />
+      <SubHeader tone="deep" />
 
-        <div
-          className="mt-7 text-xs font-semibold tracking-[0.2em] uppercase"
-          style={{ color: "rgba(139,164,255,0.6)", fontFamily: "'Space Grotesk', sans-serif" }}
-        >
-          Fehler 404
+      <main className="rx-deep fr-scope fr-nf">
+        <AmbientField className="rx-ambient" />
+        <div className="rx-wrap fr-nf__grid">
+          <div>
+            <SplitHeading as="h1" className="rx-h1" em="nicht">
+              Diese Seite gibt es nicht.
+            </SplitHeading>
+
+            <div className="fr-meta-row">
+              <span className="fr-chip">
+                <i className="rx-dot rx-dot--done" aria-hidden="true" />
+                Fehler 404
+              </span>
+            </div>
+
+            <Reveal as="p" delay={0.35} className="rx-sub">
+              Vielleicht ist der Link veraltet oder hat sich ein Tippfehler eingeschlichen.
+            </Reveal>
+
+            <Reveal delay={0.5} className="fr-nf__cta">
+              <Magnetic>
+                <Link to="/" className="rx-pill fr-pill-light rx-pill--back">
+                  <ArrowLeft size={16} aria-hidden="true" /> Zur Startseite
+                </Link>
+              </Magnetic>
+            </Reveal>
+          </div>
+
+          <div className="fr-nf__fig" aria-hidden="true">
+            <RadarLines tone="deep" rings={5} sweep />
+            <span className="fr-nf__num">
+              <CountUp value="404" duration={2} />
+            </span>
+          </div>
         </div>
-
-        <h1
-          className="mt-3 text-3xl lg:text-4xl font-semibold text-white"
-          style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.025em" }}
-        >
-          Diese Seite gibt es nicht.
-        </h1>
-
-        <p
-          className="mt-4 text-base leading-relaxed"
-          style={{ color: "rgba(255,255,255,0.6)", fontFamily: "'Inter', sans-serif", maxWidth: "44ch" }}
-        >
-          Vielleicht ist der Link veraltet oder hat sich ein Tippfehler eingeschlichen.
-        </p>
-
-        <Link
-          to="/"
-          className="inline-flex items-center gap-2 mt-8"
-          style={{
-            fontFamily: "'Space Grotesk', sans-serif",
-            fontSize: "15px",
-            fontWeight: 500,
-            padding: "13px 24px",
-            borderRadius: "10px",
-            border: "1px solid rgba(75,110,255,0.45)",
-            background: "rgba(75,110,255,0.18)",
-            color: "#a8bcff",
-            textDecoration: "none",
-          }}
-        >
-          <ArrowLeft size={16} /> Zur Startseite
-        </Link>
-      </div>
+      </main>
 
       <SiteFooter />
     </div>

@@ -1,441 +1,348 @@
-import {
-  Suspense,
-  createRef,
-  lazy,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  type RefObject,
-} from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { animate } from "framer-motion";
+import { AmbientField } from "@/rx/AmbientField";
+import { SplitHeading } from "@/rx/SplitHeading";
+import { AnimatedValue, CountUp, EASE_OUT, Ping, ScrollWords, useReducedMotionSafe } from "@/components/fx";
 import { cn } from "@/lib/utils";
-import {
-  CSS_EASE_OUT,
-  DUR,
-  LockOn,
-  RevealGroup,
-  RevealItem,
-  ScanDivider,
-  ScrollWords,
-  SectionHeader,
-  formatCountable,
-  parseCountable,
-  pingScales,
-  safeAnimate,
-  useCountUp,
-  useFinePointer,
-  useInViewOnce,
-  useReducedMotionSafe,
-} from "@/components/fx";
+import { useSeen } from "./landing-a/useSeen";
+import "./landing-a/landing-a.css";
 
-// Eigenes Chunk, wird erst nahe der Sektion geladen.
-const DependencyNet = lazy(() => import("./DependencyNet"));
+/**
+ * Die Ausgangslage (#scenarios), tiefgruen.
+ *
+ * Eine gepinnte Buehne (ab 62rem): eine Zielscheibe aus 100 Strichen, deren Zeiger zwischen den
+ * drei Kennzahlen laeuft (70, 15, 93), waehrend rechts die drei Szenarien als Belegzeilen
+ * durchscrollen. Die Zeilen zeichnen eine Minzlinie, wenn sie ins Bild kommen; einzelne Zahlen
+ * laufen hoch. Darunter faerbt sich der Leitsatz Wort fuer Wort. Unter 62rem fliesst alles
+ * normal, jede Kennzahl steht dann gross im eigenen Szenario.
+ * Ruhige Stufe: Zaehlen, Farbe, Linien und Deckkraft bleiben, nichts wird verschoben.
+ */
 
-const threats = [
+interface Fig {
+  /** Zahl, wie sie im Satz steht (zaehlt hoch, wenn zaehlbar) */
+  n: string;
+  /** Einheit oder Bezug, wortgleich aus dem Satz */
+  unit?: string;
+}
+
+interface Threat {
+  title: string;
+  subtitle: string;
+  stat: string;
+  statLabel: string;
+  points: string[];
+  /** je Satz eine grosse Zahl daneben (wortgleich aus dem Satz) oder null */
+  figs: (Fig | null)[];
+  /** Sätze, die als Zitat gross stehen */
+  quote?: number;
+}
+
+const threats: Threat[] = [
   {
     title: "Cloud-Infrastruktur",
     subtitle: "Abhängigkeit von Infrastruktur-Anbietern",
     stat: "70%",
     statLabel: "des EU-Cloud-Markts",
-    color: "#4B6EFF",
-    colorBg: "rgba(75,110,255,0.07)",
-    colorBorder: "rgba(75,110,255,0.2)",
     points: [
       "Amazon, Microsoft und Google kontrollieren ~70% des europäischen Cloud-Markts",
       "Wechselkosten: bis zu 8,5 Mio. € pro Organisation",
       "Microsoft blockierte ICC-Mitarbeiter nach US-Sanktionen",
       "Ein AWS-Ausfall (Okt. 2025) legte 3.500 Unternehmen in 60+ Ländern lahm",
     ],
+    figs: [null, { n: "8,5", unit: "Mio. €" }, null, { n: "3.500", unit: "Unternehmen" }],
   },
   {
     title: "KI-Modelle",
     subtitle: "Abhängigkeit von Modellen und Modellanbietern",
     stat: "15%",
     statLabel: "globale KI-Nutzung",
-    color: "#FF3D57",
-    colorBg: "rgba(255,61,87,0.07)",
-    colorBorder: "rgba(255,61,87,0.2)",
     points: [
       "DeepSeek R1: 0,10 $ / Mio. Token gegenüber OpenAI 4,40 $. Kostenvorteil 20–30×",
       "Alibaba Qwen unter Apache-2.0-Lizenz: kostenlose Nutzung und Anpassung",
       "Trainingsherkunft intransparent. Bias und Zensur sind schwer nachweisbar",
       "Open-Weight-Adoption stieg von 23% auf 67% (2025–2027)",
     ],
+    figs: [{ n: "20–30×" }, null, null, null],
   },
   {
     title: "Regulatorisches Umfeld",
     subtitle: "Anforderungen an den Einsatz digitaler Technologien",
     stat: "93%",
     statLabel: "dt. Firmen digital abhängig",
-    color: "#FF9F2E",
-    colorBg: "rgba(255,159,46,0.07)",
-    colorBorder: "rgba(255,159,46,0.2)",
     points: [
       "Data Act, AI Act, NIS2 und DORA definieren Anforderungen an den Technologieeinsatz",
       "GAIA-X: 600 Katalog-Services. Der CEO bestätigt Anbieterengpässe",
       "Hyperscaler-Investitionen 2025: 240 Mrd. $ (US) gegenüber ~15 Mrd. € (EU)",
       "»Wir haben kein Erkenntnisproblem, sondern ein Umsetzungsproblem.« (SAP)",
     ],
+    figs: [null, { n: "600", unit: "Katalog-Services" }, { n: "240", unit: "Mrd. $" }, null],
+    quote: 3,
   },
 ];
 
-type Threat = (typeof threats)[number];
+const STAT_VALUES = threats.map((t) => parseInt(t.stat, 10));
 
-// Zeitplan je Karte (Sekunden ab inView)
-const COUNT_DELAY = 0.15;
-const COUNT_DURATION = 1.1;
-const BULLETS_AT = 0.5;
-const BULLET_STAGGER = 0.045;
-const BULLET_DURATION = 0.35;
-const PING_STAGGER = 0.12;
-const PING_DURATION = 0.6;
+/* ---------- Zielscheibe ---------- */
 
-const isPrinting = () => typeof window !== "undefined" && !!window.matchMedia?.("print").matches;
+const TICKS = 100;
+const R_OUT = 238;
+
+const TICK_D = (() => {
+  let d = "";
+  for (let i = 0; i < TICKS; i++) {
+    const a = (i / TICKS) * Math.PI * 2 - Math.PI / 2;
+    const len = i % 10 === 0 ? 32 : i % 5 === 0 ? 22 : 14;
+    const r1 = R_OUT - len;
+    d += `M${(Math.cos(a) * r1).toFixed(2)} ${(Math.sin(a) * r1).toFixed(2)}L${(Math.cos(a) * R_OUT).toFixed(2)} ${(Math.sin(a) * R_OUT).toFixed(2)}`;
+  }
+  return d;
+})();
+
+/** Kreissektor von 12 Uhr im Uhrzeigersinn bis v Prozent. */
+function wedge(v: number, r: number): string {
+  const p = Math.max(0, Math.min(100, v));
+  if (p <= 0.05) return "M0 0";
+  if (p >= 99.95) return `M0 ${-r}A${r} ${r} 0 1 1 0 ${r}A${r} ${r} 0 1 1 0 ${-r}Z`;
+  const a = (p / 100) * Math.PI * 2;
+  return `M0 0L0 ${-r}A${r} ${r} 0 ${a > Math.PI ? 1 : 0} 1 ${(Math.sin(a) * r).toFixed(2)} ${(-Math.cos(a) * r).toFixed(2)}Z`;
+}
 
 /**
- * Zaehlende Kennzahl. Der einzige lesbare Textknoten traegt immer den
- * Endwert (innerText und Screenreader lesen nie '0%'). Waehrend des Zaehlens
- * ist er nur transparent, die Zaehlziffern zeichnet ein aria-hidden Overlay
- * per CSS-Generated-Content (attr(data-count)), das nicht in innerText landet.
- * Die Breite reserviert der lesbare Knoten selbst.
+ * Zielscheibe mit Zeiger. Der Wert laeuft per framer animate und wird direkt ins DOM geschrieben
+ * (kein React-State pro Bild). Das Zaehlen ist einmalig, keine Schleife.
  */
-function StatCount({ value, play }: { value: string; play: boolean }) {
+function Dial({ index, play }: { index: number; play: boolean }) {
+  const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
+  const clipId = `la-dial-${uid}`;
   const reduced = useReducedMotionSafe();
-  const realRef = useRef<HTMLSpanElement | null>(null);
-  const overlayRef = useRef<HTMLSpanElement | null>(null);
-  const countingRef = useRef(false);
-  const startedRef = useRef(false);
-  if (play) startedRef.current = true;
+  const clipRef = useRef<SVGPathElement>(null);
+  const fillRef = useRef<SVGPathElement>(null);
+  const needleRef = useRef<SVGGElement>(null);
+  const numRef = useRef<HTMLSpanElement>(null);
+  const valueRef = useRef(0);
+  const indexRef = useRef(index);
+  indexRef.current = index;
 
-  // useCountUp schreibt textContent; hier landet es als data-count im Overlay.
-  const sinkRef = useRef<HTMLElement | null>(null);
-  if (sinkRef.current === null) {
-    const sink = {
-      set textContent(v: string) {
-        if (countingRef.current) overlayRef.current?.setAttribute("data-count", v);
-      },
-    };
-    sinkRef.current = sink as unknown as HTMLElement;
-  }
-
-  // Zaehlmodus beenden: Endwert sichtbar, Overlay leer.
-  const settle = useCallback(() => {
-    countingRef.current = false;
-    overlayRef.current?.removeAttribute("data-count");
-    if (realRef.current) realRef.current.style.color = "";
+  const paint = useCallback((v: number) => {
+    valueRef.current = v;
+    clipRef.current?.setAttribute("d", wedge(v, 250));
+    fillRef.current?.setAttribute("d", wedge(v, 200));
+    needleRef.current?.setAttribute("transform", `rotate(${((v / 100) * 360).toFixed(2)})`);
+    if (numRef.current) numRef.current.textContent = `${Math.round(v)}%`;
   }, []);
 
-  // Vor dem Start den Startwert zeigen (kein Aufblitzen des Endwerts),
-  // ohne den lesbaren Knoten anzufassen.
-  useLayoutEffect(() => {
-    const real = realRef.current;
-    const overlay = overlayRef.current;
-    if (!real || !overlay || startedRef.current) return;
-    if (typeof IntersectionObserver === "undefined" || isPrinting()) return;
-    const c = parseCountable(value);
-    if (!c) return;
-    countingRef.current = true;
-    overlay.setAttribute("data-count", formatCountable(c, 0));
-    real.style.color = "transparent";
-    window.addEventListener("beforeprint", settle);
-    return () => window.removeEventListener("beforeprint", settle);
-    // nur beim ersten Rendern bzw. bei neuem Wert
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [value]);
+  useEffect(() => {
+    if (!play) return;
+    const target = STAT_VALUES[index];
+    // Reduzierte Bewegung: der Zeiger dreht sich nicht, die Scheibe steht sofort im Endwert
+    if (reduced) {
+      paint(target);
+      return;
+    }
+    const from = valueRef.current;
+    const ctl = animate(from, target, {
+      duration: from === 0 ? 1.7 : 1.25,
+      ease: EASE_OUT,
+      onUpdate: paint,
+      onComplete: () => paint(target),
+    });
+    return () => ctl.stop();
+  }, [index, play, paint, reduced]);
 
-  useCountUp(sinkRef, value, {
-    play,
-    delay: COUNT_DELAY,
-    duration: COUNT_DURATION,
-    onDone: () => {
-      settle();
-      // Settle-Puls ist eine Skalierung: bei reduzierter Bewegung (sanfte Stufe) aus
-      if (reduced) return;
-      safeAnimate(realRef.current, [{ transform: "scale(1.04)" }, { transform: "scale(1)" }], {
-        duration: 200,
-        easing: CSS_EASE_OUT,
-      });
-    },
-  });
+  // Druck: Endwert des gerade gezeigten Szenarios
+  useEffect(() => {
+    const onPrint = () => paint(STAT_VALUES[indexRef.current]);
+    window.addEventListener("beforeprint", onPrint);
+    return () => window.removeEventListener("beforeprint", onPrint);
+  }, [paint]);
 
   return (
-    <span className="relative inline-grid">
-      <span ref={realRef} className="tabular-nums print:!text-inherit" style={{ gridArea: "1 / 1" }}>
-        {value}
-      </span>
-      <span
-        ref={overlayRef}
-        aria-hidden="true"
-        className="fx-deco pointer-events-none tabular-nums before:content-[attr(data-count)]"
-        style={{ gridArea: "1 / 1" }}
-      />
-    </span>
+    <div className="la-dial" aria-hidden="true">
+      <svg viewBox="-260 -260 520 520" focusable="false">
+        <defs>
+          <clipPath id={clipId}>
+            <path ref={clipRef} d={wedge(0, 250)} />
+          </clipPath>
+        </defs>
+        <circle className="la-dial__ring" r="252" />
+        <circle className="la-dial__ring" r="172" strokeDasharray="2 7" />
+        <circle className="la-dial__ring" r="128" />
+        <circle className="la-dial__ring" r="84" strokeOpacity="0.6" />
+        <path className="la-dial__tick" d={TICK_D} stroke="rgba(233,243,237,0.2)" />
+        <path className="la-dial__tick" d={TICK_D} stroke="#6fd69a" clipPath={`url(#${clipId})`} />
+        <path ref={fillRef} d={wedge(0, 200)} fill="rgba(111,214,154,0.07)" />
+        <g ref={needleRef} transform="rotate(0)">
+          <line x1="0" y1="-84" x2="0" y2="-206" stroke="#6fd69a" strokeWidth="1.25" />
+          <circle cx="0" cy="-206" r="3.5" fill="#6fd69a" />
+        </g>
+        <circle r="2.5" fill="#6fd69a" />
+      </svg>
+      <div className="la-dial__c">
+        <span ref={numRef} className="la-dial__n">
+          0%
+        </span>
+        <span className="la-dial__ls">
+          {threats.map((t, i) => (
+            <span key={t.title} className="la-dial__l" data-on={i === index}>
+              {t.statLabel}
+            </span>
+          ))}
+        </span>
+      </div>
+    </div>
   );
 }
 
-function ThreatCard({
+/* ---------- Belegzeile ---------- */
+
+function Point({ text, fig, quote }: { text: string; fig: Fig | null; quote: boolean }) {
+  const [ref, seen] = useSeen<HTMLLIElement>({ threshold: 0.7, rootMargin: "0px 0px -6% 0px" });
+  return (
+    <li ref={ref} className={cn("la-pt", seen && "is-in", quote && "la-pt--quote")}>
+      {quote ? null : fig ? (
+        <span className="la-pt__fig" aria-hidden="true">
+          <AnimatedValue value={fig.n} play={seen} delay={0.1} />
+          {fig.unit ? <small className="la-pt__u">{fig.unit}</small> : null}
+        </span>
+      ) : (
+        <span className="la-pt__mark" aria-hidden="true" />
+      )}
+      <p className="la-pt__t">{text}</p>
+    </li>
+  );
+}
+
+/* ---------- Szenario ---------- */
+
+function Scenario({
   threat,
-  hubRef,
-  scaleOn,
+  blockRef,
 }: {
   threat: Threat;
-  hubRef: RefObject<HTMLElement>;
-  scaleOn: boolean;
+  blockRef: (el: HTMLElement | null) => void;
 }) {
-  const reduced = useReducedMotionSafe();
-  const inView = useInViewOnce(hubRef, { amount: 0.5 });
-  const barRef = useRef<HTMLDivElement | null>(null);
-  const listRef = useRef<HTMLUListElement | null>(null);
-  const preparedRef = useRef<Animation[]>([]);
+  const [figRef, figSeen] = useSeen<HTMLDivElement>({ threshold: 0.6 });
   const ratio = Math.max(0, Math.min(1, parseInt(threat.stat, 10) / 100));
-
-  // Balken und Stichpunkte: WAAPI-Animationen vorbereiten und pausieren.
-  // Der Endzustand steht im DOM, fill 'backwards' haelt nur den Startwert.
-  // Sanfte Stufe (reduce): Balken per clip-path-Wipe statt scaleX-Wachstum,
-  // Stichpunkte nur per opacity ohne y-Versatz.
-  useLayoutEffect(() => {
-    if (typeof IntersectionObserver === "undefined" || isPrinting()) return;
-    const anims: Animation[] = [];
-    const prep = (el: Element | null, keyframes: Keyframe[], options: KeyframeAnimationOptions) => {
-      const a = safeAnimate(el, keyframes, { ...options, fill: "backwards" });
-      if (!a) return;
-      try {
-        a.pause();
-        anims.push(a);
-      } catch {
-        a.cancel();
-      }
-    };
-    const barFrames: Keyframe[] = reduced
-      ? [{ clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0% 0 0)" }]
-      : [{ transform: "scaleX(0)" }, { transform: `scaleX(${ratio})` }];
-    prep(barRef.current, barFrames, {
-      duration: COUNT_DURATION * 1000,
-      delay: COUNT_DELAY * 1000,
-      easing: CSS_EASE_OUT,
-    });
-    const items = listRef.current ? Array.from(listRef.current.children) : [];
-    items.forEach((li, j) =>
-      prep(
-        li,
-        reduced
-          ? [{ opacity: 0 }, { opacity: 1 }]
-          : [
-              { opacity: 0, transform: "translateY(6px)" },
-              { opacity: 1, transform: "translateY(0px)" },
-            ],
-        {
-          duration: BULLET_DURATION * 1000,
-          delay: (BULLETS_AT + j * BULLET_STAGGER) * 1000,
-          easing: CSS_EASE_OUT,
-        },
-      ),
-    );
-    preparedRef.current = anims;
-    const onPrint = () =>
-      anims.forEach((a) => {
-        try {
-          a.finish();
-        } catch {
-          a.cancel();
-        }
-      });
-    window.addEventListener("beforeprint", onPrint);
-    return () => {
-      window.removeEventListener("beforeprint", onPrint);
-      anims.forEach((a) => a.cancel());
-      preparedRef.current = [];
-    };
-  }, [reduced, ratio]);
-
-  // Start beim Sichtkontakt: Balken, Stichpunkte und je Bullet ein Ping
-  // (sanfte Stufe: Ring waechst hoechstens auf scale 1.15, blendet per opacity aus)
-  useEffect(() => {
-    if (!inView) return;
-    preparedRef.current.forEach((a) => {
-      try {
-        a.play();
-      } catch {
-        a.cancel();
-      }
-    });
-    const rings = listRef.current ? Array.from(listRef.current.querySelectorAll("[data-bullet-ping]")) : [];
-    const [fromScale, toScale] = pingScales(1, 3, reduced);
-    const pings = rings.map((ring, j) =>
-      safeAnimate(
-        ring,
-        [
-          { transform: `scale(${fromScale})`, opacity: 0.7 },
-          { transform: `scale(${toScale})`, opacity: 0 },
-        ],
-        {
-          duration: PING_DURATION * 1000,
-          delay: (BULLETS_AT + j * PING_STAGGER) * 1000,
-          easing: CSS_EASE_OUT,
-          fill: "none",
-        },
-      ),
-    );
-    return () => pings.forEach((p) => p?.cancel());
-  }, [inView, reduced]);
-
   return (
-    <RevealItem ref={hubRef} y={24} duration={DUR.reveal} className="h-full">
-      {/* Hover nur als leichtes Skalieren (Feedback 13.11.2026): kein Licht unter
-          dem Zeiger, keine Neigung. */}
-      <div
-        className={cn(
-          "relative rounded-2xl p-6 lg:p-8 flex flex-col h-full",
-          scaleOn && "transition-transform duration-300 ease-fx-out hover:scale-[1.02]",
-        )}
-        style={{
-          background: `linear-gradient(${threat.colorBg}, ${threat.colorBg}), rgba(5,7,15,0.55)`,
-          border: `1px solid ${threat.colorBorder}`,
-        }}
-      >
-        {/* Big stat */}
-        <div className="mb-5">
-          <div
-            className="text-5xl font-bold text-white mb-1"
-            style={{ fontFamily: "'Space Grotesk', sans-serif", letterSpacing: "-0.03em" }}
-          >
-            <LockOn color={threat.color} play={inView}>
-              <StatCount value={threat.stat} play={inView} />
-            </LockOn>
-          </div>
-          <div
-            className="text-xs"
-            style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Inter', sans-serif" }}
-          >
-            {threat.statLabel}
-          </div>
-          {/* Fuellbalken (Endzustand im DOM) */}
-          <div
-            aria-hidden="true"
-            className="mt-3 h-[2px] w-full overflow-hidden rounded-full"
-            style={{ background: "rgba(255,255,255,0.06)" }}
-          >
-            <div
-              ref={barRef}
-              className="h-full w-full rounded-full"
-              style={{ background: threat.color, transform: `scaleX(${ratio})`, transformOrigin: "left center" }}
-            />
-          </div>
+    <article ref={blockRef} className="la-sc">
+      {/* Kennzahl: unter 62rem gross im Szenario, darueber nur fuer Vorleser (gross in der Buehne) */}
+      <div ref={figRef} className="la-sc__fig">
+        <span className="la-sc__big">
+          <CountUp value={threat.stat} />
+        </span>
+        <span className="la-sc__lab">{threat.statLabel}</span>
+        <div className="la-sc__bar" aria-hidden="true" data-in={figSeen} style={{ ["--r" as string]: ratio }}>
+          <i />
         </div>
-
-        {/* Title */}
-        <h3
-          className="text-xl font-semibold text-white mb-1"
-          style={{ fontFamily: "'Space Grotesk', sans-serif" }}
-        >
-          {threat.title}
-        </h3>
-        <p
-          className="text-sm mb-6"
-          style={{ color: threat.color, fontFamily: "'Space Grotesk', sans-serif", opacity: 0.8 }}
-        >
-          {threat.subtitle}
-        </p>
-
-        {/* Point list */}
-        <ul ref={listRef} className="space-y-3 flex-1">
-          {threat.points.map((point, j) => (
-            <li
-              key={j}
-              data-fx-reveal=""
-              className="flex gap-3 items-start text-xs leading-relaxed"
-              style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Inter', sans-serif" }}
-            >
-              <span
-                className="relative mt-1.5 shrink-0 w-1 h-1 rounded-full"
-                style={{ background: threat.color }}
-              >
-                <span
-                  data-bullet-ping=""
-                  aria-hidden="true"
-                  className="fx-deco pointer-events-none absolute inset-0 rounded-full"
-                  style={{ border: `1px solid ${threat.color}`, opacity: 0 }}
-                />
-              </span>
-              {point}
-            </li>
-          ))}
-        </ul>
       </div>
-    </RevealItem>
+      <SplitHeading as="h3" className="la-sc__h">
+        {threat.title}
+      </SplitHeading>
+      <p className="la-sc__sub">{threat.subtitle}</p>
+      <ul className="la-pts">
+        {threat.points.map((p, j) => (
+          <Point key={j} text={p} fig={threat.figs[j] ?? null} quote={threat.quote === j} />
+        ))}
+      </ul>
+    </article>
   );
 }
 
 const ThreatContext = () => {
-  const fine = useFinePointer();
-  // Wie fx-contained: kleine, vom Zeiger ausgeloeste Bewegung, laeuft auch bei
-  // reduzierter Bewegung (sonst sieht man den Effekt mit Windows-Einstellung nie).
-  const scaleOn = fine;
-  const sectionRef = useRef<HTMLElement | null>(null);
-  const hubRefs = useMemo(() => threats.map(() => createRef<HTMLElement>()), []);
-  const netReady = useInViewOnce(sectionRef, { amount: 0, margin: "600px" });
+  const blockRefs = useRef<(HTMLElement | null)[]>([]);
+  const [active, setActive] = useState(0);
+  const [stageRef, stageSeen] = useSeen<HTMLDivElement>({ threshold: 0.25, rootMargin: "0px" });
+
+  // Welches Szenario gerade gelesen wird: das, das die Linie bei 58 % der Fensterhoehe kreuzt.
+  useEffect(() => {
+    if (typeof IntersectionObserver === "undefined") return;
+    const els = blockRefs.current.filter(Boolean) as HTMLElement[];
+    const io = new IntersectionObserver(
+      (entries) => {
+        let best = -1;
+        for (const e of entries) {
+          if (!e.isIntersecting) continue;
+          const i = els.indexOf(e.target as HTMLElement);
+          if (i > best) best = i;
+        }
+        if (best >= 0) setActive(best);
+      },
+      { rootMargin: "-58% 0px -41% 0px", threshold: 0 },
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, []);
 
   return (
-    <section
-      ref={sectionRef}
-      id="scenarios"
-      className="relative py-24 lg:py-32 overflow-hidden supports-[overflow:clip]:overflow-clip"
-      style={{
-        background: "transparent",
-      }}
-    >
-      {/* Abhaengigkeitsnetz (dekorativ, eigener Chunk) */}
-      <div aria-hidden="true" className="fx-deco pointer-events-none absolute inset-0 z-0">
-        {netReady ? (
-          <Suspense fallback={null}>
-            <DependencyNet sectionRef={sectionRef} hubRefs={hubRefs} />
-          </Suspense>
-        ) : null}
+    <section id="scenarios" className="rx-deep la-th">
+      {/* feine, ruhig treibende Linien (Pause-Knopf, offscreen und reduzierte Bewegung beachtet) */}
+      <div className="la-amb" aria-hidden="true">
+        <AmbientField className="rx-ambient" />
       </div>
 
-      {/* Divider line top */}
-      <ScanDivider position="top" />
+      <div className="rx-wrap la-th__in">
+        <div className="la-th__intro">
+          <SplitHeading as="h2" em="Abhängigkeiten" className="rx-h2 la-th__h">
+            Digitale Abhängigkeiten in Europa
+          </SplitHeading>
+          <p className="rx-sub la-th__lead">
+            Europäische Organisationen sind bei Cloud-Infrastruktur, KI-Modellen und digitalen Technologien in hohem
+            Mass von externen Anbietern abhängig. Gleichzeitig verändern regulatorische Anforderungen die Bedingungen,
+            unter denen diese Technologien eingesetzt werden.
+          </p>
+        </div>
 
-      <div className="relative z-10 max-w-[1600px] mx-auto px-6 lg:px-10">
-        {/* Header */}
-        <SectionHeader
-          eyebrow="Die Ausgangslage"
-          lines={["Digitale Abhängigkeiten in Europa"]}
-          className="max-w-2xl mb-16 lg:mb-20"
-          leadClassName="text-base leading-relaxed"
-          lead={
-            <>
-              Europäische Organisationen sind bei Cloud-Infrastruktur, KI-Modellen und digitalen
-              Technologien in hohem Mass von externen Anbietern abhängig. Gleichzeitig verändern
-              regulatorische Anforderungen die Bedingungen, unter denen diese Technologien
-              eingesetzt werden.
-            </>
-          }
-        />
+        <div className="la-th__band">
+          <div className="la-th__legend">
+            <span>Die Ausgangslage</span>
+            <span className="la-th__count" aria-hidden="true">
+              {`0${active + 1} / 0${threats.length}`}
+            </span>
+          </div>
 
-        {/* Threat cards */}
-        <RevealGroup stagger={0.09} margin="0px 0px -12% 0px" className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {threats.map((threat, i) => (
-            <ThreatCard key={threat.title} threat={threat} hubRef={hubRefs[i]} scaleOn={scaleOn} />
-          ))}
-        </RevealGroup>
+          <div className="la-th__cols">
+            <div className="la-th__col-stage">
+              <div ref={stageRef} className="la-stage">
+                <Dial index={active} play={stageSeen} />
+                <ul className="la-ledger" aria-hidden="true">
+                  {threats.map((t, i) => (
+                    <li key={t.title} data-on={i === active} data-done={i < active}>
+                      <span className="la-ledger__dot">
+                        <Ping play={i === active ? active + 1 : false} color="#6fd69a" size={10} scale={2.6} />
+                      </span>
+                      <span>{t.title}</span>
+                      <span className="la-ledger__v">{t.stat}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
 
-        {/* Closing statement */}
-        <div className="mt-16 text-center">
+            <div className="la-th__scs">
+              {threats.map((t, i) => (
+                <Scenario
+                  key={t.title}
+                  threat={t}
+                  blockRef={(el) => {
+                    blockRefs.current[i] = el;
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Leitsatz: die Woerter hellen sich beim Scrollen auf */}
+        <div className="la-th__close">
           <ScrollWords
             as="p"
             text="Digitale Souveränität zeigt sich darin, welche Handlungsoptionen Organisationen im Umgang mit kritischen digitalen Abhängigkeiten tatsächlich besitzen."
-            highlight={{ Handlungsoptionen: "#8BA4FF" }}
-            className="text-xl lg:text-2xl font-medium text-white/60 max-w-3xl mx-auto leading-relaxed"
-            style={{ fontFamily: "'Space Grotesk', sans-serif" }}
-            scanLine
+            highlight={{ Handlungsoptionen: "#6fd69a" }}
+            className="la-th__statement"
+            scanLine={false}
           />
         </div>
       </div>
-
-      {/* Divider line bottom */}
-      <ScanDivider position="bottom" />
     </section>
   );
 };

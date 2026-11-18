@@ -7,10 +7,16 @@
 // gestrichelt: braucht Anbieter, Vertrag oder Regulierung).
 // Das × zwischen Sovereignty und Outcome ist eine Interaktion, keine Addition.
 //
-// Bewegung: Beim ersten Sichtkontakt zeichnet sich der Schaltplan (Spaltenköpfe,
-// Klammern, Knoten, Kanten), danach fliesst Strom (SMIL-Signalpunkte, pausiert
+// Optik: Hellgrün und Blau als feine Linien auf tiefem Grün (Abschnitt .rx-deep), Knoten
+// als Ringe mit Kern, Beschriftungen mit Haarrand, damit keine Kante durch den Text läuft.
+// Blau bleibt der Exit-Pfad (Lead-Text: "Blau ist der Exit-Pfad"), Mint der Kontroll-Pfad.
+//
+// Bewegung: Beim ersten Sichtkontakt zeichnet sich die Schrittachse (Spaltenköpfe, Ringe
+// auf der Achse), die Knoten erscheinen auf einen Schlag (Entscheid Adrian 12.10.2026),
+// danach fliesst Strom (SMIL-Signalpunkte, pausiert
 // ausserhalb des Viewports und über den Pause-Knopf). Hover/Fokus auf einen
-// C1-Knoten schickt einen Kometen über die Kette bis zum Outcome.
+// C1-Knoten schickt einen Kometen über die Kette bis zum Outcome; die Schrittachse zeigt,
+// durch welche Schritte die hervorgehobene Kette läuft.
 // Reduziert (sanfte Stufe): Der Aufbau läuft per opacity, Zeichnen und clip-path,
 // ohne Skalieren, Drehen oder Federn. Statt wandernder Signalpunkte leuchten die
 // Kanten per SMIL-Opacity-Puls auf (Periode 3.4 s). Kein Komet, keine Wischgeste.
@@ -23,10 +29,10 @@ import {
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence, type Transition, type Variants } from "framer-motion";
 import {
   CSS_EASE_IN_OUT,
-  CSS_EASE_OUT,
   EASE_IN_OUT,
   EASE_OUT,
   SvgPing,
@@ -45,11 +51,17 @@ type EdgeKind = "dr" | "cp" | "granted" | "join" | "corr";
 type Edge = [string, string, EdgeKind];
 
 // ─── Pfade / Farbwelt ────────────────────────────────────────────────────────
-const PATHS: Record<string, { color: string; colorDim: string; title: string }> = {
-  dr:   { color: "#6b9bd8", colorDim: "rgba(107,155,216,0.28)", title: "Dependency-Reducing · Exit-Pfad" },
-  cp:   { color: "#5cbf8a", colorDim: "rgba(92,191,138,0.28)",  title: "Control-Preserving · Kontroll-Pfad" },
-  join: { color: "#6cc2b5", colorDim: "rgba(108,194,181,0.28)", title: "Outcome" },
+// color: auf tiefem Grün (Diagramm); ink: dieselbe Farbfamilie dunkel genug für weissen Grund (Popup).
+const PATHS: Record<string, { color: string; ink: string; colorDim: string; title: string }> = {
+  dr:   { color: "#7fb0ea", ink: "#1d5aa6", colorDim: "rgba(127,176,234,0.28)", title: "Dependency-Reducing · Exit-Pfad" },
+  cp:   { color: "#6fd69a", ink: "#006a27", colorDim: "rgba(111,214,154,0.28)", title: "Control-Preserving · Kontroll-Pfad" },
+  join: { color: "#e9f3ed", ink: "#0c1310", colorDim: "rgba(233,243,237,0.28)", title: "Outcome" },
 };
+
+const SANS = "Switzer, 'Helvetica Neue', Helvetica, Arial, sans-serif";
+const DEEP = "#06301d";
+const ON_DEEP = "#e9f3ed";
+const ON_DEEP_MUTE = "#a9c7b5";
 
 // ─── Spalten ─────────────────────────────────────────────────────────────────
 const COLUMNS = [
@@ -156,20 +168,11 @@ const MO_EDGES: Edge[] = [
 ];
 
 const EDGE_COLOR: Record<EdgeKind, string> = {
-  dr: "#6b9bd8",
-  cp: "#5cbf8a",
-  granted: "#5cbf8a",
-  join: "#6cc2b5",
-  corr: "rgba(190,210,230,0.55)",
-};
-
-// Farbwelt (Gradient) je Kantenart, für die Signalpunkte.
-const EDGE_PATH: Record<EdgeKind, string> = {
-  dr: "dr",
-  cp: "cp",
-  granted: "cp",
-  join: "join",
-  corr: "join",
+  dr: "#7fb0ea",
+  cp: "#6fd69a",
+  granted: "#6fd69a",
+  join: "#e9f3ed",
+  corr: "rgba(233,243,237,0.6)",
 };
 
 // Handy: Signalpunkte nur auf den 6 Hauptkanten rechts vom C1-Fächer
@@ -180,6 +183,8 @@ const MAIN_EDGE_FROM = 7;
 const MO_VB_W = 2000;
 const MO_VB_H = 1180;
 const GROUP_BRACKET_X = 150;
+/** Höhe der Schrittachse unter den Spaltenköpfen. */
+const HEAD_AXIS_Y = 140;
 
 // Standard-Kurve links → rechts.
 function moCurve(a: Point, b: Point) {
@@ -214,7 +219,6 @@ function chainFrom(id: string): number[] {
 
 // ─── Aufbau-Zeitplan (Sekunden; seit 12.10.2026 mit Faktor 0, also auf einen Schlag) ──
 const BUILD_TOTAL = 2.6;
-const HEAD_DELAYS = [0, 0.5, 1.0, 1.5];
 const NODE_STAGGER = 0.06;
 const COLUMN_OFFSET: Record<string, number> = { C1: 0, C2: 0.45, C3: 0.8 };
 const X_OFFSET = 1.05;
@@ -246,27 +250,9 @@ const GROUP_DELAY: Record<string, number> = Object.fromEntries(
   GROUPS.map((g) => [g.id, Math.min(...MO_NODES.filter((n) => n.group === g.id).map((n) => NODE_DELAY[n.id]))])
 );
 
-// steps(18): passend zur Monospace-Schrift der Spaltenköpfe.
-const STEPS_18 = (p: number) => Math.min(1, Math.floor(p * 18) / 18);
-
 const COMET_POINTS = 24;
 const COMET_SEGMENT_MS = 450;
 const COMET_REPEAT_MS = 2200;
-
-// ─── Liquid glass ────────────────────────────────────────────────────────────
-// Nur noch für das Popup. Die Diagrammkarte nutzt .fx-glass-card--strong.
-const LIQUID_GLASS: React.CSSProperties = {
-  background: "rgba(16, 24, 32, 0.55)",
-  backdropFilter: "blur(50px) saturate(135%)",
-  WebkitBackdropFilter: "blur(50px) saturate(135%)",
-  border: "1px solid rgba(200,220,235,0.07)",
-};
-// Während des Popup-Flugs: dieselbe Fläche ohne backdrop-filter (kein Re-Blur pro
-// Frame). Eine deckende Unterlage blendet nach der Landung per opacity aus.
-const LIQUID_GLASS_FLIGHT: React.CSSProperties = {
-  background: LIQUID_GLASS.background,
-  border: LIQUID_GLASS.border,
-};
 
 const FILL_CENTER: React.CSSProperties = { transformBox: "fill-box", transformOrigin: "center" };
 
@@ -302,9 +288,6 @@ const SovereigntyModelDiagram = ({ scores, onBuilt }: DiagramProps = {}) => {
 
   // IDs für defs: stabil, nie vom Zustand abhängig.
   const uid = useId().replace(/:/g, "");
-  const gradId = (key: string) => `${uid}-mo-grad-${key}`;
-  const glowId = `${uid}-mo-glow`;
-  const haloGradId = `${uid}-mo-grad-out-pulse`;
   const edgeId = (i: number) => `${uid}-mo-edge-path-${i}`;
   const maskId = (i: number) => `${uid}-mo-edge-mask-${i}`;
   const titleId = `${uid}-mo-popup-title`;
@@ -540,9 +523,6 @@ const SovereigntyModelDiagram = ({ scores, onBuilt }: DiagramProps = {}) => {
   const openerRef = useRef<SVGGElement | null>(null);
   const closeBtnRef = useRef<HTMLButtonElement | null>(null);
   const [popupOrigin, setPopupOrigin] = useState<Point>({ x: 0, y: 0 });
-  // false, solange die Karte fliegt; danach erst backdrop-filter (diskretes Ereignis).
-  const [popupLanded, setPopupLanded] = useState(false);
-  const popupGlass = reduced || popupLanded;
   const [clickPing, setClickPing] = useState<{ id: string; n: number }>({ id: "CONT", n: 0 });
 
   const openNode = (id: string, el: SVGGElement) => {
@@ -559,7 +539,6 @@ const SovereigntyModelDiagram = ({ scores, onBuilt }: DiagramProps = {}) => {
       /* ignorieren */
     }
     setPopupOrigin(origin);
-    setPopupLanded(false);
     setClickPing((p) => ({ id, n: p.n + 1 }));
     setActiveNodeId(id);
   };
@@ -655,20 +634,16 @@ const SovereigntyModelDiagram = ({ scores, onBuilt }: DiagramProps = {}) => {
         initial={{ opacity: 0, y: reduced ? 0 : 14 }}
         animate={go ? { opacity: 1, y: 0 } : { opacity: 0, y: reduced ? 0 : 14 }}
         transition={{ duration: 0.4, ease: EASE_OUT }}
-        className="fx-glass-card--strong relative w-full rounded-2xl overflow-hidden"
-        style={{
-          border: "1px solid rgba(200,220,235,0.07)",
-          boxShadow:
-            "0 0 60px rgba(80,110,140,0.1), 0 30px 80px rgba(0,0,0,0.5), inset 0 1px 1px rgba(200,220,235,0.08)",
-        }}
+        className="relative w-full"
+        style={{ borderTop: "1px solid var(--rx-line-deep)", borderBottom: "1px solid var(--rx-line-deep)" }}
       >
         {/* Handy: horizontal scrollbar; Desktop: volle Breite */}
-        <div className="overflow-x-auto md:overflow-visible">
+        <div className="overflow-x-auto md:overflow-visible [scrollbar-color:#6fd69a_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-mint/60 [&::-webkit-scrollbar-track]:bg-transparent">
           <svg
             ref={svgRef}
             viewBox={`0 0 ${MO_VB_W} ${MO_VB_H}`}
             preserveAspectRatio="xMidYMid meet"
-            className={`w-full h-auto block min-w-[920px] md:min-w-0${isMobile && inView && !reduced ? " fx-once" : ""}`}
+            className={`w-full h-auto block min-w-[1040px] md:min-w-0${isMobile && inView && !reduced ? " fx-once" : ""}`}
             style={
               isMobile && inView && !reduced
                 ? { animation: "fx-swipe-hint 1.8s var(--ease-in-out) 0.6s 1 both" }
@@ -676,26 +651,6 @@ const SovereigntyModelDiagram = ({ scores, onBuilt }: DiagramProps = {}) => {
             }
           >
             <defs>
-              {/* Glow nur auf statischen (nicht fliessenden) hervorgehobenen Kanten */}
-              <filter id={glowId} x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="3" result="blur" />
-                <feMerge>
-                  <feMergeNode in="blur" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-              {Object.entries(PATHS).map(([key, p]) => (
-                <radialGradient key={key} id={gradId(key)}>
-                  <stop offset="0%" stopColor={p.color} stopOpacity="0.9" />
-                  <stop offset="70%" stopColor={p.color} stopOpacity="0.35" />
-                  <stop offset="100%" stopColor={p.color} stopOpacity="0" />
-                </radialGradient>
-              ))}
-              {/* Pulsierender Halo für das Outcome */}
-              <radialGradient id={haloGradId}>
-                <stop offset="0%" stopColor="#6cc2b5" stopOpacity="0.5" />
-                <stop offset="100%" stopColor="#6cc2b5" stopOpacity="0" />
-              </radialGradient>
               {/* Zeichen-Masken: ein weisser Vollstrich gleicher Geometrie wächst per
                   pathLength; das Strichmuster der Kante bleibt so erhalten. */}
               {!isBuilt &&
@@ -724,44 +679,67 @@ const SovereigntyModelDiagram = ({ scores, onBuilt }: DiagramProps = {}) => {
                 ))}
             </defs>
 
-            {/* Spaltenköpfe */}
-            {COLUMNS.map((c, ci) => (
-              <motion.g
-                key={`col-${c.id}`}
-                {...rv(
-                  { clipPath: "inset(0% 100% 0% 0%)" },
-                  { clipPath: "inset(0% 0% 0% 0%)" },
-                  { duration: 0.45, ease: STEPS_18, delay: (HEAD_DELAYS[ci] ?? 0) * tk },
-                )}
-              >
-                <text
-                  x={c.x}
-                  y={62}
-                  textAnchor="middle"
-                  fontFamily="'Share Tech Mono', monospace"
-                  fontSize="17"
-                  fontWeight="700"
-                  letterSpacing="4.5"
-                  fill="rgba(190,210,230,0.6)"
-                  style={{ textTransform: "uppercase" }}
+            {/* Schrittachse: eine Haarlinie unter den Spaltenköpfen, auf der jeder Schritt einen Ring
+                trägt. Die Linie zeichnet sich von links, die Ringe füllen sich, sobald die
+                hervorgehobene Kette durch den Schritt läuft. */}
+            <motion.line
+              x1={COLUMNS[0].x - 205}
+              y1={HEAD_AXIS_Y}
+              x2={COLUMNS[COLUMNS.length - 1].x + 105}
+              y2={HEAD_AXIS_Y}
+              stroke={ON_DEEP}
+              strokeOpacity="0.28"
+              strokeWidth="1.5"
+              {...rv({ pathLength: 0 }, { pathLength: 1 }, { duration: 1.5, ease: EASE_OUT, delay: 0.15 })}
+            />
+            {COLUMNS.map((c, ci) => {
+              const lit = !!highlightId && MO_NODES.some((n) => n.column === c.id && neighborIds.has(n.id));
+              return (
+                <motion.g
+                  key={`col-${c.id}`}
+                  {...rv(
+                    { clipPath: "inset(0% 100% 0% 0%)" },
+                    { clipPath: "inset(0% 0% 0% 0%)" },
+                    { duration: 0.6, ease: EASE_OUT, delay: 0.1 + ci * 0.18 },
+                  )}
                 >
-                  {c.step}
-                </text>
-                <text
-                  x={c.x}
-                  y={100}
-                  textAnchor="middle"
-                  fontFamily="'Share Tech Mono', monospace"
-                  fontSize="24"
-                  fontWeight="700"
-                  letterSpacing="3.5"
-                  fill="rgba(214,230,245,0.92)"
-                  style={{ textTransform: "uppercase" }}
-                >
-                  {c.title}
-                </text>
-              </motion.g>
-            ))}
+                  <text
+                    x={c.x}
+                    y={56}
+                    textAnchor="middle"
+                    fontFamily={SANS}
+                    fontSize="18"
+                    fontWeight="600"
+                    letterSpacing="3.2"
+                    fill={ON_DEEP_MUTE}
+                    style={{ textTransform: "uppercase" }}
+                  >
+                    {c.step}
+                  </text>
+                  <text
+                    x={c.x}
+                    y={100}
+                    textAnchor="middle"
+                    fontFamily={SANS}
+                    fontSize="31"
+                    fontWeight="500"
+                    letterSpacing="-0.6"
+                    fill={ON_DEEP}
+                  >
+                    {c.title}
+                  </text>
+                  <circle
+                    cx={c.x}
+                    cy={HEAD_AXIS_Y}
+                    r="8"
+                    fill={lit ? "#6fd69a" : DEEP}
+                    stroke="#6fd69a"
+                    strokeWidth="2"
+                    style={{ transition: "fill 0.25s" }}
+                  />
+                </motion.g>
+              );
+            })}
 
             {/* Gruppen-Brackets in Spalte 1 (Dependency-Reducing / Control-Preserving A + B) */}
             {GROUPS.map((g) => {
@@ -778,7 +756,7 @@ const SovereigntyModelDiagram = ({ scores, onBuilt }: DiagramProps = {}) => {
                       die Haken blenden ein. Kein Skalieren. */}
                   <motion.line
                     x1={GROUP_BRACKET_X} y1={g.top} x2={GROUP_BRACKET_X} y2={g.bottom}
-                    stroke={color} strokeOpacity="0.35" strokeWidth="1.5"
+                    stroke={color} strokeOpacity="0.6" strokeWidth="1.5"
                     strokeDasharray={g.granted ? "5 5" : undefined}
                     style={reduced ? undefined : { transformBox: "fill-box", originX: 0.5, originY: 0 }}
                     {...(reduced
@@ -788,14 +766,14 @@ const SovereigntyModelDiagram = ({ scores, onBuilt }: DiagramProps = {}) => {
                       : rv({ scaleY: 0 }, { scaleY: 1 }, { duration: 0.5 * tk, ease: EASE_IN_OUT, delay: gd }))}
                   />
                   <motion.line x1={GROUP_BRACKET_X} y1={g.top} x2={GROUP_BRACKET_X + 16} y2={g.top}
-                    stroke={color} strokeOpacity="0.35" strokeWidth="1.5"
+                    stroke={color} strokeOpacity="0.6" strokeWidth="1.5"
                     style={reduced ? undefined : { transformBox: "fill-box", originX: 0, originY: 0.5 }}
                     {...(reduced
                       ? rv({ opacity: 0 }, { opacity: 1 }, { duration: 0.25, ease: EASE_OUT, delay: hookDelay })
                       : rv({ scaleX: 0 }, { scaleX: 1 }, { duration: 0.25, ease: EASE_OUT, delay: hookDelay }))}
                   />
                   <motion.line x1={GROUP_BRACKET_X} y1={g.bottom} x2={GROUP_BRACKET_X + 16} y2={g.bottom}
-                    stroke={color} strokeOpacity="0.35" strokeWidth="1.5"
+                    stroke={color} strokeOpacity="0.6" strokeWidth="1.5"
                     style={reduced ? undefined : { transformBox: "fill-box", originX: 0, originY: 0.5 }}
                     {...(reduced
                       ? rv({ opacity: 0 }, { opacity: 1 }, { duration: 0.25, ease: EASE_OUT, delay: hookDelay })
@@ -803,18 +781,18 @@ const SovereigntyModelDiagram = ({ scores, onBuilt }: DiagramProps = {}) => {
                   />
                   <motion.g {...rv({ opacity: 0 }, { opacity: 1 }, { duration: 0.4, ease: EASE_OUT, delay: gd })}>
                     <text
-                      x={GROUP_BRACKET_X} y={g.top - 34}
-                      fontFamily="'Share Tech Mono', monospace"
-                      fontSize="18" fontWeight="700" letterSpacing="1.8"
-                      fill={color} fillOpacity="0.95"
+                      x={GROUP_BRACKET_X} y={g.top - 36}
+                      fontFamily={SANS}
+                      fontSize="19" fontWeight="600" letterSpacing="1.6"
+                      fill={color}
                       style={{ textTransform: "uppercase" }}
                     >
                       {g.title}
                     </text>
                     <text
                       x={GROUP_BRACKET_X} y={g.top - 10}
-                      fontFamily="'Geist','Inter',sans-serif"
-                      fontSize="16" fill="rgba(214,230,245,0.55)"
+                      fontFamily={SANS}
+                      fontSize="18" fill={ON_DEEP_MUTE}
                     >
                       {g.sub}
                     </text>
@@ -849,15 +827,14 @@ const SovereigntyModelDiagram = ({ scores, onBuilt }: DiagramProps = {}) => {
                     d={EDGE_D[i]}
                     fill="none"
                     stroke={color}
-                    strokeOpacity={dim ? 0.08 : related ? 0.95 : isCorr ? 0.35 : isGranted ? 0.45 : 0.55}
-                    strokeWidth={related ? 2.6 : isCorr ? 1.2 : 1.5}
+                    strokeOpacity={dim ? 0.08 : related ? 1 : isCorr ? 0.5 : isGranted ? 0.6 : 0.7}
+                    strokeWidth={related ? 3.2 : isCorr ? 1.5 : 2}
                     strokeDasharray={isGranted ? "7 6" : isCorr ? "2 7" : flowing ? "6 10" : undefined}
                     className={flowing ? "fx-loop fx-dash-flow" : undefined}
                     style={{
                       transition: "stroke-opacity 0.25s",
                       animation: flowing ? "fx-dash-flow 0.8s linear infinite" : undefined,
                     }}
-                    filter={related && !flowing ? `url(#${glowId})` : undefined}
                     mask={!isBuilt ? `url(#${maskId(i)})` : undefined}
                   />
                   {/* Fließendes Signal, nicht auf der Korrelationslinie (kein Kausalpfad).
@@ -882,7 +859,7 @@ const SovereigntyModelDiagram = ({ scores, onBuilt }: DiagramProps = {}) => {
                         repeatCount="indefinite"
                         begin={`-${pulseDelay}s`}
                       />
-                      <circle r={7} fill={`url(#${gradId(EDGE_PATH[kind])})`} />
+                      <circle r={7} fill={color} fillOpacity={0.2} />
                       <circle
                         r={2.5}
                         fill={color}
@@ -929,10 +906,14 @@ const SovereigntyModelDiagram = ({ scores, onBuilt }: DiagramProps = {}) => {
                 x={MO_POSITIONS.FTC.x + 115}
                 y={MO_POSITIONS.X.y}
                 textAnchor="middle"
-                fontFamily="'Geist','Inter',sans-serif"
-                fontSize="16"
+                fontFamily={SANS}
+                fontSize="18"
                 fontStyle="italic"
-                fill="rgba(214,230,245,0.55)"
+                fill={ON_DEEP_MUTE}
+                stroke={DEEP}
+                strokeWidth="7"
+                strokeLinejoin="round"
+                paintOrder="stroke"
                 opacity={highlightId && !(neighborIds.has("FTC") && neighborIds.has("CTO")) ? 0.2 : 1}
                 style={{ transition: "opacity 0.25s" }}
               >
@@ -946,10 +927,14 @@ const SovereigntyModelDiagram = ({ scores, onBuilt }: DiagramProps = {}) => {
                 x={(MO_POSITIONS.X.x + MO_POSITIONS.CONT.x) / 2}
                 y={MO_POSITIONS.X.y - 48}
                 textAnchor="middle"
-                fontFamily="'Geist','Inter',sans-serif"
-                fontSize="15.5"
+                fontFamily={SANS}
+                fontSize="17"
                 fontStyle="italic"
-                fill="rgba(214,230,245,0.5)"
+                fill={ON_DEEP_MUTE}
+                stroke={DEEP}
+                strokeWidth="7"
+                strokeLinejoin="round"
+                paintOrder="stroke"
               >
                 jointly drive continuity
               </text>
@@ -972,7 +957,7 @@ const SovereigntyModelDiagram = ({ scores, onBuilt }: DiagramProps = {}) => {
                     cy={0}
                     r={p.r}
                     opacity={p.o}
-                    fill="#6b9bd8"
+                    fill="#7fb0ea"
                   />
                 ))}
               </g>
@@ -1065,7 +1050,9 @@ const SovereigntyModelDiagram = ({ scores, onBuilt }: DiagramProps = {}) => {
                           <circle
                             className="fx-halo"
                             cx={pos.x} cy={pos.y} r="50"
-                            fill={`url(#${haloGradId})`}
+                            fill="none"
+                            stroke={path.color}
+                            strokeWidth="1.2"
                             opacity={highlightId && !isRelated ? 0.15 : 0.7}
                           />
                         </g>
@@ -1074,7 +1061,11 @@ const SovereigntyModelDiagram = ({ scores, onBuilt }: DiagramProps = {}) => {
                       <circle
                         cx={pos.x} cy={pos.y}
                         r={gradR}
-                        fill={`url(#${gradId(n.path)})`}
+                        fill={DEEP}
+                        fillOpacity={isActive ? 0.9 : 0}
+                        stroke={path.color}
+                        strokeWidth="1.3"
+                        strokeOpacity={isActive || isHover ? 0.95 : 0.45}
                         opacity={scored && scoreOf(n.id) === undefined && !isX ? 0.25 : 1}
                         style={{
                           ...FILL_CENTER,
@@ -1113,8 +1104,8 @@ const SovereigntyModelDiagram = ({ scores, onBuilt }: DiagramProps = {}) => {
                           <text
                             x={pos.x} y={pos.y + 9}
                             textAnchor="middle"
-                            fontFamily="'Geist','Inter',sans-serif"
-                            fontSize="27" fontWeight="600"
+                            fontFamily={SANS}
+                            fontSize="29" fontWeight="500"
                             fill={path.color}
                           >
                             ×
@@ -1125,7 +1116,7 @@ const SovereigntyModelDiagram = ({ scores, onBuilt }: DiagramProps = {}) => {
                           cx={pos.x} cy={pos.y}
                           r={coreR}
                           fill={path.color}
-                          stroke={isActive ? "#ffffff" : "transparent"}
+                          stroke={isActive ? ON_DEEP : "transparent"}
                           strokeWidth={1.5 / coreScale}
                           style={{
                             ...FILL_CENTER,
@@ -1150,7 +1141,7 @@ const SovereigntyModelDiagram = ({ scores, onBuilt }: DiagramProps = {}) => {
                       {/* Score als Zahl */}
                       {scored && !isX && typeof scoreOf(n.id) === "number" && (
                         <text x={pos.x} y={pos.y + 9} textAnchor="middle"
-                          fontFamily="'Space Grotesk', sans-serif" fontSize="26" fontWeight="700" fill="#ffffff">
+                          fontFamily={SANS} fontSize="26" fontWeight="600" fill="#ffffff">
                           {Math.round((scoreOf(n.id) as number) * 100)}
                         </text>
                       )}
@@ -1160,10 +1151,10 @@ const SovereigntyModelDiagram = ({ scores, onBuilt }: DiagramProps = {}) => {
                     <circle
                       aria-hidden="true"
                       className="pointer-events-none opacity-0 group-focus-visible/mo:opacity-100"
-                      cx={pos.x} cy={pos.y} r="30"
+                      cx={pos.x} cy={pos.y} r="31"
                       fill="none"
                       stroke="#ffffff"
-                      strokeWidth="2"
+                      strokeWidth="2.5"
                       vectorEffect="non-scaling-stroke"
                     />
 
@@ -1171,7 +1162,7 @@ const SovereigntyModelDiagram = ({ scores, onBuilt }: DiagramProps = {}) => {
                     {!isX &&
                       (() => {
                         const lines = moLabelLines(n.label);
-                        const fontSize = isOutcome ? 25 : 21;
+                        const fontSize = isOutcome ? 28 : 23.5;
                         const lineHeight = fontSize * 1.18;
                         const labelX = below ? pos.x : pos.x + (scored ? 52 : 32);
                         const anchor = below ? "middle" : "start";
@@ -1189,10 +1180,15 @@ const SovereigntyModelDiagram = ({ scores, onBuilt }: DiagramProps = {}) => {
                             <text
                               x={labelX}
                               y={startY}
-                              fontFamily="'Geist','Inter',sans-serif"
+                              fontFamily={SANS}
                               fontSize={fontSize}
                               fontWeight={isOutcome ? 600 : 500}
+                              letterSpacing="-0.2"
                               fill={isActive ? "#ffffff" : path.color}
+                              stroke={DEEP}
+                              strokeWidth="8"
+                              strokeLinejoin="round"
+                              paintOrder="stroke"
                               opacity={isRelated || !highlightId ? 1 : 0.55}
                               textAnchor={anchor}
                             >
@@ -1237,59 +1233,53 @@ const SovereigntyModelDiagram = ({ scores, onBuilt }: DiagramProps = {}) => {
         {/* Handy: Verlauf am rechten Rand deutet weiteren Inhalt an */}
         <div
           aria-hidden="true"
-          className="fx-deco pointer-events-none absolute inset-y-0 right-0 w-12 md:hidden"
-          style={{ background: "linear-gradient(90deg, rgba(14,20,28,0), rgba(14,20,28,0.9))" }}
+          className="fx-deco pointer-events-none absolute right-0 top-0 w-12 md:hidden"
+          style={{ bottom: "3.25rem", background: "linear-gradient(90deg, rgba(6,48,29,0), rgba(6,48,29,0.92))" }}
         />
 
-        {/* Legende (unten links; auf dem Handy unter dem Diagramm im Fluss, sonst ueberlagert sie es) */}
+        {/* Legende und Hinweis: eine Zeile unter dem Diagramm, durch eine Haarlinie abgesetzt */}
         <div
-          className="relative px-4 pt-1 pb-2 md:absolute md:bottom-3 md:left-4 md:p-0 flex items-center gap-x-4 gap-y-1 text-[10px] tracking-[0.2em] uppercase pointer-events-none flex-wrap"
-          style={{ fontFamily: "'Share Tech Mono', monospace", color: "rgba(190,210,230,0.55)" }}
+          className="pointer-events-none flex flex-wrap items-center justify-between gap-x-8 gap-y-2 px-1 py-4 text-[0.75rem] font-semibold uppercase tracking-[0.12em]"
+          style={{ borderTop: "1px solid var(--rx-line-deep)", color: ON_DEEP_MUTE }}
         >
-          <span className="flex items-center gap-2">
-            <svg width="22" height="6"><line x1="0" y1="3" x2="22" y2="3" stroke="#6b9bd8" strokeWidth="1.8" /></svg>
-            dependency-reducing
-          </span>
-          <span className="flex items-center gap-2">
-            <svg width="22" height="6"><line x1="0" y1="3" x2="22" y2="3" stroke="#5cbf8a" strokeWidth="1.8" /></svg>
-            control-preserving
-          </span>
-          <span className="flex items-center gap-2">
-            <svg width="22" height="6"><line x1="0" y1="3" x2="22" y2="3" stroke="#5cbf8a" strokeWidth="1.6" strokeDasharray="5 4" /></svg>
-            gewährt
-          </span>
-          <span className="flex items-center gap-2">
-            <svg width="22" height="6"><line x1="0" y1="3" x2="22" y2="3" stroke="rgba(190,210,230,0.6)" strokeWidth="1.4" strokeDasharray="2 5" /></svg>
-            korreliert
-          </span>
-        </div>
-
-        {/* Hinweis (unten rechts) */}
-        <div
-          className="relative px-4 pb-3 md:absolute md:bottom-3 md:right-4 md:p-0 text-[10px] tracking-[0.25em] uppercase pointer-events-none"
-          style={{ fontFamily: "'Share Tech Mono', monospace", color: "rgba(190,210,230,0.3)" }}
-        >
-          ▸ Klick für Details
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+            <span className="flex items-center gap-2.5">
+              <svg width="26" height="6" aria-hidden="true"><line x1="0" y1="3" x2="26" y2="3" stroke="#7fb0ea" strokeWidth="2" /></svg>
+              dependency-reducing
+            </span>
+            <span className="flex items-center gap-2.5">
+              <svg width="26" height="6" aria-hidden="true"><line x1="0" y1="3" x2="26" y2="3" stroke="#6fd69a" strokeWidth="2" /></svg>
+              control-preserving
+            </span>
+            <span className="flex items-center gap-2.5">
+              <svg width="26" height="6" aria-hidden="true"><line x1="0" y1="3" x2="26" y2="3" stroke="#6fd69a" strokeWidth="2" strokeDasharray="5 4" /></svg>
+              gewährt
+            </span>
+            <span className="flex items-center gap-2.5">
+              <svg width="26" height="6" aria-hidden="true"><line x1="0" y1="3" x2="26" y2="3" stroke="rgba(233,243,237,0.7)" strokeWidth="1.6" strokeDasharray="2 5" strokeLinecap="round" /></svg>
+              korreliert
+            </span>
+          </div>
+          <span className="text-deep-on/80">▸ Klick für Details</span>
         </div>
       </motion.div>
 
-      {/* ─── Popup (kompakt) ─────────────────────────────────────────────── */}
+      {/* ─── Popup (kompakt): weisses Blatt auf dem tiefen Grund ───────────────────
+          Per Portal an document.body: Der Abschnitt (.rx-deep) bildet einen eigenen
+          Stapelkontext, darin läge der Vorhang unter der fixen Navigation. */}
+      {typeof document !== "undefined" &&
+        createPortal(
       <AnimatePresence>
         {activeNode && activePath && (
           <motion.div
             key="mo-popup-backdrop"
-            // Nur opacity: der statische blur(2px) im style blendet so mit ein.
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0, transition: { duration: 0.15 } }}
             transition={{ duration: 0.2, ease: EASE_OUT }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-6"
+            className="fixed inset-0 z-50 flex items-center justify-center p-5"
             onClick={closePopup}
-            style={{
-              background: "rgba(4, 8, 12, 0.35)",
-              backdropFilter: "blur(2px)",
-              WebkitBackdropFilter: "blur(2px)",
-            }}
+            style={{ background: "rgba(6, 48, 29, 0.82)" }}
           >
             <motion.div
               key="mo-popup-card"
@@ -1301,53 +1291,29 @@ const SovereigntyModelDiagram = ({ scores, onBuilt }: DiagramProps = {}) => {
               initial="hidden"
               animate="shown"
               exit="exit"
-              onAnimationComplete={(definition) => {
-                if (definition === "shown") setPopupLanded(true);
-              }}
               onClick={(e) => e.stopPropagation()}
               onKeyDown={onDialogKeyDown}
-              className="relative max-w-lg w-full rounded-2xl p-7"
-              style={{
-                ...(popupGlass ? LIQUID_GLASS : LIQUID_GLASS_FLIGHT),
-                isolation: "isolate",
-                boxShadow: `0 30px 90px rgba(0,0,0,0.7), 0 0 80px ${activePath.colorDim}, inset 0 1px 1px rgba(255,255,255,0.1)`,
-              }}
+              className="relative max-h-[calc(100svh-2.5rem)] w-full max-w-lg overflow-y-auto rounded-2xl bg-background p-7 text-ink sm:p-9"
+              style={{ fontFamily: SANS }}
             >
-              {/* Deckende Unterlage während des Flugs, blendet nach der Landung aus. */}
-              <span
-                aria-hidden="true"
-                className="pointer-events-none absolute inset-0 rounded-2xl"
-                style={{
-                  zIndex: -1,
-                  background: "rgba(16, 24, 32, 0.92)",
-                  opacity: popupGlass ? 0 : 1,
-                  transition: `opacity 240ms ${CSS_EASE_OUT}`,
-                }}
-              />
               <button
                 ref={closeBtnRef}
                 onClick={closePopup}
-                className="absolute top-4 right-4 w-8 h-8 rounded-full flex items-center justify-center"
-                style={{
-                  background: "rgba(255,255,255,0.06)",
-                  color: "rgba(255,255,255,0.9)",
-                  fontFamily: "'Share Tech Mono', monospace",
-                  fontSize: "16px",
-                }}
+                className="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full border border-border text-[1rem] text-ink transition-colors duration-200 hover:border-green hover:bg-green-soft hover:text-green-ink"
                 aria-label="Schließen"
               >
                 ✕
               </button>
 
               {/* Verortung: Spalte · Gruppe */}
-              <motion.div variants={itemVariants} className="flex items-center gap-3 mb-3">
+              <motion.div variants={itemVariants} className="mb-4 flex items-center gap-3 pr-12">
                 <span
-                  className="inline-block w-2 h-2 rounded-full shrink-0"
-                  style={{ background: activePath.color, boxShadow: `0 0 10px ${activePath.color}` }}
+                  className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
+                  style={{ background: activePath.ink }}
                 />
                 <span
-                  className="text-[10.5px] tracking-[0.25em] uppercase"
-                  style={{ color: activePath.color, fontFamily: "'Share Tech Mono', monospace" }}
+                  className="text-[0.8125rem] font-semibold uppercase leading-snug tracking-[0.12em]"
+                  style={{ color: activePath.ink }}
                 >
                   {activeColumn?.title}
                   {activeGroup ? ` · ${activeGroup.title}` : ""}
@@ -1357,68 +1323,46 @@ const SovereigntyModelDiagram = ({ scores, onBuilt }: DiagramProps = {}) => {
               <motion.h3
                 id={titleId}
                 variants={itemVariants}
-                className="text-2xl lg:text-3xl mb-3"
-                style={{
-                  fontFamily: "'Fraunces Variable', 'Fraunces', serif",
-                  fontWeight: 400,
-                  lineHeight: 1.1,
-                  letterSpacing: "-0.015em",
-                  color: "#ffffff",
-                }}
+                className="mb-4 text-[clamp(1.7rem,3.6vw,2.2rem)] font-medium leading-[1.08] tracking-[-0.03em] text-ink"
               >
                 {activeNode.id === "X" ? "Interaktion" : moLabelText(activeNode.label)}
               </motion.h3>
 
-              <motion.p
-                variants={itemVariants}
-                className="text-[14px] leading-[1.65] mb-5"
-                style={{ fontFamily: "'Geist','Inter',sans-serif", color: "rgba(255,255,255,0.85)" }}
-              >
+              <motion.p variants={itemVariants} className="mb-6 text-[1.0625rem] leading-[1.6] text-ink/85">
                 {activeNode.def}
               </motion.p>
 
               {/* Direkte Verbindungen (kompakt) */}
               <motion.div
                 variants={itemVariants}
-                className="grid grid-cols-2 gap-4 text-[12.5px] pt-4"
-                style={{ fontFamily: "'Geist','Inter',sans-serif", borderTop: "1px solid rgba(200,215,225,0.1)" }}
+                className="grid grid-cols-2 gap-5 border-t border-border pt-5 text-[0.9375rem]"
               >
                 <div>
-                  <div
-                    className="text-[9.5px] tracking-[0.2em] uppercase mb-1.5"
-                    style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Share Tech Mono', monospace" }}
-                  >
+                  <div className="mb-2 text-[0.75rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                     ← eingehend
                   </div>
                   {activeEdges.incoming.length === 0 ? (
-                    <div style={{ color: "rgba(255,255,255,0.35)" }}>keine</div>
+                    <div className="text-muted-foreground">keine</div>
                   ) : (
                     activeEdges.incoming.map(({ otherId, kind }, idx) => (
-                      <div key={`in-${otherId}-${idx}`} className="mb-1" style={{ color: "rgba(255,255,255,0.85)" }}>
+                      <div key={`in-${otherId}-${idx}`} className="mb-1.5 leading-snug text-ink">
                         {moLabelText(MO_NODE_BY_ID[otherId]?.label)}
-                        {kind === "granted" && (
-                          <span style={{ color: "rgba(255,255,255,0.45)" }}> · gewährt</span>
-                        )}
+                        {kind === "granted" && <span className="text-muted-foreground"> · gewährt</span>}
                       </div>
                     ))
                   )}
                 </div>
                 <div>
-                  <div
-                    className="text-[9.5px] tracking-[0.2em] uppercase mb-1.5"
-                    style={{ color: "rgba(255,255,255,0.5)", fontFamily: "'Share Tech Mono', monospace" }}
-                  >
+                  <div className="mb-2 text-[0.75rem] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
                     ausgehend →
                   </div>
                   {activeEdges.outgoing.length === 0 ? (
-                    <div style={{ color: "rgba(255,255,255,0.35)" }}>keine</div>
+                    <div className="text-muted-foreground">keine</div>
                   ) : (
                     activeEdges.outgoing.map(({ otherId, kind }, idx) => (
-                      <div key={`out-${otherId}-${idx}`} className="mb-1" style={{ color: "rgba(255,255,255,0.85)" }}>
+                      <div key={`out-${otherId}-${idx}`} className="mb-1.5 leading-snug text-ink">
                         {otherId === "X" ? "× (Interaktion)" : moLabelText(MO_NODE_BY_ID[otherId]?.label)}
-                        {kind === "corr" && (
-                          <span style={{ color: "rgba(255,255,255,0.45)" }}> · korreliert</span>
-                        )}
+                        {kind === "corr" && <span className="text-muted-foreground"> · korreliert</span>}
                       </div>
                     ))
                   )}
@@ -1427,7 +1371,9 @@ const SovereigntyModelDiagram = ({ scores, onBuilt }: DiagramProps = {}) => {
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
+          document.body,
+        )}
     </>
   );
 };

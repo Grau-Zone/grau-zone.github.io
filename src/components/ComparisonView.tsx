@@ -3,10 +3,18 @@
 //
 // Liest ausschliesslich data/benchmark.json. Gefiltert wird nach genau einem Merkmal mit
 // je zwei Gruppen; die Regeln stehen in data/benchmarkCore.ts.
+//
+// Redesign: Die vier Auswertungen sind ein Beweisabschnitt auf dem tiefen Gruen (rv-panel,
+// mit leise treibenden Linien im Kopf), keine Kartenreihe. Jede Auswertung ist ein Block mit
+// Haarlinie, die sich beim ersten Sichtkontakt in Mint zeichnet, einer Ueberschrift, deren
+// Woerter einzeln aufsteigen, und Diagrammen in feiner Linienzeichnung. Die Faehigkeiten sind
+// eine Tabelle mit Haarlinien (Name links, Baender rechts), die drei Diagramme stehen
+// abwechselnd rechts und links neben ihrem Text. Steht die Ansicht schon in einem Abschnitt
+// mit rx-deep, entfallen Flaeche und Rand (CSS), die Inhalte bleiben gleich.
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { AnimatePresence, motion, type Variants } from "framer-motion";
 import ComparisonBand from "./ComparisonBand";
-import { SovereigntyMatrix, QUAD_VIEW, RESULT_VIEW, useRevealOnce } from "./ResultVisuals";
+import { SovereigntyMatrix, QUAD_VIEW, useRevealOnce } from "./ResultVisuals";
 import TransparencyMatrix from "./TransparencyMatrix";
 import ContinuityGauge from "./ContinuityGauge";
 import { TRA_QUAD, AXIS_TRA, AXIS_AVG, fmtAvg } from "../data/transparencyView";
@@ -16,9 +24,9 @@ import { ALL, DIMENSIONS, groupId, type DimKey } from "../data/benchmarkGroups";
 import { positionOf, capStepOf, CTX_STEP, type GroupBlock, type Quant, type Position } from "../data/benchmarkCore";
 import type { Lang } from "../data/instrument";
 import { capacityAverage, transparencyQuadrant, type QuadKey, type RespondentScores } from "../data/scoring";
-import { panelStyles } from "./panelStyles";
-import { CSS_EASE_IN_OUT, DUR, EASE_OUT, Ping, Reveal, useReducedMotionSafe, withAlpha } from "./fx";
-import { BAND_T, CountText, MATRIX_T, ResultFxStyles, playSteps, type FxStep } from "./resultfx";
+import { AmbientField } from "@/rx/AmbientField";
+import { CSS_EASE_OUT, DUR, EASE_OUT, Ping, useReducedMotionSafe } from "./fx";
+import { BAND_T, CountText, MATRIX_T, ResultFxStyles, RiseWords, V, playSteps, type FxStep } from "./resultfx";
 
 type T = { en: string; de: string };
 const t = (en: string, de: string): T => ({ en, de });
@@ -81,6 +89,14 @@ const CMP_TXT = {
   } as Record<Position, T>,
 };
 
+/** Hervorgehobenes Wort je Ueberschrift (ein Wort in Mint, siehe RiseWords). */
+const CMP_EM = {
+  capHead: t("capacities", "Fähigkeiten"),
+  matrixHead: t("sovereignty", "Souveränität"),
+  contHead: t("disruption", "Anbieterstörungen"),
+  traHead: t("Transparency", "Transparenz"),
+};
+
 // oldCode: Werte aus einem Ergebnis-Code der Version 1 (16 Zeichen), ohne Transparenz.
 export type OwnValues = { scores: RespondentScores; groups: Partial<Record<DimKey, string>>; oldCode?: boolean };
 
@@ -95,28 +111,10 @@ type Props = {
   ownNumbers?: boolean;
   /** Kleiner Zusatz neben dem Namen jeder Faehigkeit (Ergebnisseite: ausgewertete Fragen). */
   capNote?: (key: CapacityKey) => ReactNode;
-  /** Inhalt direkt unter der Karte "Vier Faehigkeiten" (Ergebnisseite: Zusammenfassung der beantworteten Fragen). */
+  /** Inhalt direkt unter der Tabelle "Vier Faehigkeiten" (Ergebnisseite: Zusammenfassung der beantworteten Fragen). */
   afterCaps?: ReactNode;
-  /** Ueberschriften der Karten; auf der Ergebnisseite eine Ebene tiefer als der Seitentitel. */
+  /** Ueberschriften der Bloecke; auf der Ergebnisseite eine Ebene tiefer als der Seitentitel. */
   headingLevel?: "h2" | "h3";
-};
-
-// ─── Gestaltung (nur Darstellung) ────────────────────────────────────────────
-// Kartenhaut der Ergebnisseite: leichter Verlauf, Lichtkante oben, Tiefe. Bewusst
-// ohne overflow hidden, damit die Tooltips der Baender nie abgeschnitten werden.
-const CARD_SKIN: CSSProperties = {
-  position: "relative", marginBottom: "24px",
-  background: "linear-gradient(180deg, rgba(255,255,255,0.034), rgba(255,255,255,0.014))",
-  border: "1px solid rgba(255,255,255,0.075)",
-  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.06), 0 28px 56px -28px rgba(2,4,14,0.85)",
-};
-
-// Aktiver Schlitten der Filter-Reiter.
-const SLED: CSSProperties = {
-  position: "absolute", inset: "-1px", borderRadius: "999px", pointerEvents: "none",
-  background: "linear-gradient(180deg, rgba(75,110,255,0.32), rgba(75,110,255,0.14))",
-  border: "1px solid rgba(139,164,255,0.7)",
-  boxShadow: "inset 0 1px 0 rgba(255,255,255,0.18), 0 4px 14px -4px rgba(75,110,255,0.6)",
 };
 
 // Gruppenlegende: Crossfade je Merkmal, Eintraege leicht gestaffelt (nur opacity).
@@ -144,8 +142,15 @@ export default function ComparisonView({
   const reduced = useReducedMotionSafe();
   const p = (v: T) => (lang === "en" ? v.en : v.de);
   const bis = lang === "de" ? "bis" : "to";
-  const { card, h2, lead } = panelStyles;
   const mine = own?.scores ?? null;
+
+  // Treibende Linien im Kopf des Abschnitts, nur wenn er selbst die tiefgruene Flaeche stellt
+  // (steht er in einem rx-deep der Seite, liegt dort schon ein Feld).
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [ambient, setAmbient] = useState(false);
+  useEffect(() => {
+    if (!panelRef.current?.parentElement?.closest(".rx-deep")) setAmbient(true);
+  }, []);
 
   // Zeilen fuer die gewaehlte Ansicht: "Alle" oder die zwei Gruppen eines Merkmals.
   // isOwn: die Zeile, gegen die der eigene Wert eingeordnet wird ("Alle" bzw.
@@ -161,36 +166,32 @@ export default function ComparisonView({
   })();
 
   // Lage des eigenen Werts in der eigenen Zeile; auf der Ergebnisseite mit Zahl.
-  // opts.dot: Farbpunkt wie der eigene Punkt im Band darueber (nur Deko).
+  // opts.dot: Marke wie der eigene Punkt im Band darueber (nur Deko).
   // opts.count: die Zahl zaehlt beim ersten Entree synchron zum Punkt im Band hoch;
   // der Endwert steht immer im DOM, Screenreader lesen nur ihn, nach einem
   // Filterwechsel zaehlt nichts mehr.
   const posLine = (
     pos: Position | null, ownValue: number | null, f: (v: number) => string,
-    opts?: { dot?: string; count?: { delayMs: number } },
+    opts?: { dot?: boolean; count?: { delayMs: number } },
   ) => {
-    const style = { fontFamily: "Inter, sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.7)", margin: "2px 0 0" };
     if (ownNumbers) {
-      if (ownValue === null) return <p style={{ ...style, color: "#d9a559" }}>{p(CMP_TXT.ownNone)}</p>;
-      const dot = opts?.dot;
+      if (ownValue === null) return <p className="rv-warn">{p(CMP_TXT.ownNone)}</p>;
       const count = opts?.count;
       return (
-        <p style={style}>
-          {dot && (
-            <span aria-hidden="true" style={{ display: "inline-block", width: 7, height: 7, borderRadius: "50%", background: dot, boxShadow: "0 0 0 1.5px #0a0d1a", marginRight: 6, verticalAlign: "1px" }} />
-          )}
-          {p(CMP_TXT.own)}:{" "}
-          <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600, color: "#fff", fontVariantNumeric: "tabular-nums" }}>
+        <p className="rv-pos">
+          {opts?.dot && <span aria-hidden="true" className="rv-dot" />}
+          <span>{p(CMP_TXT.own)}:</span>{" "}
+          <span className="rv-fig">
             {count ? (
               <CountText from={1} to={ownValue} format={f} final={f(ownValue)} delayMs={count.delayMs}
                 durMs={BAND_T.countDur} enabled={!filtered} hostClosest="[data-rfx-row]" />
             ) : f(ownValue)}
           </span>
-          {pos ? " · " + p(CMP_TXT.posShort[pos]) : ""}
+          {pos ? <>{" "}<span>{"· " + p(CMP_TXT.posShort[pos])}</span></> : null}
         </p>
       );
     }
-    return pos ? <p style={style}>{p(CMP_TXT.pos[pos])}</p> : null;
+    return pos ? <p className="rv-pos">{p(CMP_TXT.pos[pos])}</p> : null;
   };
 
   const bandDescribe = (label: string, q: Quant | null, f: (v: number) => string, ownValue: number | null = null) => [
@@ -205,32 +206,22 @@ export default function ComparisonView({
   // der Reihenfolge im Vergleich, erst dann gilt sicher A = erste, B = zweite Linie.
   const bothDrawn = (has: (r: Row) => boolean) => rows.length === 2 && rows.every(has);
   const rowHead = (r: Row, dash?: boolean) => (
-    <div style={{ display: "flex", alignItems: "baseline", gap: "8px", flexWrap: "wrap", marginBottom: "2px" }}>
+    <div className="rv-rowhead">
       {dash && r.tag && (
-        <svg aria-hidden="true" width="18" height="6" style={{ display: "inline-block", verticalAlign: "1px" }}>
-          <line x1="1" y1="3" x2="17" y2="3" stroke="rgba(255,255,255,0.7)" strokeWidth="1.4"
+        <svg aria-hidden="true" width="20" height="6" style={{ display: "inline-block", verticalAlign: "1px" }}>
+          <line x1="1" y1="3" x2="19" y2="3" stroke={V.ink} strokeWidth="1.4"
             strokeDasharray={r.tag === "B" ? "4 3" : undefined} />
         </svg>
       )}
-      {r.tag && (
-        <span style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "11px", fontWeight: 600, color: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.25)", borderRadius: "4px", padding: "0 5px" }}>
-          {r.tag}
-        </span>
-      )}
-      <span style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.8)" }}>{r.label}</span>
-      {mine && r.tag && r.isOwn && (
-        <span style={{ fontFamily: "Inter, sans-serif", fontSize: "11.5px", color: "#a8bcff" }}>{p(CMP_TXT.ownGroup)}</span>
-      )}
+      {r.tag && <span className="rv-tag">{r.tag}</span>}
+      <span className="rv-rowlabel">{r.label}</span>
+      {mine && r.tag && r.isOwn && <span className="rv-chip">{p(CMP_TXT.ownGroup)}</span>}
     </div>
   );
 
   // Fehlen der Gruppe Werte: ohne ownNumbers wie frueher auf dem Dashboard, mit ownNumbers als
   // Luecke im Vergleich benannt (die eigenen Antworten sind ja vollstaendig).
-  const noValue = (
-    <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.55)", margin: "4px 0 6px", fontStyle: "italic" }}>
-      {p(ownNumbers ? CMP_TXT.noCmp : CMP_TXT.noValue)}
-    </p>
-  );
+  const noValue = <p className="rv-note">{p(ownNumbers ? CMP_TXT.noCmp : CMP_TXT.noValue)}</p>;
   // Auf der Ergebnisseite bleibt der eigene Wert immer sichtbar: auch wenn der eigenen
   // Gruppe Vergleichswerte fehlen, und auch wenn man zu keiner der zwei Gruppen gehoert.
   const ownInRows = rows.some((r) => r.isOwn);
@@ -238,7 +229,7 @@ export default function ComparisonView({
   const ownOnly = (
     ownValue: number | null, band: BandSpec, f: (v: number) => string, rowLabel: string,
     revealDelay?: number, mode?: "enter" | "remeasure",
-    lineOpts?: { dot?: string; count?: { delayMs: number } },
+    lineOpts?: { dot?: boolean; count?: { delayMs: number } },
   ) => (
     <>
       <ComparisonBand min={band.min} max={band.max} ticks={band.ticks} q={null} own={ownValue} color={band.color}
@@ -266,342 +257,322 @@ export default function ComparisonView({
 
   if (!rows.length) return null;
 
-  const capCardStyle: CSSProperties = { ...card, ...CARD_SKIN };
   const rescanKey = filtered ? dim : undefined;
+  const title = (head: T, em: T) => (
+    <H className="rv-h"><RiseWords text={p(head)} em={p(em)} /></H>
+  );
+  const num = (s: string) => <span className="rv-num">{s}</span>;
 
   return (
     <>
       <ResultFxStyles />
-      {/* Filter: genau ein Merkmal */}
-      <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginBottom: "22px" }}>
-        <span style={{ fontFamily: "Inter, sans-serif", fontSize: "13px", color: "rgba(255,255,255,0.55)" }}>{p(CMP_TXT.filter)}:</span>
-        <div className="rfx-rail">
-        {(["all", ...DIMENSIONS.map((d) => d.key)] as (DimKey | "all")[]).map((k) => {
-          const ok = k === "all" || dimPublished(k);
-          const active = ok && dim === k;
-          const label = k === "all" ? p(CMP_TXT.allTab) : p(DIMENSIONS.find((d) => d.key === k)!.label);
-          return (
-            <button key={k} type="button" disabled={!ok} aria-pressed={active}
-              onClick={() => { if (k !== dim) { setDim(k); setFiltered(true); setPingN((n) => n + 1); } }}
-              title={ok ? undefined : p(CMP_TXT.notYet)}
-              className={ok ? "fx-press rfx-pill" : "rfx-pill"}
-              style={{
-                position: "relative",
-                fontFamily: "Inter, sans-serif", fontSize: "13px", padding: "6px 13px", borderRadius: "999px",
-                border: "1px solid transparent",
-                background: "transparent",
-                color: ok ? (active ? "#fff" : "rgba(255,255,255,0.75)") : "rgba(255,255,255,0.32)",
-                cursor: ok ? "pointer" : "not-allowed",
-              }}>
-              {/* Aktiver Schlitten gleitet zwischen den Pills (layoutId).
-                  Sanfte Stufe: keine Fahrt, der Schlitten blendet am Ziel ein und am alten Platz aus. */}
-              {reduced ? (
-                <AnimatePresence initial={false}>
-                  {active && (
-                    <motion.span key="cmp-filter" aria-hidden="true"
-                      initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                      transition={{ duration: DUR.fade, ease: EASE_OUT }}
-                      style={SLED} />
-                  )}
-                </AnimatePresence>
-              ) : active && (
-                <motion.span layoutId="cmp-filter" aria-hidden="true"
-                  transition={{ type: "spring", duration: 0.35, bounce: 0.1 }}
-                  style={SLED} />
-              )}
-              <span style={{ position: "relative" }}>
-                {/* Signalpunkt: leuchtet am gewaehlten Reiter, ein Ping beim Wechsel (nur Deko). */}
-                <span aria-hidden="true" className="fx-deco" style={{
-                  position: "relative", display: "inline-block", width: 5, height: 5, borderRadius: "50%",
-                  marginRight: 7, verticalAlign: "0.1em",
-                  background: active ? "#8BA4FF" : ok ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,0.12)",
-                  transition: "background-color 240ms ease",
-                }}>
-                  {/* Leuchten statisch, nur seine Deckkraft wechselt (kein box-shadow-Uebergang) */}
-                  <span style={{
-                    position: "absolute", inset: 0, borderRadius: "50%", boxShadow: "0 0 6px rgba(139,164,255,0.9)",
-                    opacity: active ? 1 : 0, transition: "opacity 240ms ease",
-                  }} />
-                  <Ping play={active ? pingN : 0} color="#8BA4FF" size={5} scale={3.2} duration={0.7} />
-                </span>
-                {label}{ok ? "" : ` · ${p(CMP_TXT.notYet)}`}
-              </span>
-            </button>
-          );
-        })}
-        </div>
-      </div>
-      {/* Gruppen der aktuellen Ansicht, einmal oben statt in jeder Zeile */}
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.div key={dim}
-          style={{ display: "flex", gap: "8px 22px", flexWrap: "wrap", alignItems: "baseline", margin: "-8px 0 22px", fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.55)" }}
-          variants={LEGEND_VARIANTS} initial="h" animate="s" exit="x">
-          {rows.map((r) => (
-            <motion.span key={r.id} variants={LEGEND_ITEM}>
-              {r.tag ? <strong style={{ fontWeight: 600, color: "rgba(255,255,255,0.75)" }}>{r.tag} </strong> : null}
-              {r.label}
-            </motion.span>
-          ))}
-        </motion.div>
-      </AnimatePresence>
-
-      {/* Vier Faehigkeiten */}
-      <Reveal {...RESULT_VIEW} y={16} style={capCardStyle}>
-        <CardChrome index={0} rescanKey={rescanKey} />
-        <H style={h2}>{p(CMP_TXT.capHead)}</H>
-        <p style={lead}>{p(CMP_TXT.capLead)}{mine ? " " + p(CMP_TXT.ownLegend) : ""}</p>
-        {/* Bei einem Filterwechsel nur Crossfade der Zeilen (key je Merkmal), nie Zwischenwerte */}
-        <AnimatePresence mode="wait" initial={false}>
-        <motion.div key={dim} className="grid grid-cols-1 md:grid-cols-2" style={{ gap: "30px 36px" }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1, transition: { duration: 0.22, ease: EASE_OUT } }}
-          exit={{ opacity: 0, transition: { duration: 0.12, ease: EASE_OUT } }}>
-          {CAPACITIES.map((c, ci) => (
-            <div key={c.key} style={{ position: "relative", paddingLeft: "14px" }}>
-              {/* Farbkante der Faehigkeit (nur Deko) */}
-              <span aria-hidden="true" style={{
-                position: "absolute", left: 0, top: 4, bottom: 4, width: 2, borderRadius: 1,
-                background: `linear-gradient(180deg, ${withAlpha(c.color, 0.7)}, ${withAlpha(c.color, 0)})`,
-              }} />
-              <div style={{ display: "flex", alignItems: "baseline", gap: "10px", flexWrap: "wrap", marginBottom: "8px" }}>
-                <span style={{
-                  display: "inline-block", width: "10px", height: "10px", borderRadius: "50%", background: c.color,
-                  boxShadow: `0 0 0 3px ${withAlpha(c.color, 0.15)}, 0 0 10px ${withAlpha(c.color, 0.5)}`,
-                }} />
-                <span style={{ fontFamily: "Space Grotesk, sans-serif", fontSize: "15px", color: "rgba(255,255,255,0.9)" }}>
-                  {lang === "en" ? c.label.en : c.label.de}
-                </span>
-                {capNote && (
-                  <span style={{ marginLeft: "auto", fontFamily: "Inter, sans-serif", fontSize: "12px", color: "rgba(255,255,255,0.5)" }}>
-                    {capNote(c.key)}
-                  </span>
-                )}
-              </div>
-              {rows.map((r, i) => {
-                const q = r.block.cap[c.key];
-                const ownValue = mine ? mine.cap[c.key] : null;
-                // Entree: gestaffelt je Faehigkeit und Zeile; nach einem Filterwechsel
-                // kurzes Nachmessen der neuen Gruppe (ohne Zaehlen).
-                const revealDelay = filtered ? ci * 0.03 + i * 0.02 : ci * 0.09 + i * 0.06;
-                const revealMode = filtered ? "remeasure" : "enter";
-                const lineOpts = { dot: c.color, count: { delayMs: revealDelay * 1000 + BAND_T.dot } };
+      <div ref={panelRef} className="rv-panel rv-deep">
+        {ambient && (
+          <div aria-hidden="true" className="rv-ambient fx-deco">
+            <AmbientField />
+          </div>
+        )}
+        <div className="rv-inner">
+          {/* Filter: genau ein Merkmal */}
+          <div className="rv-controls">
+            <span className="rv-flabel">{p(CMP_TXT.filter)}:</span>
+            <div className="rfx-rail">
+              {(["all", ...DIMENSIONS.map((d) => d.key)] as (DimKey | "all")[]).map((k) => {
+                const ok = k === "all" || dimPublished(k);
+                const active = ok && dim === k;
+                const label = k === "all" ? p(CMP_TXT.allTab) : p(DIMENSIONS.find((d) => d.key === k)!.label);
                 return (
-                  <div key={r.id} data-rfx-row="" style={{ marginBottom: "8px" }}>
-                    {rowHead(r)}
-                    {q ? (
-                      <>
-                        <ComparisonBand min={1} max={7} ticks={[1, 2, 3, 4, 5, 6, 7]} q={q} own={ownValue} color={c.color}
-                          scale={i === rows.length - 1 ? ["1", "7"] : undefined}
-                          label={lang === "en" ? c.label.en : c.label.de}
-                          describe={bandDescribe(r.label, q, fmtCap, ownValue)}
-                          revealDelay={revealDelay} revealMode={revealMode} />
-                        {r.isOwn && mine && posLine(positionOf(ownValue, q, capStepOf(r.block)), ownValue, fmtOwnCap, lineOpts)}
-                      </>
-                    ) : ownNumbers && mine && r.isOwn ? (
-                      <>
-                        {ownOnly(ownValue, {
-                          min: 1, max: 7, ticks: [1, 2, 3, 4, 5, 6, 7], color: c.color,
-                          scale: i === rows.length - 1 ? ["1", "7"] : undefined, label: lang === "en" ? c.label.en : c.label.de,
-                        }, fmtOwnCap, r.label, revealDelay, revealMode, lineOpts)}
-                        {noValue}
-                      </>
-                    ) : noValue}
-                  </div>
+                  <button key={k} type="button" disabled={!ok} aria-pressed={active}
+                    onClick={() => { if (k !== dim) { setDim(k); setFiltered(true); setPingN((n) => n + 1); } }}
+                    title={ok ? undefined : p(CMP_TXT.notYet)}
+                    className={ok ? "fx-press rfx-pill" : "rfx-pill"}>
+                    {/* Aktiver Schlitten gleitet zwischen den Pillen (layoutId).
+                        Sanfte Stufe: keine Fahrt, der Schlitten blendet am Ziel ein und am alten Platz aus. */}
+                    {reduced ? (
+                      <AnimatePresence initial={false}>
+                        {active && (
+                          <motion.span key="cmp-filter" aria-hidden="true" className="rfx-sled"
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                            transition={{ duration: DUR.fade, ease: EASE_OUT }} />
+                        )}
+                      </AnimatePresence>
+                    ) : active && (
+                      <motion.span layoutId="cmp-filter" aria-hidden="true" className="rfx-sled"
+                        transition={{ type: "spring", duration: 0.35, bounce: 0.1 }} />
+                    )}
+                    <span className="rfx-pill-in">
+                      {/* Signalpunkt: Marke am gewaehlten Reiter, ein Ping beim Wechsel (nur Deko). */}
+                      <span aria-hidden="true" className="fx-deco rfx-dot">
+                        <Ping play={active ? pingN : 0} color={V.accent} size={6} scale={3.2} duration={0.7} />
+                      </span>
+                      <span>{label}{ok ? "" : ` · ${p(CMP_TXT.notYet)}`}</span>
+                    </span>
+                  </button>
                 );
               })}
-              {ownNumbers && mine && !ownInRows && posLine(null, mine.cap[c.key], fmtOwnCap)}
             </div>
-          ))}
-        </motion.div>
-        </AnimatePresence>
-      </Reveal>
-      {afterCaps}
-
-      {/* Matrix */}
-      <Reveal {...RESULT_VIEW} y={16} style={capCardStyle}>
-        <CardChrome index={1} rescanKey={rescanKey} />
-        <H style={h2}>{p(CMP_TXT.matrixHead)}</H>
-        <p style={lead}>{p(CMP_TXT.matrixLead)}{quadShares ? " " + p(CMP_TXT.shares) : ""}</p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8" style={{ alignItems: "center" }}>
-          <div style={{ display: "flex", justifyContent: "center" }}>
-            <SovereigntyMatrix
-              ftc={mine?.ftc ?? null} cto={mine?.cto ?? null} cont={mine?.cont ?? null} lang={lang} emptyHint={ownNumbers && !!mine}
-              quadShares={quadShares}
-              compare={rows.filter((r) => r.block.ftc && r.block.cto).map((r) => ({ ftc: r.block.ftc!, cto: r.block.cto!, tag: r.tag }))}
-              ariaLabel={[
-                p(CMP_TXT.matrixHead),
-                ...(mine?.ftc != null && mine?.cto != null
-                  ? [`${p(CMP_TXT.own)}: Reconfiguration Discretion ${fmtPct(mine.ftc)}, Operational Control ${fmtPct(mine.cto)}`]
-                  : []),
-                ...rows.filter((r) => r.block.ftc && r.block.cto).map((r) =>
-                  `${r.label}, ${p(CMP_TXT.median)}: Reconfiguration Discretion ${fmtPct(r.block.ftc!.p50)}, Operational Control ${fmtPct(r.block.cto!.p50)}`),
-                // role="img" verdeckt die Beschriftung im SVG, deshalb die Anteile je Quadrant hier.
-                ...(quadShares
-                  ? [(Object.keys(quadShares) as QuadKey[]).map((k) => `${p(QUAD_VIEW[k].name)} ${quadShares[k] === null ? "–" : quadShares[k] + " %"}`).join(", ")]
-                  : []),
-              ].join(". ")} />
           </div>
-          <div>
-            {matrixSide}
-            {mine?.ftc != null && mine?.cto != null && (
-              <div style={{ marginBottom: "14px", fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.85)", fontVariantNumeric: "tabular-nums" }}>
-                {p(CMP_TXT.own)}: Reconfiguration Discretion {fmtPct(mine.ftc)} · Operational Control {fmtPct(mine.cto)}
-                <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.55)", marginTop: "2px" }}>{p(CMP_TXT.ownMatrix)}</div>
+          {/* Gruppen der aktuellen Ansicht, einmal oben statt in jeder Zeile */}
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div key={dim} className="rv-legend" variants={LEGEND_VARIANTS} initial="h" animate="s" exit="x">
+              {rows.map((r) => (
+                <motion.span key={r.id} variants={LEGEND_ITEM}>
+                  {r.tag ? <span className="rv-tag">{r.tag}</span> : null}
+                  {r.tag ? " " : null}
+                  {r.label}
+                </motion.span>
+              ))}
+            </motion.div>
+          </AnimatePresence>
+
+          <div className="rv-blocks">
+            {/* Vier Faehigkeiten: Tabelle mit Haarlinien, Name links, Baender rechts */}
+            <div className="rv-block">
+              <BlockRule index={0} rescanKey={rescanKey} />
+              <div className="rv-head2">
+                {title(CMP_TXT.capHead, CMP_EM.capHead)}
+                <p className="rv-lead">{p(CMP_TXT.capLead)}{mine ? " " + p(CMP_TXT.ownLegend) : ""}</p>
               </div>
-            )}
-            {rows.map((r) => (
-              <div key={r.id} style={{ marginBottom: "12px" }}>
-                {rowHead(r, dashMx)}
-                <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.6)", margin: 0, fontVariantNumeric: "tabular-nums" }}>
-                  {r.block.ftc && r.block.cto
-                    ? `Reconfiguration Discretion ${fmtPct(r.block.ftc.p50)} · Operational Control ${fmtPct(r.block.cto.p50)} (${p(CMP_TXT.median)})`
-                    : p(ownNumbers ? CMP_TXT.noCmp : CMP_TXT.noValue)}
-                </p>
+              {/* Bei einem Filterwechsel nur Crossfade der Zeilen (key je Merkmal), nie Zwischenwerte */}
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div key={dim} className="rv-caps"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1, transition: { duration: 0.22, ease: EASE_OUT } }}
+                  exit={{ opacity: 0, transition: { duration: 0.12, ease: EASE_OUT } }}>
+                  {CAPACITIES.map((c, ci) => {
+                    const capLabel = lang === "en" ? c.label.en : c.label.de;
+                    return (
+                      <div key={c.key} className="rv-cap">
+                        <div className="rv-cap-name">
+                          <span className="rv-cap-title">
+                            <span aria-hidden="true" className="rv-dot" />
+                            <span>{capLabel}</span>
+                          </span>
+                          {capNote && <span className="rv-cap-note">{capNote(c.key)}</span>}
+                        </div>
+                        <div>
+                          {rows.map((r, i) => {
+                            const q = r.block.cap[c.key];
+                            const ownValue = mine ? mine.cap[c.key] : null;
+                            // Entree: gestaffelt je Faehigkeit und Zeile; nach einem Filterwechsel
+                            // kurzes Nachmessen der neuen Gruppe (ohne Zaehlen).
+                            const revealDelay = filtered ? ci * 0.03 + i * 0.02 : ci * 0.09 + i * 0.06;
+                            const revealMode = filtered ? "remeasure" : "enter";
+                            const lineOpts = { dot: true, count: { delayMs: revealDelay * 1000 + BAND_T.dot } };
+                            return (
+                              <div key={r.id} data-rfx-row="" style={{ marginBottom: "1.1rem" }}>
+                                {rowHead(r)}
+                                {q ? (
+                                  <>
+                                    <ComparisonBand min={1} max={7} ticks={[1, 2, 3, 4, 5, 6, 7]} q={q} own={ownValue} color={V.accent}
+                                      scale={i === rows.length - 1 ? ["1", "7"] : undefined}
+                                      label={capLabel}
+                                      describe={bandDescribe(r.label, q, fmtCap, ownValue)}
+                                      revealDelay={revealDelay} revealMode={revealMode} />
+                                    {r.isOwn && mine && posLine(positionOf(ownValue, q, capStepOf(r.block)), ownValue, fmtOwnCap, lineOpts)}
+                                  </>
+                                ) : ownNumbers && mine && r.isOwn ? (
+                                  <>
+                                    {ownOnly(ownValue, {
+                                      min: 1, max: 7, ticks: [1, 2, 3, 4, 5, 6, 7], color: V.accent,
+                                      scale: i === rows.length - 1 ? ["1", "7"] : undefined, label: capLabel,
+                                    }, fmtOwnCap, r.label, revealDelay, revealMode, lineOpts)}
+                                    {noValue}
+                                  </>
+                                ) : noValue}
+                              </div>
+                            );
+                          })}
+                          {ownNumbers && mine && !ownInRows && posLine(null, mine.cap[c.key], fmtOwnCap)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </motion.div>
+              </AnimatePresence>
+              {afterCaps && <div className="rv-after">{afterCaps}</div>}
+            </div>
+
+            {/* Matrix: Text links, Diagramm rechts */}
+            <div className="rv-block">
+              <BlockRule index={1} rescanKey={rescanKey} />
+              <div className="rv-split">
+                <div className="rv-text">
+                  {title(CMP_TXT.matrixHead, CMP_EM.matrixHead)}
+                  <p className="rv-lead">{p(CMP_TXT.matrixLead)}{quadShares ? " " + p(CMP_TXT.shares) : ""}</p>
+                  <div style={{ marginTop: "1.75rem" }}>
+                    {matrixSide}
+                    {mine?.ftc != null && mine?.cto != null && (
+                      <p className="rv-own">
+                        {p(CMP_TXT.own)}: Reconfiguration Discretion {num(fmtPct(mine.ftc))} · Operational Control {num(fmtPct(mine.cto))}
+                        <small>{p(CMP_TXT.ownMatrix)}</small>
+                      </p>
+                    )}
+                    <div>
+                      {rows.map((r) => (
+                        <div key={r.id} className="rv-group">
+                          {rowHead(r, dashMx)}
+                          <p className="rv-data">
+                            {r.block.ftc && r.block.cto
+                              ? `Reconfiguration Discretion ${fmtPct(r.block.ftc.p50)} · Operational Control ${fmtPct(r.block.cto.p50)} (${p(CMP_TXT.median)})`
+                              : p(ownNumbers ? CMP_TXT.noCmp : CMP_TXT.noValue)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="rv-chart">
+                  <SovereigntyMatrix
+                    ftc={mine?.ftc ?? null} cto={mine?.cto ?? null} cont={mine?.cont ?? null} lang={lang} emptyHint={ownNumbers && !!mine}
+                    quadShares={quadShares}
+                    compare={rows.filter((r) => r.block.ftc && r.block.cto).map((r) => ({ ftc: r.block.ftc!, cto: r.block.cto!, tag: r.tag }))}
+                    ariaLabel={[
+                      p(CMP_TXT.matrixHead),
+                      ...(mine?.ftc != null && mine?.cto != null
+                        ? [`${p(CMP_TXT.own)}: Reconfiguration Discretion ${fmtPct(mine.ftc)}, Operational Control ${fmtPct(mine.cto)}`]
+                        : []),
+                      ...rows.filter((r) => r.block.ftc && r.block.cto).map((r) =>
+                        `${r.label}, ${p(CMP_TXT.median)}: Reconfiguration Discretion ${fmtPct(r.block.ftc!.p50)}, Operational Control ${fmtPct(r.block.cto!.p50)}`),
+                      // role="img" verdeckt die Beschriftung im SVG, deshalb die Anteile je Quadrant hier.
+                      ...(quadShares
+                        ? [(Object.keys(quadShares) as QuadKey[]).map((k) => `${p(QUAD_VIEW[k].name)} ${quadShares[k] === null ? "–" : quadShares[k] + " %"}`).join(", ")]
+                        : []),
+                    ].join(". ")} />
+                </div>
               </div>
-            ))}
+            </div>
+
+            {/* Kontinuitaet als Tacho: Nadel = eigener Wert, Boegen = mittlere Haelfte der Gruppen */}
+            <div className="rv-block">
+              <BlockRule index={2} rescanKey={rescanKey} />
+              <div className="rv-split rv-split--flip">
+                <div className="rv-text">
+                  {title(CMP_TXT.contHead, CMP_EM.contHead)}
+                  <p className="rv-lead">{p(CMP_TXT.contLead)} {p(CMP_TXT.contGauge)}</p>
+                  <div style={{ marginTop: "1.75rem" }}>
+                    <div>
+                      {rows.map((r) => (
+                        <div key={r.id} className="rv-group">
+                          {rowHead(r, dashCont)}
+                          {r.block.cont ? (
+                            <>
+                              <p className="rv-data">
+                                {p(CMP_TXT.median)} {fmtPct(r.block.cont.p50)} · {p(CMP_TXT.band)} {fmtPct(r.block.cont.p25)} {bis} {fmtPct(r.block.cont.p75)}
+                              </p>
+                              {r.isOwn && mine && posLine(positionOf(mine.cont, r.block.cont, CTX_STEP), mine.cont, fmtPct)}
+                            </>
+                          ) : (
+                            <>
+                              {noValue}
+                              {ownNumbers && mine && r.isOwn && posLine(null, mine.cont, fmtPct)}
+                            </>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {ownNumbers && mine && !ownInRows && posLine(null, mine.cont, fmtPct)}
+                  </div>
+                </div>
+                <div className="rv-chart">
+                  <ContinuityGauge
+                    value={mine?.cont ?? null}
+                    compare={rows.filter((r) => r.block.cont).map((r) => ({ q: r.block.cont!, tag: r.tag }))}
+                    ariaLabel={[
+                      p(CMP_TXT.contHead),
+                      ...(mine?.cont != null ? [`${p(CMP_TXT.own)}: ${fmtPct(mine.cont)}`] : []),
+                      ...rows.filter((r) => r.block.cont).map((r) =>
+                        `${r.label}, ${p(CMP_TXT.median)}: ${fmtPct(r.block.cont!.p50)}, ${p(CMP_TXT.band)}: ${fmtPct(r.block.cont!.p25)} ${bis} ${fmtPct(r.block.cont!.p75)}`),
+                    ].join(". ")} />
+                </div>
+              </div>
+            </div>
+
+            {/* Transparenz-Matrix: Transparenz gegen Durchschnitt der Faehigkeiten */}
+            <div className="rv-block">
+              <BlockRule index={3} rescanKey={rescanKey} />
+              <div className="rv-split">
+                <div className="rv-text">
+                  {title(CMP_TXT.traHead, CMP_EM.traHead)}
+                  <p className="rv-lead">{p(CMP_TXT.traLead)}</p>
+                  <div style={{ marginTop: "1.75rem" }}>
+                    {/* Eigenes Feld in Worten, wie "Wo Sie stehen" bei der Souveraenitaets-Matrix */}
+                    {ownTraQuad && (
+                      <div style={{ marginBottom: "1.5rem" }}>
+                        <QuadrantReveal name={p(TRA_QUAD[ownTraQuad].name)} desc={p(TRA_QUAD[ownTraQuad].desc)} color={TRA_QUAD[ownTraQuad].color} />
+                      </div>
+                    )}
+                    {mine && (
+                      <p className="rv-own">
+                        {traOldCode ? (
+                          <>{p(CMP_TXT.own)}: {p(AXIS_AVG)} {ownAvg === null ? "–" : num(fmtAvg(ownAvg, lang))} · {p(CMP_TXT.traOld)}</>
+                        ) : (
+                          <>{p(CMP_TXT.own)}: {p(AXIS_TRA)} {ownTra === null ? "–" : num(fmtPct(ownTra))} · {p(AXIS_AVG)} {ownAvg === null ? "–" : num(fmtAvg(ownAvg, lang))}</>
+                        )}
+                      </p>
+                    )}
+                    <div>
+                      {rows.map((r) => (
+                        <div key={r.id} className="rv-group">
+                          {rowHead(r, dashTra)}
+                          <p className="rv-data">
+                            {r.block.tra && r.block.avg
+                              ? `${p(AXIS_TRA)} ${fmtPct(r.block.tra.p50)} · ${p(AXIS_AVG)} ${fmtNum(r.block.avg.p50, lang)} (${p(CMP_TXT.median)})`
+                              : p(ownNumbers ? CMP_TXT.noCmp : CMP_TXT.noValue)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="rv-chart">
+                  <TransparencyMatrix
+                    tra={ownTra} avg={ownAvg} lang={lang}
+                    compare={traRows.map((r) => ({ tra: r.block.tra!, avg: r.block.avg!, tag: r.tag }))}
+                    ariaLabel={[
+                      p(CMP_TXT.traHead),
+                      ...(ownTra !== null && ownAvg !== null
+                        ? [`${p(CMP_TXT.own)}: ${p(AXIS_TRA)} ${fmtPct(ownTra)}, ${p(AXIS_AVG)} ${fmtAvg(ownAvg, lang)}`]
+                        : []),
+                      ...traRows.map((r) => `${r.label}, ${p(CMP_TXT.median)}: ${p(AXIS_TRA)} ${fmtPct(r.block.tra!.p50)}, ${p(AXIS_AVG)} ${fmtNum(r.block.avg!.p50, lang)}`),
+                    ].join(". ")} />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-      </Reveal>
-
-      {/* Kontinuitaet als Tacho: Nadel = eigener Wert, Boegen = mittlere Haelfte der Gruppen */}
-      <Reveal {...RESULT_VIEW} y={16} style={capCardStyle}>
-        <CardChrome index={2} rescanKey={rescanKey} />
-        <H style={h2}>{p(CMP_TXT.contHead)}</H>
-        <p style={lead}>{p(CMP_TXT.contLead)} {p(CMP_TXT.contGauge)}</p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8" style={{ alignItems: "center" }}>
-          <div style={{ display: "flex", justifyContent: "center" }}>
-            <ContinuityGauge
-              value={mine?.cont ?? null}
-              compare={rows.filter((r) => r.block.cont).map((r) => ({ q: r.block.cont!, tag: r.tag }))}
-              ariaLabel={[
-                p(CMP_TXT.contHead),
-                ...(mine?.cont != null ? [`${p(CMP_TXT.own)}: ${fmtPct(mine.cont)}`] : []),
-                ...rows.filter((r) => r.block.cont).map((r) =>
-                  `${r.label}, ${p(CMP_TXT.median)}: ${fmtPct(r.block.cont!.p50)}, ${p(CMP_TXT.band)}: ${fmtPct(r.block.cont!.p25)} ${bis} ${fmtPct(r.block.cont!.p75)}`),
-              ].join(". ")} />
-          </div>
-          <div>
-            {rows.map((r) => (
-              <div key={r.id} style={{ marginBottom: "12px" }}>
-                {rowHead(r, dashCont)}
-                {r.block.cont ? (
-                  <>
-                    <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.6)", margin: 0, fontVariantNumeric: "tabular-nums" }}>
-                      {p(CMP_TXT.median)} {fmtPct(r.block.cont.p50)} · {p(CMP_TXT.band)} {fmtPct(r.block.cont.p25)} {bis} {fmtPct(r.block.cont.p75)}
-                    </p>
-                    {r.isOwn && mine && posLine(positionOf(mine.cont, r.block.cont, CTX_STEP), mine.cont, fmtPct)}
-                  </>
-                ) : (
-                  <>
-                    {noValue}
-                    {ownNumbers && mine && r.isOwn && posLine(null, mine.cont, fmtPct)}
-                  </>
-                )}
-              </div>
-            ))}
-            {ownNumbers && mine && !ownInRows && posLine(null, mine.cont, fmtPct)}
-          </div>
-        </div>
-      </Reveal>
-
-      {/* Transparenz-Matrix: Transparenz gegen Durchschnitt der Faehigkeiten */}
-      <Reveal {...RESULT_VIEW} y={16} style={capCardStyle}>
-        <CardChrome index={3} rescanKey={rescanKey} />
-        <H style={h2}>{p(CMP_TXT.traHead)}</H>
-        <p style={lead}>{p(CMP_TXT.traLead)}</p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8" style={{ alignItems: "center" }}>
-          <div style={{ display: "flex", justifyContent: "center" }}>
-            <TransparencyMatrix
-              tra={ownTra} avg={ownAvg} lang={lang}
-              compare={traRows.map((r) => ({ tra: r.block.tra!, avg: r.block.avg!, tag: r.tag }))}
-              ariaLabel={[
-                p(CMP_TXT.traHead),
-                ...(ownTra !== null && ownAvg !== null
-                  ? [`${p(CMP_TXT.own)}: ${p(AXIS_TRA)} ${fmtPct(ownTra)}, ${p(AXIS_AVG)} ${fmtAvg(ownAvg, lang)}`]
-                  : []),
-                ...traRows.map((r) => `${r.label}, ${p(CMP_TXT.median)}: ${p(AXIS_TRA)} ${fmtPct(r.block.tra!.p50)}, ${p(AXIS_AVG)} ${fmtNum(r.block.avg!.p50, lang)}`),
-              ].join(". ")} />
-          </div>
-          <div>
-            {/* Eigenes Feld in Worten, wie "Wo Sie stehen" bei der Souveraenitaets-Matrix */}
-            {ownTraQuad && (
-              <div style={{ marginBottom: "16px" }}>
-                <QuadrantReveal name={p(TRA_QUAD[ownTraQuad].name)} desc={p(TRA_QUAD[ownTraQuad].desc)} color={TRA_QUAD[ownTraQuad].color}
-                  nameStyle={{ fontSize: "clamp(18px,2vw,23px)", marginBottom: "8px", letterSpacing: "normal" }}
-                  descStyle={{ fontSize: "14px", lineHeight: 1.6 }} />
-              </div>
-            )}
-            {mine && (
-              <div style={{ marginBottom: "14px", fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.85)", fontVariantNumeric: "tabular-nums" }}>
-                {traOldCode
-                  ? `${p(CMP_TXT.own)}: ${p(AXIS_AVG)} ${ownAvg === null ? "–" : fmtAvg(ownAvg, lang)} · ${p(CMP_TXT.traOld)}`
-                  : `${p(CMP_TXT.own)}: ${p(AXIS_TRA)} ${ownTra === null ? "–" : fmtPct(ownTra)} · ${p(AXIS_AVG)} ${ownAvg === null ? "–" : fmtAvg(ownAvg, lang)}`}
-              </div>
-            )}
-            {rows.map((r) => (
-              <div key={r.id} style={{ marginBottom: "12px" }}>
-                {rowHead(r, dashTra)}
-                <p style={{ fontFamily: "Inter, sans-serif", fontSize: "12.5px", color: "rgba(255,255,255,0.6)", margin: 0, fontVariantNumeric: "tabular-nums" }}>
-                  {r.block.tra && r.block.avg
-                    ? `${p(AXIS_TRA)} ${fmtPct(r.block.tra.p50)} · ${p(AXIS_AVG)} ${fmtNum(r.block.avg.p50, lang)} (${p(CMP_TXT.median)})`
-                    : p(ownNumbers ? CMP_TXT.noCmp : CMP_TXT.noValue)}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </Reveal>
-
+      </div>
     </>
   );
 }
 
-// ─── Kartenrahmen: Messinstrument-Chrom ──────────────────────────────────────
-// Rein dekorativ (aria-hidden): Kantenlicht oben, vier Messecken, beim ersten
-// Sichtkontakt faehrt eine Scanlinie einmal ueber die Karte (sanfte Stufe: der
-// Rand leuchtet nur kurz auf). Nach einem Filterwechsel tastet die Linie die
-// Karte kurz erneut ab. Endzustand: Linie unsichtbar, Ecken bei 0.6.
-const SCAN_KF: Keyframe[] = [
-  { transform: "translateY(-100%)", opacity: 1 },
-  { transform: "translateY(0%)", opacity: 1, offset: 0.9 },
-  { transform: "translateY(0%)", opacity: 0 },
-];
-const RIM_KF: Keyframe[] = [{ opacity: 0 }, { opacity: 1, offset: 0.3 }, { opacity: 0 }];
-const CORNER_LINE = "1px solid rgba(139,164,255,0.38)";
-const CORNERS: CSSProperties[] = [
-  { top: 8, left: 8, borderTop: CORNER_LINE, borderLeft: CORNER_LINE },
-  { top: 8, right: 8, borderTop: CORNER_LINE, borderRight: CORNER_LINE },
-  { bottom: 8, left: 8, borderBottom: CORNER_LINE, borderLeft: CORNER_LINE },
-  { bottom: 8, right: 8, borderBottom: CORNER_LINE, borderRight: CORNER_LINE },
-];
+// ─── Haarlinie am Kopf jedes Blocks ──────────────────────────────────────────
+// Rein dekorativ (aria-hidden): Beim ersten Sichtkontakt zeichnet sich eine Mint-Linie von
+// links ueber die Haarlinie des Blocks und bleibt stehen (Endzustand: Linie voll gezogen).
+// Sanfte Stufe: clip-path-Wipe statt scaleX. Nach einem Filterwechsel zeichnet sich die Linie
+// kurz erneut (je Block leicht versetzt). Im Druck bleibt nur die Haarlinie des Blocks.
+const RULE_KF: Keyframe[] = [{ transform: "scaleX(0)" }, { transform: "scaleX(1)" }];
+const RULE_KF_SOFT: Keyframe[] = [{ clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0% 0 0)" }];
 
-function CardChrome({ index, rescanKey }: { index: number; rescanKey?: string }) {
+function BlockRule({ index, rescanKey }: { index: number; rescanKey?: string }) {
   const hostRef = useRef<HTMLSpanElement>(null);
-  const cornersRef = useRef<HTMLSpanElement>(null);
-  const layerRef = useRef<HTMLSpanElement>(null);
-  const rimRef = useRef<HTMLSpanElement>(null);
+  const lineRef = useRef<HTMLElement>(null);
   const reduced = useReducedMotionSafe();
 
-  useRevealOnce(hostRef, (_h, red): FxStep[] => red
-    ? [
-        { el: rimRef.current, keyframes: RIM_KF, duration: 700, delay: 150 },
-        { el: cornersRef.current, keyframes: [{ opacity: 0 }, { opacity: 0.6 }], duration: 400, delay: 150 },
-      ]
-    : [
-        { el: layerRef.current, keyframes: SCAN_KF, duration: 1100, delay: 150, easing: CSS_EASE_IN_OUT },
-        { el: cornersRef.current, keyframes: [{ opacity: 0 }, { opacity: 1, offset: 0.54 }, { opacity: 0.6 }], duration: 650, delay: 1150 },
-      ]);
+  useRevealOnce(hostRef, (_h, red): FxStep[] => [
+    { el: lineRef.current, keyframes: red ? RULE_KF_SOFT : RULE_KF, duration: 1300, delay: 120 + index * 40, easing: CSS_EASE_OUT },
+  ]);
 
-  // Nachmessen nach einem Filterwechsel; der erste Wert (kein Filter) loest nichts aus.
+  // Nachzeichnen nach einem Filterwechsel; der erste Wert (kein Filter) loest nichts aus.
   const prevKeyRef = useRef(rescanKey);
   const animsRef = useRef<Animation[]>([]);
   useEffect(() => {
     if (prevKeyRef.current === rescanKey) return;
     prevKeyRef.current = rescanKey;
     animsRef.current.forEach((a) => a.cancel());
-    animsRef.current = playSteps(reduced
-      ? [{ el: rimRef.current, keyframes: RIM_KF, duration: 700, delay: index * 70 }]
-      : [{ el: layerRef.current, keyframes: SCAN_KF, duration: 800, delay: index * 80, easing: CSS_EASE_IN_OUT }], reduced);
+    animsRef.current = playSteps([
+      { el: lineRef.current, keyframes: reduced ? RULE_KF_SOFT : RULE_KF, duration: 900, delay: index * 80, easing: CSS_EASE_OUT },
+    ], reduced);
   }, [rescanKey, reduced, index]);
   useEffect(() => () => {
     animsRef.current.forEach((a) => a.cancel());
@@ -609,30 +580,19 @@ function CardChrome({ index, rescanKey }: { index: number; rescanKey?: string })
   }, []);
 
   return (
-    <span ref={hostRef} aria-hidden="true" className="fx-deco"
-      style={{ position: "absolute", inset: 0, borderRadius: "inherit", pointerEvents: "none" }}>
-      <span style={{ position: "absolute", top: -1, left: "14%", right: "14%", height: 1, background: "linear-gradient(90deg, transparent, rgba(139,164,255,0.45), transparent)" }} />
-      <span ref={cornersRef} style={{ position: "absolute", inset: 0, opacity: 0.6 }}>
-        {CORNERS.map((c, i) => (
-          <span key={i} style={{ position: "absolute", width: 10, height: 10, ...c }} />
-        ))}
-      </span>
-      <span style={{ position: "absolute", inset: 0, borderRadius: "inherit", overflow: "hidden" }}>
-        <span ref={layerRef} style={{ position: "absolute", left: 0, right: 0, top: 0, height: "100%", opacity: 0 }}>
-          <span style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 1, background: "linear-gradient(90deg, transparent, rgba(139,164,255,0.6) 18%, rgba(139,164,255,0.6) 82%, transparent)" }} />
-          <span style={{ position: "absolute", left: 0, right: 0, bottom: 1, height: 56, background: "linear-gradient(180deg, transparent, rgba(139,164,255,0.07))" }} />
-        </span>
-      </span>
-      <span ref={rimRef} style={{ position: "absolute", inset: 0, borderRadius: "inherit", boxShadow: "inset 0 0 0 1px rgba(139,164,255,0.6)", opacity: 0 }} />
+    <span ref={hostRef} aria-hidden="true" className="fx-deco rv-rule">
+      <i ref={lineRef} />
     </span>
   );
 }
 
 // ─── Feldname in Worten (Souveraenitaets- und Transparenz-Matrix) ────────────
 // Der Name wird synchron zur Ortung in der Matrix (MATRIX_T.quadName) freigelegt,
-// eine Farbkante waechst mit, die Beschreibung folgt. Name, Beschreibung, Farbe
-// und Feldzuordnung kommen unveraendert vom Aufrufer. Ohne Animation (Druck,
-// verstecktes Tab) steht alles im Endzustand; sanfte Stufe: clip-path statt scaleY.
+// eine Farbmarke wachsen mit (die Farbe des Feldes, nur als schmaler Balken), die Beschreibung
+// folgt. Name, Beschreibung, Farbe und Feldzuordnung kommen unveraendert vom Aufrufer. Der Name
+// steht in der Schriftfarbe des Grundes, die Feldfarbe nur im Balken (sie waere als Text auf
+// Weiss nicht lesbar). Ohne Animation (Druck, verstecktes Tab) steht alles im Endzustand;
+// sanfte Stufe: clip-path statt scaleY.
 export function QuadrantReveal({ name, desc, color, nameStyle, descStyle }: {
   name: string; desc: string; color: string; nameStyle?: CSSProperties; descStyle?: CSSProperties;
 }) {
@@ -642,11 +602,11 @@ export function QuadrantReveal({ name, desc, color, nameStyle, descStyle }: {
   const barRef = useRef<HTMLSpanElement>(null);
   useRevealOnce(hostRef, (_h, reduced): FxStep[] => [
     {
-      el: nameRef.current, duration: 600, delay: MATRIX_T.quadName, easing: CSS_EASE_IN_OUT,
+      el: nameRef.current, duration: 600, delay: MATRIX_T.quadName, easing: CSS_EASE_OUT,
       keyframes: [{ clipPath: "inset(0 100% 0 0)" }, { clipPath: "inset(0 0% 0 0)" }],
     },
     {
-      el: barRef.current, duration: 600, delay: MATRIX_T.quadName, easing: CSS_EASE_IN_OUT,
+      el: barRef.current, duration: 600, delay: MATRIX_T.quadName, easing: CSS_EASE_OUT,
       keyframes: reduced
         ? [{ clipPath: "inset(0 0 100% 0)" }, { clipPath: "inset(0 0 0% 0)" }]
         : [{ transform: "scaleY(0)" }, { transform: "scaleY(1)" }],
@@ -654,23 +614,12 @@ export function QuadrantReveal({ name, desc, color, nameStyle, descStyle }: {
     { el: descRef.current, duration: 200, delay: MATRIX_T.quadDesc, keyframes: [{ opacity: 0 }, { opacity: 1 }] },
   ], { rebuildKey: name });
   return (
-    <div ref={hostRef} style={{ position: "relative", paddingLeft: "14px" }}>
-      <span ref={barRef} aria-hidden="true" className="fx-deco" style={{
-        position: "absolute", left: 0, top: 4, height: "1.25em", width: 3, borderRadius: 2,
-        background: `linear-gradient(180deg, ${color}, ${withAlpha(color, 0.2)})`,
-        boxShadow: `0 0 12px ${withAlpha(color, 0.5)}`, transformOrigin: "top",
-      }} />
-      <div ref={nameRef} style={{
-        fontFamily: "Space Grotesk, sans-serif", fontSize: "clamp(19px,2.2vw,25px)", fontWeight: 400, color,
-        letterSpacing: "-0.015em", marginBottom: "12px", textShadow: `0 0 24px ${withAlpha(color, 0.35)}`,
-        ...nameStyle,
-      }}>
+    <div ref={hostRef} className="rv-quad">
+      <span ref={barRef} aria-hidden="true" className="fx-deco rv-quad-bar" style={{ background: color }} />
+      <div ref={nameRef} className="rv-quad-name" style={nameStyle}>
         {name}
       </div>
-      <p ref={descRef} style={{
-        fontFamily: "Inter, sans-serif", fontSize: "14.5px", lineHeight: 1.65, color: "rgba(255,255,255,0.68)",
-        maxWidth: "46ch", margin: 0, ...descStyle,
-      }}>
+      <p ref={descRef} className="rv-quad-desc" style={descStyle}>
         {desc}
       </p>
     </div>
