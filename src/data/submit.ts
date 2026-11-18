@@ -62,8 +62,19 @@ function writeQueue(q: any[]) {
   try { localStorage.setItem(QUEUE, JSON.stringify(q.slice(-20))); } catch { /* Speicher voll */ }
 }
 
+// SCHUTZ FUER DIE ECHTEN DATEN: Dieser Entwurf (Redesign) schreibt nur dann in die
+// echte Datenbank, wenn beim Build VITE_ENABLE_SUBMIT=true gesetzt ist. Ohne das tut
+// jede Uebermittlung so, als waere sie angekommen, sendet aber nichts. So landen
+// Testlaeufe waehrend der Entwicklung nicht in den Forschungsdaten. Beim Live-Gang
+// muss die Variable im Deploy-Workflow gesetzt werden.
+export const LIVE_WRITES = import.meta.env.VITE_ENABLE_SUBMIT === "true";
+
 async function post(payload: any): Promise<boolean> {
   if (!ENDPOINT) return false;
+  if (!LIVE_WRITES) {
+    if (typeof console !== "undefined") console.info("[redesign] Uebermittlung uebersprungen (VITE_ENABLE_SUBMIT nicht gesetzt)");
+    return true;
+  }
   try {
     const r = await fetch(ENDPOINT, {
       method: "POST",

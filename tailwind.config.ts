@@ -21,9 +21,11 @@ export default {
     },
     extend: {
       fontFamily: {
-        display: ["'Space Grotesk'", "system-ui", "sans-serif"],
-        body: ["'Inter'", "system-ui", "sans-serif"],
-        grotesk: ["'Space Grotesk'", "system-ui", "sans-serif"],
+        sans: ["Switzer", "'Helvetica Neue'", "Helvetica", "Arial", "sans-serif"],
+        display: ["Switzer", "'Helvetica Neue'", "Helvetica", "Arial", "sans-serif"],
+        body: ["Switzer", "'Helvetica Neue'", "Helvetica", "Arial", "sans-serif"],
+        grotesk: ["Switzer", "'Helvetica Neue'", "Helvetica", "Arial", "sans-serif"],
+        mono: ["'Share Tech Mono'", "ui-monospace", "monospace"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -62,6 +64,10 @@ export default {
         hero: {
           bg: "hsl(var(--hero-bg))",
         },
+        green: { DEFAULT: "#00802f", ink: "#006a27", soft: "rgba(0,128,47,0.08)" },
+        ink: "#0c1310",
+        deep: { DEFAULT: "#06301d", on: "#e9f3ed", mute: "#a9c7b5" },
+        mint: "#6fd69a",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",

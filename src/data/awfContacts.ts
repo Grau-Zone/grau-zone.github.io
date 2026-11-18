@@ -47,7 +47,7 @@
 // Adresse in der Liste steht (201 gegen 409). Das waere ein Mitgliedschafts-
 // Orakel fuer personenbezogene Daten. Doppelte Eintraege verhindert der Client,
 // Reste bereinigt der Export.
-import { HEADERS, REST_BASE } from "./submit";
+import { HEADERS, LIVE_WRITES, REST_BASE } from "./submit";
 
 export const AWF_ENDPOINT = REST_BASE + "/awf_contacts";
 
@@ -112,6 +112,8 @@ export function writeChoice(c: AwfChoice): void {
  *  erneutes Senden hilft nicht) und "fehlgeschlagen" (Netz oder 5xx, erneutes
  *  Senden hilft) gebraucht. */
 export async function submitAwfContact(email: string): Promise<AwfSubmitState> {
+  // Schutz der echten Kontaktliste, siehe LIVE_WRITES in submit.ts.
+  if (!LIVE_WRITES) return "ok";
   try {
     const r = await fetch(AWF_ENDPOINT, {
       method: "POST",

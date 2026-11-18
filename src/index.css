@@ -1,17 +1,11 @@
 /* Schriftarten lokal ausgeliefert statt von Google Fonts. Bei einem Aufruf von
    fonts.googleapis.com wuerde die IP-Adresse jedes Besuchers an Google gehen,
    und zwar bevor ueberhaupt eingewilligt werden kann. */
-@import '@fontsource-variable/fraunces';
-@import '@fontsource/inter/300.css';
-@import '@fontsource/inter/400.css';
-@import '@fontsource/inter/500.css';
-@import '@fontsource/inter/600.css';
+/* Schrift: Switzer (variabel), lokal ausgeliefert (public/fonts). Bei einem Aufruf von
+   fonts.googleapis.com wuerde die IP-Adresse jedes Besuchers an Google gehen. */
 @import '@fontsource/share-tech-mono/400.css';
-@import '@fontsource/space-grotesk/300.css';
-@import '@fontsource/space-grotesk/400.css';
-@import '@fontsource/space-grotesk/500.css';
-@import '@fontsource/space-grotesk/600.css';
-@import '@fontsource/space-grotesk/700.css';
+@font-face { font-family: 'Switzer'; src: url('/fonts/switzer-var.woff2') format('woff2'); font-weight: 100 900; font-style: normal; font-display: swap; }
+@font-face { font-family: 'Switzer'; src: url('/fonts/switzer-var-italic.woff2') format('woff2'); font-weight: 100 900; font-style: italic; font-display: swap; }
 
 @tailwind base;
 @tailwind components;
@@ -19,51 +13,65 @@
 
 @layer base {
   :root {
-    --background: 228 45% 4%;
-    --foreground: 220 30% 97%;
+    /* Redesign: weisser Grund, Tinte, HSG-Gruen, ein tiefes Gruen fuer Zahlen und Beweise. */
+    --background: 0 0% 100%;
+    --foreground: 150 22% 6%;
 
-    --card: 228 40% 7%;
-    --card-foreground: 220 30% 97%;
+    --card: 0 0% 100%;
+    --card-foreground: 150 22% 6%;
 
-    --popover: 228 40% 7%;
-    --popover-foreground: 220 30% 97%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 150 22% 6%;
 
-    --primary: 225 95% 62%;
+    --primary: 142 100% 25%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 228 35% 10%;
-    --secondary-foreground: 220 30% 97%;
+    --secondary: 140 25% 96%;
+    --secondary-foreground: 150 22% 6%;
 
-    --muted: 228 30% 12%;
-    --muted-foreground: 220 20% 50%;
+    --muted: 140 20% 95%;
+    --muted-foreground: 150 10% 32%;
 
-    --accent: 225 95% 62%;
+    --accent: 142 100% 25%;
     --accent-foreground: 0 0% 100%;
 
-    --destructive: 350 90% 60%;
+    --destructive: 0 72% 42%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 228 30% 13%;
-    --input: 228 30% 13%;
-    --ring: 225 95% 62%;
+    --border: 150 6% 87%;
+    --input: 150 6% 87%;
+    --ring: 142 100% 25%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    --sidebar-background: 228 40% 6%;
-    --sidebar-foreground: 220 30% 97%;
-    --sidebar-primary: 225 95% 62%;
+    --sidebar-background: 140 25% 97%;
+    --sidebar-foreground: 150 22% 6%;
+    --sidebar-primary: 142 100% 25%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 228 35% 10%;
-    --sidebar-accent-foreground: 220 30% 97%;
-    --sidebar-border: 228 30% 13%;
-    --sidebar-ring: 225 95% 62%;
+    --sidebar-accent: 140 25% 94%;
+    --sidebar-accent-foreground: 150 22% 6%;
+    --sidebar-border: 150 6% 87%;
+    --sidebar-ring: 142 100% 25%;
+
+    /* Farben des Redesigns als Hex fuer Canvas und SVG */
+    --rx-green: #00802f;
+    --rx-green-ink: #006a27;
+    --rx-ink: #0c1310;
+    --rx-mute: #4f5d56;
+    --rx-line: rgba(12, 19, 16, 0.14);
+    --rx-deep: #06301d;
+    --rx-on-deep: #e9f3ed;
+    --rx-on-deep-mute: #a9c7b5;
+    --rx-mint: #6fd69a;
+    --rx-line-deep: rgba(233, 243, 237, 0.18);
+    --rx-ease: cubic-bezier(0.16, 1, 0.3, 1);
 
     /* Bewegungssprache (siehe src/components/fx/motion.ts) */
     --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
     --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
     --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
-    --c-accent: #4B6EFF;
-    --c-accent-hi: #8BA4FF;
+    --c-accent: #00802f;
+    --c-accent-hi: #6fd69a;
   }
 }
 
@@ -71,7 +79,7 @@
 @property --fx-sweep-color {
   syntax: '<color>';
   inherits: true;
-  initial-value: #4B6EFF;
+  initial-value: #00802f;
 }
 
 @layer base {
@@ -89,19 +97,21 @@
   /* Globaler, sichtbarer Fokusring im Markenstil. Liegt auf outline, damit er
      weder von Transforms noch von box-shadow-Effekten verdeckt wird. */
   :focus-visible {
-    outline: 2px solid #8BA4FF;
+    outline: 2px solid #00802f;
     outline-offset: 3px;
   }
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Switzer', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-feature-settings: 'ss01', 'tnum';
     -webkit-font-smoothing: antialiased;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Space Grotesk', system-ui, sans-serif;
-    letter-spacing: -0.025em;
+    font-family: 'Switzer', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-weight: 500;
+    letter-spacing: -0.03em;
   }
 }
 
@@ -362,7 +372,7 @@
     background: rgba(10, 13, 26, 0.92);
     border: 1px solid rgba(255, 255, 255, 0.14);
     color: #fff;
-    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-family: 'Switzer', system-ui, sans-serif;
     font-size: 13px;
     font-weight: 500;
     line-height: 1.2;
